@@ -103,8 +103,16 @@ def check(
         failures.append("missing reduced-motion handling")
     if "requestanimationframe" not in lower and "@keyframes" not in lower and "gsap" not in lower and "motion" not in lower:
         warnings.append("no obvious animation driver found")
-    if "<canvas" not in lower and "three" not in lower and "webgl" not in lower and "<svg" not in lower:
-        warnings.append("no canvas, WebGL, Three.js, or SVG visual system found")
+    has_visual_system = (
+        "<canvas" in lower
+        or "three" in lower
+        or "webgl" in lower
+        or "<svg" in lower
+        or ("<img" in lower and has_any(html, SUBJECT_MARKERS))
+        or ("background-image" in lower and has_any(html, SUBJECT_MARKERS))
+    )
+    if not has_visual_system:
+        warnings.append("no canvas, WebGL, Three.js, SVG, or image-component visual system found")
     if "aria-" not in lower and "aria-label" not in lower:
         warnings.append("no ARIA attributes found; confirm interactive elements are accessible")
     if has_any(html, FAIL_PATTERNS):

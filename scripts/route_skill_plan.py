@@ -304,7 +304,7 @@ def build_plan(brief: str, *, delivery: str) -> dict[str, Any]:
     ):
         interaction_refs.extend(INTERACTION_READ)
 
-    spatial_refs: list[str] = []
+    spatial_refs: list[str] = list(SOURCE_SPATIALIZATION_READ)
     if any(word in text for word in SOURCE_SPATIALIZATION_TRIGGERS):
         spatial_refs.extend(SOURCE_SPATIALIZATION_READ)
 

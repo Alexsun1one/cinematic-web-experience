@@ -63,6 +63,14 @@
 - `examples/`：高质量案例和截图。
 - `docs/CODEX_HANDOFF.md`：跨机器/跨 agent 交接。
 
+## 示例
+
+- `examples/globe-atelier-physical/`：产品/器物路线。用参考图切出的地球仪主体做对象级拖拽、旋转、缩放、聚焦和复位。
+- `examples/street-linework-intervention/`：复杂街区路线。用清理层、线稿、透视平面、灯光锥和 before-after scrub 做假 3D 空间改造。
+- `examples/evidence-theater-trust/`：证据/信任路线。证明不是每个 brief 都需要 3D，把 claim/proof/risk/assumption 做成可检查的证据剧场。
+
+每个示例目录都包含 `index.html` 和桌面/移动端 QA 截图。
+
 ## 快速验证
 
 ```bash

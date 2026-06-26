@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Street Linework Intervention Demo</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --p: 0.62;
+      --mx: 0;
+      --my: 0;
+      --bg: #080807;
+      --ink: #f8f1df;
+      --muted: #b9ae98;
+      --line: rgba(248, 241, 223, 0.16);
+      --paper: #17130d;
+      --gold: #e3b45f;
+      --amber: #ffcf75;
+      --blue: #82d8ff;
+      --green: #8ce3c4;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--ink);
+      overflow-x: hidden;
+      letter-spacing: 0;
+    }
+
+    button, input { font: inherit; }
+    button { color: inherit; cursor: pointer; }
+
+    .page {
+      min-height: 100dvh;
+      position: relative;
+      overflow: hidden;
+      isolation: isolate;
+      background:
+        radial-gradient(circle at 62% 42%, rgba(227, 180, 95, 0.18), transparent 26vw),
+        radial-gradient(circle at 34% 24%, rgba(130, 216, 255, 0.1), transparent 28vw),
+        linear-gradient(145deg, #060606, #15120d 48%, #070605);
+    }
+
+    .grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(248, 241, 223, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(248, 241, 223, 0.03) 1px, transparent 1px);
+      background-size: 44px 44px;
+      mask-image: radial-gradient(circle at 55% 48%, black, transparent 76%);
+      z-index: 0;
+    }
+
+    .scene {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      perspective: 1200px;
+    }
+
+    .scene-inner {
+      position: absolute;
+      inset: 0;
+      transform:
+        rotateX(calc(var(--my) * -3deg))
+        rotateY(calc(var(--mx) * 4deg))
+        translate3d(calc(var(--mx) * 14px), calc(var(--my) * 10px), 0);
+      transition: transform 120ms ease-out;
+      transform-style: preserve-3d;
+    }
+
+    svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    .back-haze {
+      fill: url(#sky);
+      opacity: 0.72;
+    }
+
+    .building {
+      fill: rgba(20, 17, 12, 0.78);
+      stroke: rgba(248, 241, 223, 0.23);
+      stroke-width: 1.2;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .edge {
+      fill: none;
+      stroke: rgba(248, 241, 223, 0.42);
+      stroke-width: 1.15;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .detail-line {
+      fill: none;
+      stroke: rgba(248, 241, 223, 0.2);
+      stroke-width: 0.8;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .road {
+      fill: rgba(17, 15, 11, 0.9);
+      stroke: rgba(248, 241, 223, 0.24);
+      stroke-width: 1.4;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .clean-overlay {
+      opacity: calc(var(--p) * 0.86);
+      transition: opacity 180ms ease;
+    }
+
+    .clutter {
+      opacity: calc((1 - var(--p)) * 0.82);
+      transition: opacity 180ms ease;
+    }
+
+    .light-cone {
+      opacity: calc(var(--p) * 0.74);
+      mix-blend-mode: screen;
+      filter: blur(0.3px);
+    }
+
+    .lamp-glow {
+      opacity: calc(var(--p) * 1);
+      filter: drop-shadow(0 0 18px rgba(255, 207, 117, 0.72));
+    }
+
+    .route-particle {
+      opacity: calc(var(--p) * 0.9);
+      filter: drop-shadow(0 0 10px rgba(140, 227, 196, 0.7));
+      animation: pulse 2.2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(0.9); opacity: calc(var(--p) * 0.52); }
+      50% { transform: scale(1.18); opacity: calc(var(--p) * 1); }
+    }
+
+    .vanish-rays {
+      opacity: 0.32;
+    }
+
+    .copy {
+      position: absolute;
+      z-index: 3;
+      left: clamp(40px, 6vw, 96px);
+      bottom: clamp(36px, 7vh, 82px);
+      width: min(43vw, 690px);
+    }
+
+    .eyebrow {
+      margin: 0 0 14px;
+      color: var(--gold);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(54px, 6.9vw, 108px);
+      font-weight: 500;
+      line-height: 0.9;
+      letter-spacing: 0;
+      text-wrap: balance;
+    }
+
+    .lede {
+      margin: 22px 0 0;
+      color: rgba(248, 241, 223, 0.76);
+      font-size: clamp(16px, 1.2vw, 20px);
+      line-height: 1.62;
+      max-width: 660px;
+    }
+
+    .panel {
+      position: absolute;
+      z-index: 4;
+      right: clamp(36px, 5vw, 82px);
+      top: clamp(36px, 6vh, 78px);
+      width: min(31vw, 460px);
+      border: 1px solid var(--line);
+      background: linear-gradient(145deg, rgba(22, 18, 12, 0.86), rgba(9, 8, 6, 0.66));
+      backdrop-filter: blur(18px);
+      box-shadow: 0 28px 86px rgba(0, 0, 0, 0.42);
+      padding: 18px;
+    }
+
+    .panel h2 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 28px;
+      line-height: 1;
+      font-weight: 500;
+      letter-spacing: 0;
+    }
+
+    .panel p {
+      margin: 10px 0 0;
+      color: rgba(248, 241, 223, 0.72);
+      line-height: 1.54;
+      font-size: 14px;
+    }
+
+    .scrub {
+      margin-top: 16px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 12px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 800;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--gold);
+    }
+
+    .modes {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .mode {
+      min-height: 42px;
+      border: 1px solid rgba(248, 241, 223, 0.14);
+      background: rgba(248, 241, 223, 0.06);
+      transition: background 180ms ease, border-color 180ms ease, transform 180ms ease;
+    }
+
+    .mode:hover,
+    .mode[aria-pressed="true"] {
+      background: rgba(227, 180, 95, 0.14);
+      border-color: rgba(255, 207, 117, 0.5);
+    }
+
+    .mode:active { transform: scale(0.97); }
+    .mode:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+
+    .manifest {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .chip {
+      border: 1px solid rgba(248, 241, 223, 0.12);
+      background: rgba(0, 0, 0, 0.2);
+      padding: 10px;
+      min-height: 58px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .chip b {
+      display: block;
+      color: var(--gold);
+      margin-bottom: 4px;
+    }
+
+    .hotspot {
+      position: absolute;
+      z-index: 5;
+      left: var(--x);
+      top: var(--y);
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 207, 117, 0.92);
+      background: rgba(5, 5, 4, 0.68);
+      box-shadow: 0 0 0 8px rgba(255, 207, 117, 0.1), 0 0 28px rgba(255, 207, 117, 0.38);
+      transform: translate(-50%, -50%);
+    }
+
+    .hotspot::after {
+      content: "";
+      position: absolute;
+      inset: 6px;
+      border-radius: inherit;
+      background: var(--gold);
+    }
+
+    .truth {
+      position: absolute;
+      z-index: 4;
+      right: clamp(36px, 5vw, 82px);
+      bottom: clamp(28px, 5vh, 52px);
+      width: min(31vw, 460px);
+      color: rgba(248, 241, 223, 0.56);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    @media (max-width: 980px) {
+      .copy {
+        left: 22px;
+        right: 22px;
+        bottom: 24px;
+        width: auto;
+      }
+
+      .panel {
+        left: 22px;
+        right: auto;
+        top: 24px;
+        width: min(346px, calc(100vw - 56px));
+        max-width: min(346px, calc(100vw - 56px));
+        padding: 16px;
+      }
+
+      .panel h2 { font-size: 25px; }
+      .panel p { font-size: 13px; }
+      .scrub { grid-template-columns: auto 1fr; }
+      .scrub span:last-child { display: none; }
+      .mode {
+        min-width: 0;
+        font-size: 14px;
+      }
+
+      .chip {
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+
+      .truth { display: none; }
+      .eyebrow {
+        font-size: 10px;
+        line-height: 1.35;
+        letter-spacing: 0.08em;
+        overflow-wrap: anywhere;
+      }
+      h1 { font-size: clamp(42px, 12vw, 64px); }
+      .lede { font-size: 15px; line-height: 1.5; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main
+    class="page"
+    data-source-material="complex street/block photo route represented as linework scaffold"
+    data-material-transform="raw street photo -> cleanup plan + perspective linework + fake-3D planes + before-after lighting scrub"
+    data-primary-subject="street block lighting intervention"
+    data-subject-source="linework/depth guide derived from preserved street geometry"
+    data-component-asset-manifest="deep background, facade planes, road plane, clutter layer, clean overlay, light cones, route particles">
+    <div class="grid" aria-hidden="true"></div>
+    <section class="scene" aria-label="Perspective street intervention stage">
+      <div class="scene-inner" id="sceneInner">
+        <svg viewBox="0 0 1440 900" role="img" aria-label="Fake 3D street linework with lighting before-after intervention">
+          <defs>
+            <linearGradient id="sky" x1="0" x2="1" y1="0" y2="1">
+              <stop offset="0" stop-color="#111827"/>
+              <stop offset="0.52" stop-color="#11100c"/>
+              <stop offset="1" stop-color="#070604"/>
+            </linearGradient>
+            <linearGradient id="lampCone" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0" stop-color="#ffcf75" stop-opacity="0.78"/>
+              <stop offset="0.72" stop-color="#ffcf75" stop-opacity="0.1"/>
+              <stop offset="1" stop-color="#ffcf75" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="cleanRoad" x1="0" x2="1">
+              <stop offset="0" stop-color="#232017" stop-opacity="0.12"/>
+              <stop offset="0.65" stop-color="#e3b45f" stop-opacity="0.22"/>
+              <stop offset="1" stop-color="#82d8ff" stop-opacity="0.12"/>
+            </linearGradient>
+          </defs>
+
+          <rect class="back-haze" x="0" y="0" width="1440" height="900"/>
+
+          <g class="vanish-rays">
+            <path class="detail-line" d="M0 830 L755 382"/>
+            <path class="detail-line" d="M1440 825 L755 382"/>
+            <path class="detail-line" d="M180 900 L755 382"/>
+            <path class="detail-line" d="M1250 900 L755 382"/>
+          </g>
+
+          <path class="road" d="M0 900 L1440 900 L958 420 L592 420 Z"/>
+          <path class="clean-overlay" d="M0 900 L1440 900 L958 420 L592 420 Z" fill="url(#cleanRoad)"/>
+          <path class="edge" d="M592 420 L0 900 M958 420 L1440 900 M755 382 L755 900"/>
+
+          <g id="leftFacade">
+            <path class="building" d="M0 160 L590 250 L590 720 L0 865 Z"/>
+            <path class="edge" d="M46 212 L552 285 M42 335 L558 382 M42 468 L560 492 M40 602 L560 612"/>
+            <path class="detail-line" d="M120 226 L116 824 M242 250 L238 786 M368 270 L366 748 M492 292 L492 715"/>
+            <path class="detail-line" d="M94 344 L185 359 M308 386 L426 401 M82 486 L176 493 M330 515 L472 522"/>
+          </g>
+
+          <g id="rightFacade">
+            <path class="building" d="M960 238 L1440 170 L1440 870 L960 720 Z"/>
+            <path class="edge" d="M998 292 L1440 224 M998 392 L1440 342 M998 502 L1440 478 M998 620 L1440 632"/>
+            <path class="detail-line" d="M1052 283 L1056 748 M1168 266 L1172 782 M1284 245 L1288 818 M1392 196 L1394 852"/>
+            <path class="detail-line" d="M1044 394 L1128 383 M1224 368 L1358 350 M1048 520 L1136 520 M1240 498 L1374 504"/>
+          </g>
+
+          <g class="clutter">
+            <path d="M354 690 L462 708 L490 750 L318 748 Z" fill="rgba(248,241,223,0.18)" stroke="rgba(248,241,223,0.32)"/>
+            <circle cx="356" cy="750" r="16" fill="rgba(8,8,7,0.86)" stroke="rgba(248,241,223,0.24)"/>
+            <circle cx="458" cy="750" r="16" fill="rgba(8,8,7,0.86)" stroke="rgba(248,241,223,0.24)"/>
+            <path class="detail-line" d="M180 220 C420 280 660 250 850 310 C1060 378 1210 280 1440 346"/>
+            <rect x="1080" y="308" width="118" height="42" fill="rgba(248,241,223,0.12)" stroke="rgba(248,241,223,0.32)"/>
+          </g>
+
+          <g class="clean-overlay">
+            <path class="edge" d="M300 650 C470 590 620 550 760 520 C910 492 1055 510 1235 612" stroke="rgba(140,227,196,0.64)" stroke-width="2.2"/>
+            <circle class="route-particle" cx="360" cy="628" r="5" fill="#8ce3c4"/>
+            <circle class="route-particle" cx="610" cy="548" r="5" fill="#8ce3c4" style="animation-delay: .3s"/>
+            <circle class="route-particle" cx="870" cy="510" r="5" fill="#8ce3c4" style="animation-delay: .6s"/>
+            <circle class="route-particle" cx="1130" cy="574" r="5" fill="#8ce3c4" style="animation-delay: .9s"/>
+          </g>
+
+          <g class="light-cone">
+            <path d="M430 424 L286 806 L560 806 Z" fill="url(#lampCone)"/>
+            <path d="M734 394 L612 822 L886 822 Z" fill="url(#lampCone)"/>
+            <path d="M1038 424 L900 804 L1188 804 Z" fill="url(#lampCone)"/>
+          </g>
+
+          <g class="lamp-glow">
+            <path class="edge" d="M430 424 L430 690 M734 394 L734 704 M1038 424 L1038 690" stroke="#ffcf75" stroke-width="3"/>
+            <circle cx="430" cy="424" r="10" fill="#ffcf75"/>
+            <circle cx="734" cy="394" r="10" fill="#ffcf75"/>
+            <circle cx="1038" cy="424" r="10" fill="#ffcf75"/>
+          </g>
+        </svg>
+      </div>
+    </section>
+
+    <button class="hotspot" style="--x: 30%; --y: 47%" data-copy="Facade rhythm preserved"></button>
+    <button class="hotspot" style="--x: 51%; --y: 44%" data-copy="Lighting cones are concept visualization"></button>
+    <button class="hotspot" style="--x: 69%; --y: 62%" data-copy="Pedestrian path cleaned and emphasized"></button>
+
+    <section class="copy">
+      <p class="eyebrow">Spatial intervention · linework-first route</p>
+      <h1>Clean the block before you animate the block.</h1>
+      <p class="lede">For a messy street photo, the route is not random 3D. Preserve perspective, remove clutter, redraw the structural lines, then use a scrubber to reveal lighting, route particles, and focusable intervention zones.</p>
+    </section>
+
+    <aside class="panel" aria-label="Street intervention controls">
+      <h2 id="panelTitle">Before-after lighting scrub</h2>
+      <p id="panelCopy">Move the slider: clutter fades, clean geometry takes over, and concept light cones show the proposed intervention without pretending to be measured photometrics.</p>
+      <label class="scrub">
+        <span>Raw</span>
+        <input id="progress" type="range" min="0" max="100" value="62">
+        <span>Built</span>
+      </label>
+      <div class="modes">
+        <button class="mode" data-mode="raw" aria-pressed="false">Raw</button>
+        <button class="mode" data-mode="line" aria-pressed="false">Line</button>
+        <button class="mode" data-mode="built" aria-pressed="true">Built</button>
+      </div>
+      <div class="manifest">
+        <div class="chip"><b>Cleanup</b>cars, wires, noisy signs fade</div>
+        <div class="chip"><b>Geometry</b>vanishing point and facades stay</div>
+        <div class="chip"><b>Linework</b>SVG scaffold becomes depth guide</div>
+        <div class="chip"><b>Proof</b>lights and route are labeled concepts</div>
+      </div>
+    </aside>
+
+    <p class="truth">Prototype truth: this is a linework-first fake-3D route for complex street/interior photos. A real client build would use the uploaded photo as the source, preserve landmarks, and label all lighting as concept visualization unless photometric data is provided.</p>
+  </main>
+
+  <script>
+    const root = document.documentElement;
+    const progress = document.querySelector("#progress");
+    const panelTitle = document.querySelector("#panelTitle");
+    const panelCopy = document.querySelector("#panelCopy");
+    const modeButtons = [...document.querySelectorAll("[data-mode]")];
+    const hotspots = [...document.querySelectorAll("[data-copy]")];
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    function setProgress(value) {
+      const p = Math.max(0, Math.min(1, value));
+      root.style.setProperty("--p", p.toFixed(2));
+      progress.value = Math.round(p * 100);
+      modeButtons.forEach((button) => {
+        const mode = button.dataset.mode;
+        const active = (mode === "raw" && p < 0.2) || (mode === "line" && p >= 0.2 && p < 0.72) || (mode === "built" && p >= 0.72);
+        button.setAttribute("aria-pressed", String(active));
+      });
+    }
+
+    progress.addEventListener("input", (event) => setProgress(Number(event.target.value) / 100));
+    modeButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const values = { raw: 0, line: 0.52, built: 1 };
+        setProgress(values[button.dataset.mode]);
+      });
+    });
+
+    hotspots.forEach((button) => {
+      button.addEventListener("click", () => {
+        panelTitle.textContent = button.dataset.copy;
+        panelCopy.textContent = "This hotspot is tied to the spatial source map: geometry, cleanup, linework, or lighting proof. It is not a decorative particle.";
+      });
+    });
+
+    window.addEventListener("pointermove", (event) => {
+      if (reducedMotion) return;
+      const mx = (event.clientX / window.innerWidth - 0.5) * 2;
+      const my = (event.clientY / window.innerHeight - 0.5) * 2;
+      root.style.setProperty("--mx", mx.toFixed(3));
+      root.style.setProperty("--my", my.toFixed(3));
+    }, { passive: true });
+
+    const shot = new URLSearchParams(window.location.search).get("shot");
+    if (shot === "raw") setProgress(0);
+    if (shot === "line") setProgress(0.5);
+    if (shot === "built") setProgress(1);
+  </script>
+</body>
+</html>

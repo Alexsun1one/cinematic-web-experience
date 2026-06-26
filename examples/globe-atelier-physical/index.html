@@ -1,0 +1,627 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Globe Atelier Physical Object Demo</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #070604;
+      --ink: #fff5df;
+      --muted: #b9ac94;
+      --line: rgba(255, 245, 223, 0.16);
+      --gold: #d7a84c;
+      --gold-bright: #f6d990;
+      --teal: #7dd6c6;
+      --panel: rgba(15, 12, 8, 0.72);
+      --panel-strong: rgba(18, 13, 8, 0.9);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      min-height: 100%;
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      overflow-x: hidden;
+      letter-spacing: 0;
+    }
+
+    button {
+      font: inherit;
+      color: inherit;
+      cursor: pointer;
+    }
+
+    .demo {
+      min-height: 100dvh;
+      position: relative;
+      overflow: hidden;
+      isolation: isolate;
+      background: #070604;
+    }
+
+    .backplate,
+    .source-ghost {
+      position: absolute;
+      inset: -3vh -3vw;
+      background-image: url("assets/clean-backplate.png");
+      background-size: cover;
+      background-position: center;
+      transform: scale(1.04);
+      filter: saturate(1.08) contrast(1.08);
+      z-index: 0;
+    }
+
+    .source-ghost {
+      background-image: url("assets/source-plate.png");
+      opacity: var(--source-opacity, 0);
+      mix-blend-mode: screen;
+      transition: opacity 260ms ease;
+      z-index: 1;
+    }
+
+    .vignette {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      background:
+        radial-gradient(circle at 64% 48%, transparent 0 22%, rgba(0, 0, 0, 0.2) 44%, rgba(0, 0, 0, 0.68) 78%),
+        linear-gradient(90deg, rgba(0, 0, 0, 0.78), rgba(0, 0, 0, 0.18) 48%, rgba(0, 0, 0, 0.18));
+    }
+
+    .stage {
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      perspective: 1400px;
+      overflow: hidden;
+    }
+
+    .subject {
+      position: absolute;
+      left: calc(50% + var(--tx, 104px));
+      top: calc(50% + var(--ty, -18px));
+      width: min(39vw, 640px);
+      min-width: 440px;
+      aspect-ratio: 772 / 930;
+      transform:
+        translate(-50%, -50%)
+        scale(var(--scale, 0.92))
+        rotateX(var(--rx, 0deg))
+        rotateY(var(--ry, -8deg))
+        rotateZ(var(--rz, 0deg));
+      transform-style: preserve-3d;
+      transform-origin: 51% 55%;
+      filter:
+        drop-shadow(0 46px 70px rgba(0, 0, 0, 0.55))
+        drop-shadow(0 0 34px rgba(215, 168, 76, var(--glow, 0.18)));
+      transition: filter 180ms ease;
+      touch-action: none;
+      user-select: none;
+      cursor: grab;
+      will-change: transform;
+    }
+
+    .subject:active { cursor: grabbing; }
+
+    .subject img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+      pointer-events: none;
+    }
+
+    .contact-shadow {
+      position: absolute;
+      left: 53%;
+      top: 80%;
+      width: 26vw;
+      height: 7vw;
+      min-width: 330px;
+      border-radius: 50%;
+      background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0));
+      transform: translate(-50%, -50%) scale(var(--shadow-scale, 1));
+      z-index: 3;
+      pointer-events: none;
+      opacity: 0.72;
+      filter: blur(4px);
+    }
+
+    .foreground-glints {
+      position: absolute;
+      right: -1vw;
+      bottom: -2vh;
+      width: min(34vw, 500px);
+      opacity: 0.62;
+      z-index: 7;
+      pointer-events: none;
+      filter: drop-shadow(0 18px 34px rgba(0, 0, 0, 0.45));
+    }
+
+    .dust {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      pointer-events: none;
+      background-image:
+        radial-gradient(circle, rgba(246, 217, 144, 0.38) 0 1px, transparent 1.5px),
+        radial-gradient(circle, rgba(125, 214, 198, 0.22) 0 1px, transparent 1.6px);
+      background-size: 92px 92px, 137px 137px;
+      mask-image: radial-gradient(circle at 62% 42%, black, transparent 68%);
+      animation: drift 18s linear infinite;
+      opacity: 0.34;
+    }
+
+    @keyframes drift {
+      to { transform: translate3d(-42px, 28px, 0); }
+    }
+
+    .copy {
+      position: absolute;
+      left: clamp(38px, 6vw, 96px);
+      bottom: clamp(34px, 7vh, 78px);
+      z-index: 8;
+      width: min(45vw, 760px);
+    }
+
+    .eyebrow {
+      margin: 0 0 14px;
+      color: var(--gold-bright);
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.2;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(56px, 7vw, 112px);
+      line-height: 0.9;
+      font-weight: 500;
+      letter-spacing: 0;
+      text-wrap: balance;
+    }
+
+    .lede {
+      margin: 22px 0 0;
+      max-width: 680px;
+      color: rgba(255, 245, 223, 0.78);
+      font-size: clamp(16px, 1.2vw, 20px);
+      line-height: 1.62;
+    }
+
+    .rail {
+      position: absolute;
+      right: clamp(32px, 5vw, 84px);
+      top: clamp(32px, 6vh, 82px);
+      z-index: 9;
+      width: min(27vw, 390px);
+      display: grid;
+      gap: 14px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      background: linear-gradient(145deg, rgba(22, 16, 10, 0.82), rgba(9, 7, 5, 0.62));
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(18px);
+      padding: 16px;
+    }
+
+    .panel h2,
+    .panel h3 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-weight: 500;
+      letter-spacing: 0;
+    }
+
+    .panel h2 { font-size: 28px; line-height: 1; }
+    .panel h3 { font-size: 22px; line-height: 1.05; }
+
+    .panel p {
+      margin: 10px 0 0;
+      color: rgba(255, 245, 223, 0.72);
+      line-height: 1.55;
+      font-size: 14px;
+    }
+
+    .mode-grid,
+    .control-grid {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .control-grid { grid-template-columns: repeat(4, 1fr); }
+
+    .btn {
+      min-height: 42px;
+      border: 1px solid rgba(255, 245, 223, 0.16);
+      background: rgba(255, 245, 223, 0.07);
+      transition: background 180ms ease, border-color 180ms ease, transform 180ms ease;
+    }
+
+    .btn:hover,
+    .btn[aria-pressed="true"] {
+      background: rgba(215, 168, 76, 0.14);
+      border-color: rgba(246, 217, 144, 0.5);
+    }
+
+    .btn:active { transform: scale(0.97); }
+    .btn:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 3px; }
+
+    .manifest {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .chip {
+      border: 1px solid rgba(255, 245, 223, 0.12);
+      background: rgba(0, 0, 0, 0.22);
+      padding: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .chip b {
+      display: block;
+      color: var(--gold-bright);
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+
+    .hotspot {
+      position: absolute;
+      left: var(--x);
+      top: var(--y);
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 1px solid rgba(246, 217, 144, 0.95);
+      background: rgba(8, 6, 4, 0.7);
+      z-index: 10;
+      transform: translate(-50%, -50%) scale(var(--scale, 1));
+      box-shadow: 0 0 0 7px rgba(215, 168, 76, 0.12), 0 0 28px rgba(215, 168, 76, 0.44);
+      transition: transform 180ms ease, box-shadow 180ms ease;
+    }
+
+    .hotspot::after {
+      content: "";
+      position: absolute;
+      inset: 6px;
+      border-radius: inherit;
+      background: var(--gold-bright);
+    }
+
+    .hotspot[aria-pressed="true"] {
+      --scale: 1.18;
+      box-shadow: 0 0 0 10px rgba(125, 214, 198, 0.14), 0 0 34px rgba(125, 214, 198, 0.5);
+      border-color: var(--teal);
+    }
+
+    .macro {
+      position: absolute;
+      right: clamp(40px, 7vw, 120px);
+      bottom: clamp(52px, 9vh, 98px);
+      width: min(27vw, 420px);
+      aspect-ratio: 896 / 910;
+      background: url("assets/detail-macro.png") center / contain no-repeat;
+      z-index: 5;
+      opacity: var(--macro-opacity, 0);
+      transform: translate3d(0, 30px, 0) scale(0.92);
+      transition: opacity 260ms ease, transform 360ms cubic-bezier(.2,.8,.2,1);
+      pointer-events: none;
+      filter: drop-shadow(0 40px 70px rgba(0, 0, 0, 0.48));
+    }
+
+    .macro.is-visible {
+      opacity: 0.88;
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+
+    @media (max-width: 980px) {
+      .demo {
+        min-height: 1120px;
+      }
+
+      .copy {
+        left: 18px;
+        right: 18px;
+        top: 666px;
+        bottom: auto;
+        width: auto;
+      }
+
+      .rail {
+        left: 18px;
+        right: auto;
+        top: 18px;
+        width: min(334px, calc(100vw - 56px));
+        max-width: min(334px, calc(100vw - 56px));
+        gap: 10px;
+      }
+
+      .panel { padding: 14px; }
+      .panel h2 { font-size: 25px; }
+      .panel h3 { font-size: 20px; }
+
+      .mode-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .mode-grid .btn:last-child { grid-column: 1 / -1; }
+      .control-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .btn {
+        min-width: 0;
+        min-height: 40px;
+        font-size: 14px;
+      }
+
+      .manifest { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .chip {
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+
+      .subject {
+        left: 58%;
+        top: 55%;
+        width: 68vw;
+        min-width: 0;
+        opacity: 0.86;
+      }
+
+      h1 {
+        font-size: clamp(36px, 11vw, 44px);
+        line-height: 0.95;
+        overflow-wrap: anywhere;
+      }
+
+      .lede { display: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+      }
+      .dust { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <main
+    class="demo"
+    data-source-material="generated luxury library globe plate"
+    data-material-transform="source plate -> clean backplate + subject-cutout + detail layer + foreground glints"
+    data-primary-subject="antique brass terrestrial globe"
+    data-subject-source="assets/subject-cutout.png extracted from assets/source-plate.png"
+    data-manipulated-object="subject-cutout"
+    data-object-controls="object-local drag-place, drag-rotate, zoom, focus, reset"
+    data-component-asset-manifest="source-plate, clean-backplate, subject-cutout, detail-macro, foreground-glints">
+    <div class="backplate" aria-hidden="true"></div>
+    <div class="source-ghost" id="sourceGhost" aria-hidden="true"></div>
+    <div class="vignette" aria-hidden="true"></div>
+    <div class="dust" aria-hidden="true"></div>
+
+    <section class="stage" aria-label="Source-derived globe manipulation stage">
+      <div class="contact-shadow" id="contactShadow" aria-hidden="true"></div>
+      <div class="macro" id="macroLayer" aria-hidden="true"></div>
+      <div class="subject" id="subject" role="img" aria-label="Source-derived antique globe cutout, draggable and zoomable">
+        <img src="assets/subject-cutout.png" alt="">
+      </div>
+      <button class="hotspot" style="--x: 64%; --y: 34%" data-hotspot="ring" aria-label="Inspect brass ring" aria-pressed="true"></button>
+      <button class="hotspot" style="--x: 58%; --y: 54%" data-hotspot="paper" aria-label="Inspect atlas paper" aria-pressed="false"></button>
+      <button class="hotspot" style="--x: 68%; --y: 73%" data-hotspot="base" aria-label="Inspect pedestal" aria-pressed="false"></button>
+    </section>
+
+    <img class="foreground-glints" src="assets/foreground-glints.png" alt="" aria-hidden="true">
+
+    <section class="copy" aria-label="Demo thesis">
+      <p class="eyebrow">SSS product route · source-derived object</p>
+      <h1>The subject moves, not the wallpaper.</h1>
+      <p class="lede">This demo uses the generated reference plate as source material, extracts the globe as the manipulable subject, repairs the backplate, then lets the product be placed, rotated, zoomed, focused, and reset as its own object.</p>
+    </section>
+
+    <aside class="rail" aria-label="Object controls and proof">
+      <div class="panel">
+        <h2 id="detailTitle">Brass meridian ring</h2>
+        <p id="detailBody">The foreground object is the extracted globe subject, not a procedural replacement. Drag in Rotate mode to feel bounded object-local motion.</p>
+        <div class="mode-grid" role="group" aria-label="Manipulation mode">
+          <button class="btn" data-mode="rotate" aria-pressed="true">Rotate</button>
+          <button class="btn" data-mode="place" aria-pressed="false">Place</button>
+          <button class="btn" id="toggleSource" aria-pressed="false">Source</button>
+        </div>
+        <div class="control-grid" role="group" aria-label="Object controls">
+          <button class="btn" id="zoomOut">-</button>
+          <button class="btn" id="zoomIn">+</button>
+          <button class="btn" id="focusMacro">Lens</button>
+          <button class="btn" id="reset">Reset</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Component manifest</h3>
+        <div class="manifest">
+          <div class="chip"><b>Source</b>original generated plate</div>
+          <div class="chip"><b>Backplate</b>subject dimmed/repaired</div>
+          <div class="chip"><b>Subject</b>globe cutout as object</div>
+          <div class="chip"><b>Detail</b>macro craft layer</div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    const root = document.documentElement;
+    const subject = document.querySelector("#subject");
+    const contactShadow = document.querySelector("#contactShadow");
+    const sourceGhost = document.querySelector("#sourceGhost");
+    const macroLayer = document.querySelector("#macroLayer");
+    const detailTitle = document.querySelector("#detailTitle");
+    const detailBody = document.querySelector("#detailBody");
+    const modeButtons = [...document.querySelectorAll("[data-mode]")];
+    const hotspotButtons = [...document.querySelectorAll("[data-hotspot]")];
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    const details = {
+      ring: ["Brass meridian ring", "Object-local rotation is bounded and resettable. The ring cue comes from the reference subject, preserving identity while allowing interaction."],
+      paper: ["Atlas paper surface", "The macro lens shows material proof without zooming the entire page. In a client build this layer would come from approved product photography."],
+      base: ["Weighted pedestal", "Place mode lets the product move within the scene with bounds and contact shadow, showing how it sits on the tabletop."]
+    };
+
+    const state = {
+      mode: "rotate",
+      tx: 104,
+      ty: -18,
+      scale: 0.92,
+      rx: 0,
+      ry: -8,
+      rz: 0,
+      vx: 0,
+      vy: 0,
+      dragging: false,
+      lastX: 0,
+      lastY: 0,
+      macro: false,
+      source: false
+    };
+    const shotMode = new URLSearchParams(window.location.search).get("shot");
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function render() {
+      root.style.setProperty("--tx", `${state.tx}px`);
+      root.style.setProperty("--ty", `${state.ty}px`);
+      root.style.setProperty("--scale", state.scale.toFixed(3));
+      root.style.setProperty("--rx", `${state.rx.toFixed(2)}deg`);
+      root.style.setProperty("--ry", `${state.ry.toFixed(2)}deg`);
+      root.style.setProperty("--rz", `${state.rz.toFixed(2)}deg`);
+      root.style.setProperty("--shadow-scale", (0.75 + state.scale * 0.34).toFixed(3));
+      root.style.setProperty("--glow", String(clamp(Math.abs(state.vx) * 0.015 + 0.16, 0.16, 0.44)));
+      root.style.setProperty("--source-opacity", state.source ? "0.42" : "0");
+      macroLayer.classList.toggle("is-visible", state.macro);
+      contactShadow.style.left = `calc(50% + ${state.tx * 0.78}px)`;
+      contactShadow.style.top = `calc(50% + ${state.ty + 332}px)`;
+    }
+
+    function setMode(mode) {
+      state.mode = mode;
+      modeButtons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.mode === mode)));
+    }
+
+    function setDetail(id) {
+      const [title, body] = details[id];
+      detailTitle.textContent = title;
+      detailBody.textContent = body;
+      state.macro = id === "paper";
+      hotspotButtons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.hotspot === id)));
+      render();
+    }
+
+    subject.addEventListener("pointerdown", (event) => {
+      state.dragging = true;
+      state.lastX = event.clientX;
+      state.lastY = event.clientY;
+      state.vx = 0;
+      state.vy = 0;
+      subject.setPointerCapture(event.pointerId);
+    });
+
+    subject.addEventListener("pointermove", (event) => {
+      if (!state.dragging) return;
+      const dx = event.clientX - state.lastX;
+      const dy = event.clientY - state.lastY;
+      state.lastX = event.clientX;
+      state.lastY = event.clientY;
+      state.vx = dx;
+      state.vy = dy;
+      if (state.mode === "place") {
+        state.tx = clamp(state.tx + dx, -140, 360);
+        state.ty = clamp(state.ty + dy, -118, 88);
+      } else {
+        state.ry = clamp(state.ry + dx * 0.16, -34, 28);
+        state.rx = clamp(state.rx - dy * 0.08, -11, 12);
+        state.rz = clamp(state.rz + dx * 0.015, -3, 3);
+      }
+      render();
+    });
+
+    function release() {
+      state.dragging = false;
+    }
+
+    subject.addEventListener("pointerup", release);
+    subject.addEventListener("pointercancel", release);
+
+    function zoom(delta) {
+      state.scale = clamp(state.scale + delta, 0.72, 1.28);
+      render();
+    }
+
+    subject.addEventListener("wheel", (event) => {
+      event.preventDefault();
+      zoom(event.deltaY < 0 ? 0.04 : -0.04);
+    }, { passive: false });
+
+    modeButtons.forEach((button) => button.addEventListener("click", () => setMode(button.dataset.mode)));
+    hotspotButtons.forEach((button) => button.addEventListener("click", () => setDetail(button.dataset.hotspot)));
+    document.querySelector("#zoomOut").addEventListener("click", () => zoom(-0.06));
+    document.querySelector("#zoomIn").addEventListener("click", () => zoom(0.06));
+    document.querySelector("#focusMacro").addEventListener("click", () => {
+      state.macro = !state.macro;
+      setDetail(state.macro ? "paper" : "ring");
+    });
+    document.querySelector("#toggleSource").addEventListener("click", (event) => {
+      state.source = !state.source;
+      event.currentTarget.setAttribute("aria-pressed", String(state.source));
+      render();
+    });
+    document.querySelector("#reset").addEventListener("click", () => {
+      Object.assign(state, { mode: "rotate", tx: 104, ty: -18, scale: 0.92, rx: 0, ry: -8, rz: 0, vx: 0, vy: 0, macro: false, source: false });
+      setMode("rotate");
+      setDetail("ring");
+    });
+
+    function settle() {
+      if (!reducedMotion && !state.dragging && state.mode === "rotate") {
+        state.ry += state.vx * 0.012;
+        state.rx = clamp(state.rx - state.vy * 0.006, -11, 12);
+        state.vx *= 0.86;
+        state.vy *= 0.8;
+        if (Math.abs(state.vx) < 0.06) state.vx = 0;
+        if (Math.abs(state.vy) < 0.06) state.vy = 0;
+        state.ry = clamp(state.ry, -34, 28);
+        render();
+      }
+      requestAnimationFrame(settle);
+    }
+
+    if (shotMode === "macro") {
+      Object.assign(state, { scale: 1.16, tx: 38, ty: -22, ry: 12, rx: -4, macro: true });
+      setDetail("paper");
+    } else if (shotMode === "place") {
+      Object.assign(state, { mode: "place", tx: -62, ty: 42, scale: 0.86, ry: -18, source: true });
+      setMode("place");
+      setDetail("base");
+    }
+
+    render();
+    requestAnimationFrame(settle);
+  </script>
+</body>
+</html>
