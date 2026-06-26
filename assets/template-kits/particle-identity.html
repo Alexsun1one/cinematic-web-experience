@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Particle Identity Scaffold</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #080b0f;
+      --ink: #f7f2e8;
+      --muted: #aeb7c2;
+      --line: rgba(255,255,255,.16);
+      --accent: #9be7ff;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); }
+    main { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr) 340px; }
+    canvas { width: 100%; height: 100vh; display: block; background: radial-gradient(circle at 50% 45%, #17202a, #080b0f 68%); }
+    aside { display: grid; align-content: center; gap: 18px; padding: 28px; border-left: 1px solid var(--line); }
+    h1 { margin: 0; font-size: clamp(34px, 5vw, 64px); line-height: .95; letter-spacing: 0; }
+    p { margin: 0; color: var(--muted); line-height: 1.55; }
+    input, button { font: inherit; }
+    input[type="file"] { width: 100%; color: var(--muted); }
+    button { border: 1px solid var(--line); background: rgba(255,255,255,.06); color: var(--ink); padding: 10px 12px; cursor: pointer; }
+    button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    @media (max-width: 840px) {
+      main { grid-template-columns: 1fr; }
+      canvas { height: 62vh; }
+      aside { border-left: 0; border-top: 1px solid var(--line); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      canvas { background: #10151b; }
+    }
+  </style>
+</head>
+<body>
+  <main data-source-material="uploaded image" data-material-transform="image sampled into identity particles">
+    <canvas id="scene" aria-label="Particle identity canvas"></canvas>
+    <aside>
+      <h1>Replace with identity promise</h1>
+      <p>Upload a portrait, logo, product silhouette, or texture. The resolved particle state must remain recognizable.</p>
+      <input id="file" type="file" accept="image/*" aria-label="Upload source image">
+      <button id="scatter">Scatter / Gather</button>
+      <p>Delivery truth: local browser scaffold. Generated client pages should use fixed local assets, not rely on user upload.</p>
+    </aside>
+  </main>
+  <script>
+    const canvas = document.querySelector("#scene");
+    const ctx = canvas.getContext("2d");
+    const file = document.querySelector("#file");
+    const scatter = document.querySelector("#scatter");
+    let particles = [];
+    let gathered = true;
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    const resize = () => {
+      const dpr = Math.min(devicePixelRatio || 1, 2);
+      canvas.width = Math.floor(canvas.clientWidth * dpr);
+      canvas.height = Math.floor(canvas.clientHeight * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+
+    const createParticles = (image) => {
+      const maxW = Math.min(420, canvas.clientWidth * 0.72);
+      const scale = maxW / image.width;
+      const w = Math.floor(image.width * scale);
+      const h = Math.floor(image.height * scale);
+      const off = document.createElement("canvas");
+      off.width = w;
+      off.height = h;
+      const offCtx = off.getContext("2d");
+      offCtx.drawImage(image, 0, 0, w, h);
+      const data = offCtx.getImageData(0, 0, w, h).data;
+      const step = Math.max(4, Math.floor(Math.sqrt((w * h) / 5200)));
+      particles = [];
+      for (let y = 0; y < h; y += step) {
+        for (let x = 0; x < w; x += step) {
+          const index = (y * w + x) * 4;
+          const alpha = data[index + 3];
+          if (alpha < 40) continue;
+          const tx = canvas.clientWidth / 2 - w / 2 + x;
+          const ty = canvas.clientHeight / 2 - h / 2 + y;
+          particles.push({
+            x: reduced ? tx : Math.random() * canvas.clientWidth,
+            y: reduced ? ty : Math.random() * canvas.clientHeight,
+            tx,
+            ty,
+            sx: Math.random() * canvas.clientWidth,
+            sy: Math.random() * canvas.clientHeight,
+            color: `rgba(${data[index]},${data[index + 1]},${data[index + 2]},${alpha / 255})`,
+          });
+        }
+      }
+    };
+
+    const tick = () => {
+      ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+      for (const p of particles) {
+        const targetX = gathered ? p.tx : p.sx;
+        const targetY = gathered ? p.ty : p.sy;
+        p.x += (targetX - p.x) * (reduced ? 1 : 0.075);
+        p.y += (targetY - p.y) * (reduced ? 1 : 0.075);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x, p.y, 2.2, 2.2);
+      }
+      requestAnimationFrame(tick);
+    };
+
+    file.addEventListener("change", () => {
+      const selected = file.files && file.files[0];
+      if (!selected) return;
+      const image = new Image();
+      image.onload = () => createParticles(image);
+      image.src = URL.createObjectURL(selected);
+    });
+    scatter.addEventListener("click", () => { gathered = !gathered; });
+    addEventListener("resize", resize);
+    resize();
+    tick();
+  </script>
+</body>
+</html>

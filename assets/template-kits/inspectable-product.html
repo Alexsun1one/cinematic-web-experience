@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Inspectable Product Scaffold</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0d0f12;
+      --ink: #f7f2e8;
+      --muted: #aeb7c2;
+      --line: rgba(255,255,255,.16);
+      --accent: #86f7d0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: radial-gradient(circle at 50% 28%, #1c2329, var(--bg) 58%); color: var(--ink); }
+    main { min-height: 100vh; display: grid; place-items: center; padding: 28px; }
+    .shell { width: min(1180px, 100%); display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 28px; align-items: center; }
+    .viewer { position: relative; min-height: min(70vh, 720px); display: grid; place-items: center; perspective: 1100px; border: 1px solid var(--line); overflow: hidden; }
+    .object { position: relative; width: min(68vw, 580px); aspect-ratio: 1; display: grid; place-items: center; transform: rotateY(var(--rot, -18deg)) scale(var(--zoom, 1)); transform-style: preserve-3d; transition: transform .18s ease-out; }
+    .object img { max-width: 82%; max-height: 82%; object-fit: contain; filter: drop-shadow(0 40px 70px rgba(0,0,0,.45)); user-select: none; pointer-events: none; }
+    .ring { position: absolute; inset: 12%; border: 1px solid rgba(255,255,255,.18); border-radius: 50%; transform: rotateX(72deg); }
+    .hotspot { position: absolute; left: var(--x); top: var(--y); translate: -50% -50%; width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--accent); background: rgba(0,0,0,.45); cursor: pointer; }
+    .hotspot[aria-expanded="true"] { background: var(--accent); }
+    .panel { min-height: 420px; display: grid; align-content: center; gap: 18px; }
+    h1 { margin: 0; font-size: clamp(34px, 5vw, 68px); line-height: .95; letter-spacing: 0; }
+    p { margin: 0; color: var(--muted); line-height: 1.55; }
+    .detail { border-left: 2px solid var(--accent); padding-left: 14px; color: var(--ink); }
+    .controls { display: grid; gap: 12px; }
+    label { display: grid; gap: 8px; color: var(--muted); font-size: 13px; }
+    input[type="range"] { width: 100%; accent-color: var(--accent); }
+    button { border: 1px solid var(--line); background: rgba(255,255,255,.06); color: var(--ink); padding: 10px 12px; cursor: pointer; }
+    button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    @media (max-width: 860px) {
+      main { padding: 16px; }
+      .shell { grid-template-columns: 1fr; }
+      .viewer { min-height: 58vh; }
+      .panel { min-height: auto; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .object { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <main data-source-material="replace with product photo/CAD/detail shots" data-material-transform="inspectable product showroom">
+    <section class="shell" aria-label="Inspectable product showroom">
+      <div class="viewer" id="viewer">
+        <div class="object" id="object">
+          <div class="ring" aria-hidden="true"></div>
+          <img src="./sample-product.png" alt="Replace with client product">
+          <button class="hotspot" style="--x: 66%; --y: 36%;" data-detail="Replace with a source-anchored product detail." aria-expanded="false" aria-label="Inspect product detail"></button>
+          <button class="hotspot" style="--x: 40%; --y: 62%;" data-detail="Replace with a material, craft, function, or proof label." aria-expanded="false" aria-label="Inspect material detail"></button>
+        </div>
+      </div>
+      <aside class="panel">
+        <h1>Replace with product-specific promise</h1>
+        <p>Drag the object, zoom into details, and keep the product recognizable at rest.</p>
+        <p class="detail" id="detail">Select a proof hotspot.</p>
+        <div class="controls">
+          <label>Zoom <input id="zoom" type="range" min="0.85" max="1.35" step="0.01" value="1"></label>
+          <button id="reset">Reset view</button>
+        </div>
+      </aside>
+    </section>
+  </main>
+  <script>
+    const viewer = document.querySelector("#viewer");
+    const object = document.querySelector("#object");
+    const detail = document.querySelector("#detail");
+    const zoom = document.querySelector("#zoom");
+    let dragging = false;
+    let startX = 0;
+    let rotation = -18;
+    const render = () => {
+      object.style.setProperty("--rot", `${rotation}deg`);
+      object.style.setProperty("--zoom", zoom.value);
+    };
+    viewer.addEventListener("pointerdown", (event) => {
+      dragging = true;
+      startX = event.clientX;
+      viewer.setPointerCapture(event.pointerId);
+    });
+    viewer.addEventListener("pointermove", (event) => {
+      if (!dragging) return;
+      rotation += (event.clientX - startX) * 0.18;
+      startX = event.clientX;
+      render();
+    });
+    viewer.addEventListener("pointerup", () => { dragging = false; });
+    zoom.addEventListener("input", render);
+    document.querySelector("#reset").addEventListener("click", () => {
+      rotation = -18;
+      zoom.value = 1;
+      render();
+    });
+    document.querySelectorAll(".hotspot").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        document.querySelectorAll(".hotspot").forEach((item) => item.setAttribute("aria-expanded", "false"));
+        button.setAttribute("aria-expanded", "true");
+        detail.textContent = button.dataset.detail;
+      });
+    });
+  </script>
+</body>
+</html>

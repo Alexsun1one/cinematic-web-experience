@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cinematic Web Experience"
+  short_description: "All-industry interactive client demos: products, services, spaces, data, proposals, 3D, particles, simulations."
+  default_prompt: "Use $cinematic-web-experience to turn my industry materials into a premium interactive client demo. Start from the belief job, industry route, material transformation, and linked-skill plan, then build and verify the page."
