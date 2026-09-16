@@ -15,9 +15,27 @@ const CosmosCanvas = dynamic(() => import("@/components/cosmos/CosmosCanvas"), {
 export function CosmosExperience() {
   const prefersReduced = useReducedMotion();
   const [manualStill, setManualStill] = useState(false);
+  const [gpuFailed, setGpuFailed] = useState(false);
   const [focused, setFocused] = useState<string | null>(null);
   const [distance, setDistance] = useState(10);
-  const reduced = Boolean(prefersReduced) || manualStill;
+  const reduced = Boolean(prefersReduced) || manualStill || gpuFailed;
+
+  useEffect(() => {
+    const probe = document.createElement("canvas");
+    const ok = Boolean(
+      probe.getContext("webgl2") || probe.getContext("webgl") || probe.getContext("experimental-webgl"),
+    );
+    if (!ok) setGpuFailed(true);
+    function onReject(event: PromiseRejectionEvent) {
+      const message = String(event.reason?.message ?? event.reason ?? "");
+      if (message.includes("WebGL")) {
+        event.preventDefault();
+        setGpuFailed(true);
+      }
+    }
+    window.addEventListener("unhandledrejection", onReject);
+    return () => window.removeEventListener("unhandledrejection", onReject);
+  }, []);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {

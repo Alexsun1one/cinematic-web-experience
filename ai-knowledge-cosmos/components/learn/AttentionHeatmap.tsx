@@ -110,7 +110,7 @@ export function AttentionHeatmap() {
   );
 
   return (
-    <section className="my-8 rounded-2xl border border-violet/25 bg-violet/5 p-5">
+    <section className="my-8 rounded-2xl border border-violet/25 bg-violet/5 p-5" id="attention-toy">
       <p className="text-xs tracking-[0.22em] text-violet uppercase">示意注意热力</p>
       <p className="mt-2 text-sm leading-7 text-mist">
         点选一个「正在生成」的词，或点击热力矩阵的某一行。颜色越亮，这一步分给该位置的权重越高。这是手写的教学矩阵，不是真实模型的注意力头。

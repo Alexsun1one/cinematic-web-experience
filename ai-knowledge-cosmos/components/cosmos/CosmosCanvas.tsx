@@ -22,7 +22,7 @@ export default function CosmosCanvas({
     <Canvas
       camera={{ position: [0, 1.2, 10], fov: 42 }}
       dpr={[1, 1.6]}
-      gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
+      gl={{ antialias: true, alpha: false, powerPreference: "high-performance", failIfMajorPerformanceCaveat: false }}
       frameloop={reduced ? "demand" : "always"}
       onPointerMissed={() => onFocus(null)}
     >
