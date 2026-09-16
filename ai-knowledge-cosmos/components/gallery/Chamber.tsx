@@ -29,28 +29,37 @@ export function Chamber({
   chapter,
   visited,
   local,
+  presence = 1,
 }: {
   chapter: Chapter;
   visited: boolean;
   local: number;
+  presence?: number;
 }) {
+  const lit = 0.28 + presence * 0.72;
+
   return (
     <section id={chapter.id} className="relative isolate h-svh w-screen shrink-0 overflow-hidden bg-hall">
+      <div className="spot" style={{ opacity: lit }} aria-hidden="true" />
       <div
-        className="spot"
-        style={{ opacity: 0.45 + local * 0.55 }}
+        className="pointer-events-none absolute inset-y-0 left-0 w-10"
+        style={{
+          background: `linear-gradient(90deg, rgba(214,255,58,${0.08 + presence * 0.22}), transparent)`,
+        }}
         aria-hidden="true"
       />
-      <div className="absolute inset-y-0 left-0 w-px bg-acid/40" aria-hidden="true" />
       <p
         className="pointer-events-none absolute top-1/2 left-[-3vw] -translate-y-1/2 select-none font-serif leading-none text-acid/10"
-        style={{ fontSize: "min(78vh, 42vw)" }}
+        style={{ fontSize: "min(78vh, 42vw)", opacity: 0.35 + presence * 0.65 }}
       >
         {chapter.numeral}
       </p>
 
       <div className="relative z-10 grid h-full items-stretch gap-6 px-[5vw] pt-20 pb-10 md:grid-cols-[minmax(22rem,1fr)_minmax(0,1.15fr)]">
-        <div className="flex flex-col justify-between">
+        <div
+          className="flex flex-col justify-between"
+          style={{ opacity: 0.42 + presence * 0.58, transform: `translate3d(${(1 - presence) * -18}px, 0, 0)` }}
+        >
           <div>
             <p className="text-[10px] tracking-[0.42em] text-acid">
               展厅 {chapter.index}
@@ -61,17 +70,23 @@ export function Chamber({
             <p className="mt-5 max-w-sm text-base leading-8 text-fog">{chapter.metaphor}</p>
           </div>
           <div className="plate mt-8 w-[min(100%,20rem)]">
-            <p className="text-[11px] tracking-[0.28em] text-acid">{chapter.plate}</p>
+            <p className="flex items-center justify-between text-[11px] tracking-[0.28em] text-acid">
+              <span>{chapter.plate}</span>
+              <span className="h-1 w-1 rounded-full bg-acid" />
+            </p>
             <p className="mt-2 text-sm leading-6 text-fog">{chapter.hook}</p>
             {chapter.slug ? (
-              <Link href={`/learn/${chapter.slug}`} className="cta-acid mt-5">
-                {chapter.cta}
+              <Link href={`/learn/${chapter.slug}`} className="mt-5 inline-block text-[12px] tracking-[0.28em] text-acid no-underline">
+                {chapter.cta} →
               </Link>
             ) : null}
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-col justify-end">
+        <div
+          className="flex min-h-0 flex-col justify-end"
+          style={{ opacity: 0.5 + presence * 0.5, transform: `translate3d(${(1 - presence) * 14}px, 0, 0)` }}
+        >
           <div className="vitrine min-h-[22rem] flex-1 overflow-hidden md:min-h-0">
             <Exhibit chapter={chapter} progress={local} />
           </div>

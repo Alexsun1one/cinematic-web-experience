@@ -1,9 +1,9 @@
 "use client";
 
-import { ContactShadows, OrbitControls } from "@react-three/drei";
-import { Canvas } from "@react-three/fiber";
-import { useEffect, useMemo } from "react";
+import { ContactShadows } from "@react-three/drei";
+import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import { CanvasTexture, DoubleSide, SRGBColorSpace } from "three";
+import { LiveCanvas } from "@/components/setpiece/LiveCanvas";
 import { useGpu, useReducedMotion } from "@/lib/motion-pref";
 
 function wallTexture() {
@@ -40,10 +40,10 @@ function LampRig({ yaw }: { yaw: number }) {
   return (
     <>
       <color attach="background" args={["#090908"]} />
-      <fog attach="fog" args={["#090908", 11, 20]} />
-      <hemisphereLight args={["#d6ff3a", "#090908", 0.22]} />
-      <ambientLight intensity={0.28} />
-      <pointLight position={[2.4, 1.6, 3.2]} intensity={2.4} color="#f6ffc8" />
+      <fog attach="fog" args={["#090908", 12, 20]} />
+      <hemisphereLight args={["#d6ff3a", "#090908", 0.24]} />
+      <ambientLight intensity={0.22} />
+      <pointLight position={[2.4, 1.6, 3.2]} intensity={2.1} color="#f6ffc8" />
       <mesh position={[0, -1.22, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <circleGeometry args={[3.4, 48]} />
         <meshStandardMaterial color="#10100e" roughness={0.95} />
@@ -55,38 +55,37 @@ function LampRig({ yaw }: { yaw: number }) {
       <group position={[0, -1.05, -0.9]}>
         <mesh>
           <cylinderGeometry args={[0.42, 0.5, 0.12, 24]} />
-          <meshStandardMaterial color="#2a2a24" metalness={0.72} roughness={0.28} />
+          <meshStandardMaterial color="#3a3a32" metalness={0.78} roughness={0.22} />
         </mesh>
         <mesh position={[0, 0.85, 0]}>
           <cylinderGeometry args={[0.045, 0.055, 1.7, 16]} />
-          <meshStandardMaterial color="#3a3a32" metalness={0.7} roughness={0.32} />
+          <meshStandardMaterial color="#4a4a40" metalness={0.74} roughness={0.26} />
         </mesh>
       </group>
       <group position={[0, 1.15, -0.7]} rotation={[0.45, yaw, 0]}>
         <mesh position={[0, 0.05, 0.55]} rotation={[1.15, 0, 0]}>
           <cylinderGeometry args={[0.03, 0.03, 1.15, 12]} />
-          <meshStandardMaterial color="#d6ff3a" metalness={0.4} roughness={0.25} />
+          <meshStandardMaterial color="#d6ff3a" metalness={0.45} roughness={0.2} />
         </mesh>
         <mesh position={[0, -0.35, 1.05]} rotation={[0.9, 0, 0]}>
           <coneGeometry args={[0.48, 0.62, 24, 1, true]} />
-          <meshStandardMaterial color="#1c1c16" metalness={0.55} roughness={0.4} side={DoubleSide} />
+          <meshStandardMaterial color="#1c1c16" metalness={0.6} roughness={0.32} side={DoubleSide} />
         </mesh>
         <mesh position={[0, -0.55, 1.25]} rotation={[0.9, 0, 0]}>
-          <coneGeometry args={[0.95, 1.8, 24, 1, true]} />
-          <meshBasicMaterial color="#d6ff3a" transparent opacity={0.18} side={DoubleSide} depthWrite={false} />
+          <coneGeometry args={[1.05, 2.05, 28, 1, true]} />
+          <meshBasicMaterial color="#d6ff3a" transparent opacity={0.22} side={DoubleSide} depthWrite={false} />
         </mesh>
         <spotLight
           position={[0, -0.42, 1.1]}
-          angle={0.38}
-          penumbra={0.65}
-          intensity={42}
+          angle={0.36}
+          penumbra={0.58}
+          intensity={48}
           color="#eaff8a"
           castShadow
-          shadow-mapSize={[1024, 1024]}
+          shadow-mapSize={[768, 768]}
         />
       </group>
-      <ContactShadows position={[0, -1.21, 0]} opacity={0.72} scale={8} blur={2.8} far={4} color="#000" />
-      <OrbitControls enablePan={false} enableDamping minDistance={4} maxDistance={8} maxPolarAngle={1.32} />
+      <ContactShadows position={[0, -1.21, 0]} opacity={0.7} scale={8} blur={2.6} far={4} color="#000" />
     </>
   );
 }
@@ -94,11 +93,35 @@ function LampRig({ yaw }: { yaw: number }) {
 export function LampSetpiece({ progress = 0.35 }: { progress?: number }) {
   const gpu = useGpu();
   const reduced = useReducedMotion();
-  const yaw = -0.72 + progress * 1.44;
+  const drag = useRef(0);
+  const lastX = useRef<number | null>(null);
+  const [offset, setOffset] = useState(0);
+  const yaw = Math.min(0.85, Math.max(-0.85, -0.55 + progress * 1.1 + offset));
+
+  function onPointerDown(event: PointerEvent<HTMLDivElement>) {
+    lastX.current = event.clientX;
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+  function onPointerMove(event: PointerEvent<HTMLDivElement>) {
+    if (lastX.current == null) return;
+    const delta = (event.clientX - lastX.current) / 240;
+    lastX.current = event.clientX;
+    drag.current = Math.min(0.7, Math.max(-0.7, drag.current + delta));
+    setOffset(drag.current);
+  }
+  function onPointerUp(event: PointerEvent<HTMLDivElement>) {
+    lastX.current = null;
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  }
 
   return (
     <div className="flex h-full min-h-[420px] flex-col bg-void">
-      <div className="min-h-[380px] flex-1">
+      <div
+        className="min-h-[380px] flex-1 touch-none"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+      >
         {!gpu || reduced ? (
           <div className="relative grid h-full place-items-center bg-void px-8">
             <p className="max-w-lg font-serif text-3xl leading-relaxed">
@@ -107,13 +130,13 @@ export function LampSetpiece({ progress = 0.35 }: { progress?: number }) {
             </p>
           </div>
         ) : (
-          <Canvas shadows camera={{ position: [3.1, 1.8, 5.2], fov: 34 }} dpr={[1, 1.7]}>
+          <LiveCanvas camera={{ position: [3.1, 1.8, 5.2], fov: 34 }}>
             <LampRig yaw={yaw} />
-          </Canvas>
+          </LiveCanvas>
         )}
       </div>
       <p className="px-5 py-3 text-sm text-fog">
-        {yaw < 0 ? "灯还在「猫」。代词还没被点亮。" : "灯转到「它」。份额换了，意思没有自动长出来。"}
+        {yaw < 0 ? "横拖灯罩。灯还在「猫」。代词还没被点亮。" : "灯转到「它」。份额换了，意思没有自动长出来。"}
       </p>
     </div>
   );

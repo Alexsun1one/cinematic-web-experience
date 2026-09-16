@@ -1,11 +1,11 @@
 # Previews
 
-Bold-pass stills（夜览馆：炭黑 + 电酸色）。纸杂志 stun 镜头已替换。
+Polish-pass stills. Direction still 夜览馆.
 
 | File | Page |
 | --- | --- |
-| `bold-home.png` | `/` 门厅第一屏 |
-| `bold-chamber.png` | 展厅壹 |
-| `bold-exhibit.png` | 展品近景 |
-| `bold-lesson.png` | `/learn/llm-intuition` |
-| `bold-blog.png` | `/blog` |
+| `polish-home.png` | `/` 门厅 |
+| `polish-chamber.png` | 展厅壹 |
+| `polish-exhibit.png` | 射灯近景 |
+| `polish-lesson.png` | `/learn/llm-intuition` |
+| `polish-blog.png` | `/blog` |

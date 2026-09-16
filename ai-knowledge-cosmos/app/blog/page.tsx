@@ -17,8 +17,13 @@ export default function BlogPage() {
           夜刊
         </p>
         <p className="spine absolute top-36 right-6 hidden text-fog md:block">观星 · 不定期</p>
-        <div className="relative z-10 mt-[28vh] max-w-3xl">
-          <p className="text-[10px] tracking-[0.42em] text-acid">夜刊 · 00{posts.length}</p>
+        <div className="relative z-10 max-w-3xl">
+          <div className="zine-mast">
+            <span>夜览馆夜刊</span>
+            <span>第 00{posts.length} 号</span>
+            <span>不定期</span>
+          </div>
+          <p className="mt-[22vh] text-[10px] tracking-[0.42em] text-acid">灯下 / 口吻</p>
           <h1 className="mt-5 font-serif text-6xl leading-[0.92] text-bone md:text-8xl">灯下的口吻</h1>
           <p className="mt-6 max-w-lg font-serif text-2xl leading-snug text-fog">
             展墙是骨架。这里只留下走路时改过的句子。

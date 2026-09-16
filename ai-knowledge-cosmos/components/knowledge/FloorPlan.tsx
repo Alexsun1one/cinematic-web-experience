@@ -47,14 +47,27 @@ export function FloorPlan() {
           门厅
         </text>
         <line
-          x1="60"
+          x1="42"
           y1={Y + ROOM_H / 2}
           x2={rooms[rooms.length - 1].x + ROOM_W + 20}
           y2={Y + ROOM_H / 2}
           stroke="#d6ff3a"
-          strokeOpacity="0.25"
+          strokeOpacity="0.22"
           strokeWidth="10"
         />
+        <line
+          x1="42"
+          y1={Y + ROOM_H / 2}
+          x2={rooms[0].x}
+          y2={Y + ROOM_H / 2}
+          stroke="#d6ff3a"
+          strokeDasharray="6 7"
+          strokeWidth="1.4"
+        />
+        <circle cx="42" cy={Y + ROOM_H / 2} r="5" fill="#d6ff3a" />
+        <text x="42" y={Y + ROOM_H / 2 - 12} textAnchor="middle" fill="#d6ff3a" fontSize="9" fontFamily="Noto Sans SC, sans-serif">
+          您在此处
+        </text>
         {rooms.map((room) => {
           const selected = room.id === active;
           return (
@@ -114,6 +127,17 @@ export function FloorPlan() {
         <text x="24" y="308" fill="#9c9a90" fontSize="10" fontFamily="JetBrains Mono, monospace">
           10m
         </text>
+        <circle cx="160" cy="289" r="3.5" fill="#d6ff3a" />
+        <text x="170" y="293" fill="#9c9a90" fontSize="10">
+          当前位置
+        </text>
+        <rect x="248" y="280" width="16" height="12" fill="#171714" stroke="#d6ff3a" />
+        <text x="270" y="293" fill="#9c9a90" fontSize="10">
+          展厅
+        </text>
+        <text x="320" y="293" fill="#9c9a90" fontSize="10">
+          点房间看墙文
+        </text>
       </svg>
       <aside className="plate">
         <p className="text-[10px] tracking-[0.4em] text-acid">展厅 {current.index}</p>
@@ -122,8 +146,8 @@ export function FloorPlan() {
         <p className="mt-4 leading-8 text-fog">{current.wall}</p>
         <p className="mt-3 text-sm leading-7 text-fog">{current.metaphor}</p>
         {current.slug ? (
-          <Link href={`/learn/${current.slug}`} className="cta-acid mt-6">
-            进入展墙
+          <Link href={`/learn/${current.slug}`} className="mt-6 inline-block text-[12px] tracking-[0.28em] text-acid no-underline">
+            从此厅进入展墙 →
           </Link>
         ) : null}
       </aside>

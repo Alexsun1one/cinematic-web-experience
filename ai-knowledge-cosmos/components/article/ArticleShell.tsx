@@ -42,7 +42,10 @@ export function ArticleShell({
           </p>
         )}
         <div className="relative z-10 max-w-3xl">
-          <p className="text-[10px] tracking-[0.36em] text-acid">{kicker}</p>
+          <p className="inline-flex items-center gap-3 text-[10px] tracking-[0.36em] text-acid">
+            <span className="h-px w-8 bg-acid" />
+            {kicker}
+          </p>
           <h1 className="mt-6 font-serif text-[clamp(2.4rem,7vw,5.6rem)] leading-[1.05] tracking-tight text-bone">
             {title}
           </h1>
@@ -50,7 +53,8 @@ export function ArticleShell({
           <p className="mt-6 text-sm text-fog">{magazine ? `${site.author} · ${meta}` : meta}</p>
         </div>
       </header>
-      <div className="workbench px-5 py-12 md:px-12">
+      <div className="workbench px-5 pt-16 pb-12 md:px-12">
+        {visitSlug ? <p className="workbench-stamp">工作台 · 示意</p> : null}
         <div className={`prose-wall mx-auto max-w-2xl ${magazine ? "prose-zine" : ""}`}>{children}</div>
         <nav className="mx-auto mt-16 grid max-w-2xl gap-px bg-acid/20 sm:grid-cols-2">
           {prev ? (
