@@ -72,6 +72,16 @@ a {
   opacity: 0.32;
   mix-blend-mode: overlay;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.95' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.9  0 0 0 0 0.95  0 0 0 0 0.35  0 0 0 0.6 0'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>");
+  animation: grain-drift 9s steps(6) infinite;
+}
+
+@keyframes grain-drift {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 72px 48px;
+  }
 }
 
 .door-slit {
@@ -81,28 +91,35 @@ a {
   bottom: 0;
   width: 3px;
   background: var(--acid);
+  will-change: opacity, width, box-shadow;
   box-shadow:
     0 0 24px 4px color-mix(in oklab, var(--acid) 70%, transparent),
     0 0 120px 28px color-mix(in oklab, var(--acid) 28%, transparent),
     -40px 0 80px 10px color-mix(in oklab, var(--acid) 12%, transparent);
-  animation: slit-breathe 5.2s ease-in-out infinite;
+  animation: slit-breathe 6.6s cubic-bezier(0.37, 0, 0.63, 1) infinite;
 }
 
 @keyframes slit-breathe {
   0%,
   100% {
-    opacity: 0.78;
+    opacity: 0.72;
+    width: 2px;
     box-shadow:
-      0 0 18px 3px color-mix(in oklab, var(--acid) 55%, transparent),
-      0 0 90px 22px color-mix(in oklab, var(--acid) 20%, transparent),
-      -32px 0 70px 8px color-mix(in oklab, var(--acid) 10%, transparent);
+      0 0 16px 2px color-mix(in oklab, var(--acid) 48%, transparent),
+      0 0 80px 18px color-mix(in oklab, var(--acid) 16%, transparent),
+      -28px 0 60px 6px color-mix(in oklab, var(--acid) 8%, transparent);
   }
-  50% {
+  28% {
     opacity: 1;
+    width: 4px;
     box-shadow:
-      0 0 32px 7px color-mix(in oklab, var(--acid) 80%, transparent),
-      0 0 140px 36px color-mix(in oklab, var(--acid) 34%, transparent),
-      -48px 0 90px 14px color-mix(in oklab, var(--acid) 16%, transparent);
+      0 0 36px 8px color-mix(in oklab, var(--acid) 82%, transparent),
+      0 0 150px 40px color-mix(in oklab, var(--acid) 36%, transparent),
+      -52px 0 96px 16px color-mix(in oklab, var(--acid) 18%, transparent);
+  }
+  62% {
+    opacity: 0.84;
+    width: 3px;
   }
 }
 
@@ -115,7 +132,22 @@ a {
   background: transparent;
   color: var(--acid);
   cursor: pointer;
-  padding: 0;
+  padding: 0.4rem;
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.walk-cue:hover {
+  transform: translateX(3px);
+}
+
+.walk-cue:active {
+  transform: translateX(1px) scale(0.96);
+}
+
+.walk-chevrons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
 }
 
 .walk-chevron {
@@ -125,18 +157,68 @@ a {
   border-right: 1px solid var(--acid);
   border-bottom: 1px solid var(--acid);
   transform: rotate(-45deg);
-  animation: walk-nudge 2.4s ease-in-out infinite;
+  animation: walk-nudge 2.2s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+}
+
+.walk-chevron-lag {
+  animation-delay: 0.18s;
+  opacity: 0.45;
 }
 
 @keyframes walk-nudge {
   0%,
   100% {
     transform: rotate(-45deg) translate(-2px, -2px);
-    opacity: 0.45;
+    opacity: 0.35;
   }
   50% {
-    transform: rotate(-45deg) translate(4px, 4px);
+    transform: rotate(-45deg) translate(5px, 5px);
     opacity: 1;
+  }
+}
+
+.hall-wipe {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  overflow: hidden;
+}
+
+.hall-wipe-slit {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -8%;
+  width: 3px;
+  opacity: 0;
+  background: var(--acid);
+  box-shadow:
+    0 0 28px 8px color-mix(in oklab, var(--acid) 55%, transparent),
+    -24px 0 60px 12px color-mix(in oklab, var(--void) 80%, transparent);
+}
+
+.hall-wipe.is-on .hall-wipe-slit {
+  animation: slit-travel 720ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes slit-travel {
+  0% {
+    left: -4%;
+    opacity: 0;
+    width: 3px;
+  }
+  12% {
+    opacity: 1;
+  }
+  42% {
+    width: 14vw;
+    opacity: 1;
+  }
+  100% {
+    left: 104%;
+    opacity: 0.12;
+    width: 3px;
   }
 }
 
@@ -201,11 +283,19 @@ a {
   text-decoration: none;
   font-size: 0.82rem;
   letter-spacing: 0.08em;
+  transition:
+    transform 160ms cubic-bezier(0.16, 1, 0.3, 1),
+    background 160ms,
+    color 160ms;
 }
 
 .cta-acid:hover {
   background: transparent;
   color: var(--acid);
+}
+
+.cta-acid:active {
+  transform: scale(0.97);
 }
 
 .cta-ghost {
@@ -216,11 +306,112 @@ a {
   text-decoration: none;
   font-size: 0.82rem;
   letter-spacing: 0.08em;
+  transition:
+    transform 160ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 160ms,
+    color 160ms;
 }
 
 .cta-ghost:hover {
   border-color: var(--acid);
   color: var(--acid);
+}
+
+.cta-ghost:active {
+  transform: scale(0.97);
+}
+
+:focus-visible {
+  outline: 1px solid var(--acid);
+  outline-offset: 3px;
+}
+
+.toy button {
+  cursor: pointer;
+  transition:
+    transform 160ms cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 160ms,
+    border-color 160ms,
+    color 160ms;
+}
+
+.toy button:active {
+  transform: scale(0.96);
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: color-mix(in oklab, var(--acid) 22%, transparent);
+}
+
+.here-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: here-pulse 2.6s ease-in-out infinite;
+}
+
+@keyframes here-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(1.45);
+  }
+}
+
+.hall-room rect {
+  transition: fill 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hall-link {
+  transition:
+    transform 200ms cubic-bezier(0.16, 1, 0.3, 1),
+    letter-spacing 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hall-link:hover {
+  letter-spacing: 0.38em;
+}
+
+.hall-link:active {
+  transform: translate3d(4px, 0, 0);
+}
+
+.stamp-mark {
+  position: absolute;
+  top: 1.15rem;
+  right: 1.2rem;
+  border: 2px solid var(--acid);
+  color: var(--acid);
+  font-family: var(--font-serif);
+  font-size: 1.45rem;
+  letter-spacing: 0.28em;
+  padding: 0.18rem 0.42rem;
+  transform-origin: 80% 80%;
+  animation: stamp-thud 480ms cubic-bezier(0.22, 1.45, 0.36, 1) both;
+}
+
+.stamp-mark.is-miss {
+  border-color: var(--bone);
+  color: var(--bone);
+}
+
+@keyframes stamp-thud {
+  0% {
+    opacity: 0;
+    transform: rotate(-18deg) scale(1.55);
+  }
+  58% {
+    opacity: 1;
+    transform: rotate(-8deg) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(-11deg) scale(1);
+  }
 }
 
 .spine {
@@ -371,6 +562,19 @@ a {
   font-size: 10px;
   letter-spacing: 0.32em;
   color: color-mix(in oklab, var(--acid) 70%, var(--fog));
+  transform: rotate(8deg);
+  animation: stamp-settle 700ms cubic-bezier(0.22, 1.35, 0.36, 1) both;
+}
+
+@keyframes stamp-settle {
+  0% {
+    opacity: 0;
+    transform: rotate(16deg) scale(1.18);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(8deg) scale(1);
+  }
 }
 
 .zine-mast {
@@ -392,7 +596,24 @@ a {
   }
 
   .door-slit,
-  .walk-chevron {
+  .walk-chevron,
+  .hall-grain,
+  .here-dot,
+  .stamp-mark,
+  .workbench-stamp {
     animation: none;
+  }
+
+  .hall-wipe.is-on .hall-wipe-slit {
+    animation: none;
+  }
+
+  .cta-acid,
+  .cta-ghost,
+  .walk-cue,
+  .toy button,
+  .hall-link,
+  .hall-room rect {
+    transition: none;
   }
 }

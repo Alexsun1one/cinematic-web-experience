@@ -6,6 +6,11 @@ import { CanvasTexture, DoubleSide, SRGBColorSpace } from "three";
 import { LiveCanvas } from "@/components/setpiece/LiveCanvas";
 import { useGpu, useReducedMotion } from "@/lib/motion-pref";
 
+const CAT = -0.48;
+const IT = 0.48;
+const YAW_MIN = -0.85;
+const YAW_MAX = 0.85;
+
 function wallTexture() {
   const canvas = document.createElement("canvas");
   canvas.width = 1024;
@@ -90,37 +95,126 @@ function LampRig({ yaw }: { yaw: number }) {
   );
 }
 
+function clampYaw(value: number) {
+  return Math.min(YAW_MAX, Math.max(YAW_MIN, value));
+}
+
+function poleFor(yaw: number) {
+  return yaw <= 0 ? CAT : IT;
+}
+
 export function LampSetpiece({ progress = 0.35 }: { progress?: number }) {
   const gpu = useGpu();
   const reduced = useReducedMotion();
-  const drag = useRef(0);
+  const dragging = useRef(false);
   const lastX = useRef<number | null>(null);
-  const [offset, setOffset] = useState(0);
-  const yaw = Math.min(0.85, Math.max(-0.85, -0.55 + progress * 1.1 + offset));
+  const lastT = useRef(0);
+  const velocity = useRef(0);
+  const offset = useRef(0);
+  const settle = useRef(0);
+  const progressRef = useRef(progress);
+  const reducedRef = useRef(reduced);
+  const [held, setHeld] = useState(false);
+  const [yaw, setYaw] = useState(() => clampYaw(-0.55 + progress * 1.1));
+
+  progressRef.current = progress;
+  reducedRef.current = reduced;
+
+  function baseYaw() {
+    return -0.55 + progressRef.current * 1.1;
+  }
+
+  function publish(next: number) {
+    const clamped = clampYaw(next);
+    setYaw((prev) => (Math.abs(prev - clamped) > 0.003 ? clamped : prev));
+    return clamped;
+  }
+
+  function stopSettle() {
+    if (settle.current) cancelAnimationFrame(settle.current);
+    settle.current = 0;
+  }
+
+  function startSettle() {
+    stopSettle();
+    if (reducedRef.current) {
+      const pole = poleFor(baseYaw() + offset.current);
+      offset.current = pole - baseYaw();
+      publish(pole);
+      return;
+    }
+    function tick() {
+      const base = baseYaw();
+      velocity.current *= 0.88;
+      offset.current += velocity.current * 0.42;
+      let done = false;
+      if (Math.abs(velocity.current) < 0.01) {
+        const pole = poleFor(base + offset.current);
+        offset.current += (pole - base - offset.current) * 0.18;
+        if (Math.abs(pole - (base + offset.current)) < 0.004) {
+          offset.current = pole - base;
+          velocity.current = 0;
+          done = true;
+        }
+      }
+      const total = clampYaw(base + offset.current);
+      offset.current = total - base;
+      publish(total);
+      if (done) {
+        settle.current = 0;
+        return;
+      }
+      settle.current = requestAnimationFrame(tick);
+    }
+    settle.current = requestAnimationFrame(tick);
+  }
+
+  useEffect(() => {
+    if (dragging.current || settle.current) return;
+    publish(baseYaw() + offset.current);
+  }, [progress]);
+
+  useEffect(() => () => stopSettle(), []);
 
   function onPointerDown(event: PointerEvent<HTMLDivElement>) {
+    stopSettle();
+    dragging.current = true;
     lastX.current = event.clientX;
+    lastT.current = performance.now();
+    velocity.current = 0;
     event.currentTarget.setPointerCapture(event.pointerId);
+    setHeld(true);
   }
+
   function onPointerMove(event: PointerEvent<HTMLDivElement>) {
-    if (lastX.current == null) return;
-    const delta = (event.clientX - lastX.current) / 240;
+    if (!dragging.current || lastX.current == null) return;
+    const now = performance.now();
+    const dt = Math.max(8, now - lastT.current);
+    const delta = (event.clientX - lastX.current) / 220;
     lastX.current = event.clientX;
-    drag.current = Math.min(0.7, Math.max(-0.7, drag.current + delta));
-    setOffset(drag.current);
+    lastT.current = now;
+    const total = clampYaw(baseYaw() + offset.current + delta);
+    offset.current = total - baseYaw();
+    velocity.current = delta / (dt / 16.67);
+    publish(total);
   }
+
   function onPointerUp(event: PointerEvent<HTMLDivElement>) {
+    dragging.current = false;
     lastX.current = null;
     event.currentTarget.releasePointerCapture(event.pointerId);
+    setHeld(false);
+    startSettle();
   }
 
   return (
     <div className="flex h-full min-h-[420px] flex-col bg-void">
       <div
-        className="min-h-[380px] flex-1 touch-none"
+        className={`min-h-[380px] flex-1 touch-none select-none ${held ? "cursor-grabbing" : "cursor-ew-resize"}`}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
       >
         {!gpu || reduced ? (
           <div className="relative grid h-full place-items-center bg-void px-8">

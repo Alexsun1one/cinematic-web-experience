@@ -36,6 +36,11 @@ export function StampGate() {
     <section className="toy">
       <p className="font-serif text-acid">示意 · 三枚章</p>
       <p className="mt-2 text-sm leading-7 text-fog">先猜这句会盖哪一章。对了会给出理由——不是人格，是边界。</p>
+      {pick ? (
+        <span key={`${index}-${pick}`} className={`stamp-mark ${correct ? "is-hit" : "is-miss"}`} aria-hidden="true">
+          {STAMPS[pick as keyof typeof STAMPS]}
+        </span>
+      ) : null}
       <p className="mt-5 font-serif text-xl leading-8">{current.text}</p>
       <div className="mt-5 flex flex-wrap gap-2">
         {(Object.keys(STAMPS) as Array<keyof typeof STAMPS>).map((key) => (

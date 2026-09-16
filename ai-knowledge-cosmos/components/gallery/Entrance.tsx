@@ -60,9 +60,12 @@ export function Entrance({
       </p>
 
       <div className="absolute right-[calc(18vw-0.7rem)] bottom-[11vh] z-10 flex flex-col items-center gap-3">
-        <button type="button" onClick={onEnter} className="walk-cue">
+        <button type="button" onClick={onEnter} className="walk-cue" aria-label="向前走入第一厅">
           <span className="text-[10px] tracking-[0.42em]">向前</span>
-          <span className="walk-chevron" aria-hidden="true" />
+          <span className="walk-chevrons" aria-hidden="true">
+            <span className="walk-chevron" />
+            <span className="walk-chevron walk-chevron-lag" />
+          </span>
         </button>
       </div>
 

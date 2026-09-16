@@ -24,7 +24,7 @@ export function SiteHeader() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`tracking-[0.18em] no-underline ${active ? "text-acid" : "text-fog hover:text-bone"}`}
+                className={`tracking-[0.18em] no-underline transition-colors duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${active ? "text-acid" : "text-fog hover:text-bone"}`}
               >
                 {item.label}
               </Link>

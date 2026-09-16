@@ -64,14 +64,14 @@ export function FloorPlan() {
           strokeDasharray="6 7"
           strokeWidth="1.4"
         />
-        <circle cx="42" cy={Y + ROOM_H / 2} r="5" fill="#d6ff3a" />
+        <circle className="here-dot" cx="42" cy={Y + ROOM_H / 2} r="5" fill="#d6ff3a" />
         <text x="42" y={Y + ROOM_H / 2 - 12} textAnchor="middle" fill="#d6ff3a" fontSize="9" fontFamily="Noto Sans SC, sans-serif">
           您在此处
         </text>
         {rooms.map((room) => {
           const selected = room.id === active;
           return (
-            <g key={room.id} className="cursor-pointer" onClick={() => setActive(room.id)}>
+            <g key={room.id} className="hall-room cursor-pointer" onClick={() => setActive(room.id)}>
               <rect
                 x={room.x}
                 y={room.y}
@@ -146,7 +146,7 @@ export function FloorPlan() {
         <p className="mt-4 leading-8 text-fog">{current.wall}</p>
         <p className="mt-3 text-sm leading-7 text-fog">{current.metaphor}</p>
         {current.slug ? (
-          <Link href={`/learn/${current.slug}`} className="mt-6 inline-block text-[12px] tracking-[0.28em] text-acid no-underline">
+          <Link href={`/learn/${current.slug}`} className="hall-link mt-6 inline-block text-[12px] tracking-[0.28em] text-acid no-underline">
             从此厅进入展墙 →
           </Link>
         ) : null}

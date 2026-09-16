@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { JetBrains_Mono, Noto_Sans_SC, Noto_Serif_SC } from "next/font/google";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
+import { RouteWipe } from "@/components/site/RouteWipe";
 import { site } from "@/lib/site";
 import "./globals.css";
 
@@ -39,6 +40,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="zh-CN" className={`${sans.variable} ${serif.variable} ${mono.variable} h-full antialiased`}>
       <body className="min-h-full bg-void font-sans text-bone">
         <div className="night-grain" aria-hidden="true" />
+        <RouteWipe />
         <SiteHeader />
         <div className="flex min-h-full flex-col">{children}</div>
         <SiteFooter />

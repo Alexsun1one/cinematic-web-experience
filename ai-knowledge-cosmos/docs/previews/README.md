@@ -1,11 +1,11 @@
 # Previews
 
-Polish-pass stills. Direction still 夜览馆.
+Motion-pass stills. Direction still 夜览馆.
 
 | File | Page |
 | --- | --- |
-| `polish-home.png` | `/` 门厅 |
-| `polish-chamber.png` | 展厅壹 |
-| `polish-exhibit.png` | 射灯近景 |
-| `polish-lesson.png` | `/learn/llm-intuition` |
-| `polish-blog.png` | `/blog` |
+| `motion-home.png` | `/` 门厅，光缝呼吸中段 |
+| `motion-chamber.png` | 壹→贰交接 |
+| `motion-exhibit.png` | 字盘抬起 |
+| `motion-lesson.png` | `/learn/llm-intuition` |
+| `polish-*.png` | 上一轮打磨 |

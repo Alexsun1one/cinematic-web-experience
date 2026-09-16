@@ -58,7 +58,7 @@ export function ArticleShell({
         <div className={`prose-wall mx-auto max-w-2xl ${magazine ? "prose-zine" : ""}`}>{children}</div>
         <nav className="mx-auto mt-16 grid max-w-2xl gap-px bg-acid/20 sm:grid-cols-2">
           {prev ? (
-            <Link href={prev.href} className="bg-void p-5 no-underline hover:bg-hall">
+            <Link href={prev.href} className="bg-void p-5 no-underline transition-colors duration-200 hover:bg-hall">
               <p className="text-xs tracking-wide text-fog">{magazine ? "上一篇" : "上一厅"}</p>
               <p className="mt-2 font-serif text-xl text-bone">{prev.label}</p>
             </Link>
@@ -66,7 +66,7 @@ export function ArticleShell({
             <span className="bg-void" />
           )}
           {next ? (
-            <Link href={next.href} className="bg-void p-5 text-right no-underline hover:bg-hall">
+            <Link href={next.href} className="bg-void p-5 text-right no-underline transition-colors duration-200 hover:bg-hall">
               <p className="text-xs tracking-wide text-fog">{magazine ? "下一篇" : "下一厅"}</p>
               <p className="mt-2 font-serif text-xl text-bone">{next.label}</p>
             </Link>

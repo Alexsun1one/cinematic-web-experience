@@ -68,14 +68,33 @@ function Block({
   onHover: (on: boolean) => void;
 }) {
   const mesh = useRef<Mesh>(null);
+  const vel = useRef(0);
+  const rotVel = useRef(0);
+  const wasLifted = useRef(lifted);
   const texture = useMemo(() => makeFace(char, lifted), [char, lifted]);
+
+  useEffect(() => {
+    if (lifted && !wasLifted.current) vel.current += 4.4;
+    wasLifted.current = lifted;
+  }, [lifted]);
 
   useFrame((_, delta) => {
     if (!mesh.current) return;
-    const target = lifted ? 0.68 : hovered ? 0.24 : 0;
-    mesh.current.position.y += (target - mesh.current.position.y) * Math.min(1, delta * 8);
-    const rot = lifted ? -0.14 : hovered ? -0.05 : 0;
-    mesh.current.rotation.z += (rot - mesh.current.rotation.z) * Math.min(1, delta * 7);
+    const dt = Math.min(0.033, delta);
+    const target = lifted ? 0.72 : hovered ? 0.26 : 0;
+    const omega = lifted ? 17 : 20;
+    const acc = omega * omega * (target - mesh.current.position.y) - 2 * omega * vel.current;
+    vel.current += acc * dt;
+    mesh.current.position.y += vel.current * dt;
+
+    const rotTarget = lifted ? -0.16 : hovered ? -0.06 : 0;
+    const rotAcc = 22 * 22 * (rotTarget - mesh.current.rotation.z) - 2 * 22 * rotVel.current;
+    rotVel.current += rotAcc * dt;
+    mesh.current.rotation.z += rotVel.current * dt;
+
+    const sTarget = lifted ? 1.045 : hovered ? 1.02 : 1;
+    const s = mesh.current.scale.x + (sTarget - mesh.current.scale.x) * Math.min(1, dt * 14);
+    mesh.current.scale.setScalar(s);
   });
 
   useEffect(() => () => texture?.dispose(), [texture]);
@@ -86,18 +105,26 @@ function Block({
       ref={mesh}
       position={position}
       castShadow
+      onPointerDown={(event) => {
+        event.stopPropagation();
+        document.body.style.cursor = "grabbing";
+        onHover(true);
+      }}
       onClick={(event) => {
         event.stopPropagation();
         onPick();
       }}
       onPointerOver={(event) => {
         event.stopPropagation();
-        document.body.style.cursor = "pointer";
+        document.body.style.cursor = "grab";
         onHover(true);
       }}
       onPointerOut={() => {
         document.body.style.cursor = "auto";
         onHover(false);
+      }}
+      onPointerUp={() => {
+        document.body.style.cursor = "grab";
       }}
     >
       <boxGeometry args={[0.7, 0.7, 0.7]} />
@@ -174,7 +201,7 @@ function TypeCaseScene({
       <OrbitControls
         enablePan={false}
         enableDamping
-        dampingFactor={0.08}
+        dampingFactor={0.1}
         minDistance={4.2}
         maxDistance={8.5}
         maxPolarAngle={1.25}
@@ -193,8 +220,8 @@ function TypeCaseFlat({ active, onPick }: { active: number; onPick: (index: numb
             key={`${char}-${index}`}
             type="button"
             onClick={() => onPick(index)}
-            className={`grid h-[4.4rem] w-[4.4rem] place-items-center border font-serif text-3xl ${
-              index === active ? "-translate-y-3 border-acid bg-acid text-void" : "border-acid/30 bg-wall text-bone"
+            className={`grid h-[4.4rem] w-[4.4rem] cursor-pointer place-items-center border font-serif text-3xl ${
+              index === active ? "-translate-y-3 scale-105 border-acid bg-acid text-void" : "border-acid/30 bg-wall text-bone"
             }`}
           >
             {char}
@@ -218,7 +245,7 @@ export function TypeCaseSetpiece({ progress = 0 }: { progress?: number }) {
 
   return (
     <div className="flex h-full min-h-[420px] flex-col bg-void">
-      <div className="min-h-[380px] flex-1">
+      <div className="min-h-[380px] flex-1 cursor-grab">
         {!gpu || reduced ? (
           <TypeCaseFlat active={active} onPick={setActive} />
         ) : (
