@@ -5,6 +5,7 @@ export type CosmosNode = {
   kind: "core" | "lesson" | "essay";
   title: string;
   english: string;
+  short: string;
   summary: string;
   href: string;
   color: NodeColor;
@@ -29,6 +30,7 @@ export const COSMOS_NODES: CosmosNode[] = [
     kind: "core",
     title: "理解核",
     english: "Comprehension",
+    short: "理解核",
     summary: "六门课共同指向的一件事：把模型当成可检验的系统，而不是神谕。",
     href: "/learn",
     color: "ivory",
@@ -40,6 +42,7 @@ export const COSMOS_NODES: CosmosNode[] = [
     kind: "lesson",
     title: "语言模型的直觉",
     english: "LLM Intuition",
+    short: "直觉",
     summary: "它不是在「想」，它是在根据上下文续写。理解这一点，后面所有课才站得住。",
     href: "/learn/llm-intuition",
     color: "teal",
@@ -53,6 +56,7 @@ export const COSMOS_NODES: CosmosNode[] = [
     kind: "lesson",
     title: "Token：语言如何变成数字",
     english: "Tokens",
+    short: "Token",
     summary: "模型看见的不是汉字或单词，而是切分后的编号。预算、价格、怪癖都从这里来。",
     href: "/learn/tokens",
     color: "blue",
@@ -66,6 +70,7 @@ export const COSMOS_NODES: CosmosNode[] = [
     kind: "lesson",
     title: "提示词：把意图写成规格",
     english: "Prompting",
+    short: "提示",
     summary: "好的提示词像一份可执行的 brief：目标、约束、例子、输出格式。形容词堆砌帮不上忙。",
     href: "/learn/prompting",
     color: "violet",
@@ -79,6 +84,7 @@ export const COSMOS_NODES: CosmosNode[] = [
     kind: "lesson",
     title: "对齐入门：拒绝、谨慎与判断",
     english: "Alignment",
+    short: "对齐",
     summary: "模型被训练成有偏好的助手。拒绝不是针对你，判断也不能外包给它。",
     href: "/learn/alignment",
     color: "rose",
@@ -92,6 +98,7 @@ export const COSMOS_NODES: CosmosNode[] = [
     kind: "lesson",
     title: "工具与智能体",
     english: "Tools & Agents",
+    short: "工具",
     summary: "工具是函数，智能体是循环。模型开始「动手」之后，错误形态也跟着变了。",
     href: "/learn/tools-agents",
     color: "amber",
@@ -105,6 +112,7 @@ export const COSMOS_NODES: CosmosNode[] = [
     kind: "lesson",
     title: "动手概念：从对话到闭环",
     english: "Hands-on",
+    short: "动手",
     summary: "最小有用闭环：问题、成功标准、一次尝试、一次检验、一次迭代。",
     href: "/learn/hands-on",
     color: "teal",
@@ -118,6 +126,7 @@ export const COSMOS_NODES: CosmosNode[] = [
     kind: "essay",
     title: "从 0 到 1 的路径",
     english: "Essay",
+    short: "路径",
     summary: "我给自己设计的入门顺序，以及为什么不从工具清单开始。",
     href: "/blog/zero-to-one",
     color: "ivory",
@@ -129,6 +138,7 @@ export const COSMOS_NODES: CosmosNode[] = [
     kind: "essay",
     title: "提示词不是咒语",
     english: "Essay",
+    short: "咒语",
     summary: "把 prompting 从神秘学里救出来，放回设计与编辑的工作。",
     href: "/blog/prompts-are-not-spells",
     color: "violet",
@@ -140,6 +150,7 @@ export const COSMOS_NODES: CosmosNode[] = [
     kind: "essay",
     title: "当聊天框开始会用工具",
     english: "Essay",
+    short: "动手之后",
     summary: "工具调用如何改变「问一句答一句」的心智模型。",
     href: "/blog/when-models-grow-hands",
     color: "amber",
@@ -151,6 +162,7 @@ export const COSMOS_NODES: CosmosNode[] = [
     kind: "essay",
     title: "公开教育学读后",
     english: "Essay",
+    short: "阅读",
     summary: "从公开课程与实验室博客里，我学到的三件可迁移的事。",
     href: "/blog/reading-in-public",
     color: "blue",

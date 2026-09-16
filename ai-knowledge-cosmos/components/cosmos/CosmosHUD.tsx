@@ -22,7 +22,7 @@ export function CosmosHUD({
   const node = focused ? getNode(focused) : null;
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-10 flex flex-col justify-between p-5 md:p-8">
+    <div className="pointer-events-none absolute inset-0 z-20 flex flex-col justify-between p-5 pt-20 md:px-8 md:pt-24 md:pb-8">
       <div className="pointer-events-none max-w-xl">
         <p className="text-xs tracking-[0.32em] text-teal uppercase">Learning Cosmos</p>
         <h1 className="mt-3 font-serif text-4xl leading-tight text-ivory md:text-6xl">

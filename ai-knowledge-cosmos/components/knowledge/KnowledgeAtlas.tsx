@@ -4,10 +4,16 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { COSMOS_EDGES, COSMOS_NODES, colorHex, getNode, neighborsOf } from "@/lib/cosmos";
 
-function project(position: [number, number, number]) {
+function atlasPoint(kind: "core" | "lesson" | "essay", index: number, count: number) {
+  if (kind === "core") return { x: 480, y: 330, angle: 0 };
+  const angle = (Math.PI * 2 * index) / Math.max(count, 1) - Math.PI / 2;
+  if (kind === "lesson") {
+    return { x: 480 + Math.cos(angle) * 210, y: 330 + Math.sin(angle) * 150, angle };
+  }
   return {
-    x: 480 + position[0] * 58 + position[2] * 12,
-    y: 340 - position[1] * 70 - position[2] * 36,
+    x: 480 + Math.cos(angle + 0.4) * 330,
+    y: 330 + Math.sin(angle + 0.4) * 230,
+    angle: angle + 0.4,
   };
 }
 
@@ -15,10 +21,19 @@ export function KnowledgeAtlas() {
   const [active, setActive] = useState<string>("core");
   const node = getNode(active) ?? COSMOS_NODES[0];
   const neighbors = neighborsOf(node.id);
-  const points = useMemo(
-    () => new Map(COSMOS_NODES.map((item) => [item.id, project(item.position)] as const)),
-    [],
-  );
+  const points = useMemo(() => {
+    const lessonList = COSMOS_NODES.filter((item) => item.kind === "lesson");
+    const essayList = COSMOS_NODES.filter((item) => item.kind === "essay");
+    return new Map(
+      COSMOS_NODES.map((item) => {
+        if (item.kind === "core") return [item.id, atlasPoint("core", 0, 1)] as const;
+        if (item.kind === "lesson") {
+          return [item.id, atlasPoint("lesson", lessonList.findIndex((entry) => entry.id === item.id), lessonList.length)] as const;
+        }
+        return [item.id, atlasPoint("essay", essayList.findIndex((entry) => entry.id === item.id), essayList.length)] as const;
+      }),
+    );
+  }, []);
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1.3fr_0.9fr]">
@@ -64,13 +79,19 @@ export function KnowledgeAtlas() {
                 opacity={selected ? 1 : 0.82}
               />
               <text
-                x={point.x}
-                y={point.y + radius + 16}
-                textAnchor="middle"
+                x={item.kind === "core" ? point.x : point.x + Math.cos(point.angle) * 28}
+                y={item.kind === "core" ? point.y + radius + 20 : point.y + Math.sin(point.angle) * 28 + 4}
+                textAnchor={
+                  item.kind === "core" || Math.abs(Math.cos(point.angle)) < 0.35
+                    ? "middle"
+                    : Math.cos(point.angle) > 0
+                      ? "start"
+                      : "end"
+                }
                 fill="#f3eee4"
-                fontSize={item.kind === "essay" ? 11 : 13}
+                fontSize={12}
               >
-                {item.title}
+                {item.kind === "lesson" ? `${item.stage} ${item.short}` : item.short}
               </text>
             </g>
           );

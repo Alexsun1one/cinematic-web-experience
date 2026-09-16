@@ -2,7 +2,7 @@
 
 import { Html, Line, OrbitControls, Stars } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useMemo, useRef, type MutableRefObject } from "react";
+import { useMemo, useRef, useState, type MutableRefObject } from "react";
 import { Color, Group, Mesh, Vector3 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { COSMOS_EDGES, COSMOS_NODES, colorHex, type CosmosNode } from "@/lib/cosmos";
@@ -24,18 +24,22 @@ function nodeScale(node: CosmosNode) {
 function NodeMesh({
   node,
   active,
+  dimCoreLabel,
   onFocus,
   reduced,
 }: {
   node: CosmosNode;
   active: boolean;
+  dimCoreLabel: boolean;
   onFocus: (id: string) => void;
   reduced: boolean;
 }) {
   const group = useRef<Group>(null);
   const glow = useRef<Mesh>(null);
+  const [hovered, setHovered] = useState(false);
   const hex = colorHex[node.color];
   const color = useMemo(() => new Color(hex), [hex]);
+  const showLabel = hovered || active || (node.kind === "core" && !dimCoreLabel);
 
   useFrame((state) => {
     if (!group.current) return;
@@ -62,16 +66,18 @@ function NodeMesh({
         }}
         onPointerOver={() => {
           document.body.style.cursor = "pointer";
+          setHovered(true);
         }}
         onPointerOut={() => {
           document.body.style.cursor = "auto";
+          setHovered(false);
         }}
       >
         {geo === "icosa" ? <icosahedronGeometry args={[args, 0]} /> : null}
         {geo === "octa" ? <octahedronGeometry args={[args, 0]} /> : null}
         {geo === "tetra" ? <tetrahedronGeometry args={[args, 0]} /> : null}
         {geo === "dodeca" ? <dodecahedronGeometry args={[args, 0]} /> : null}
-        {geo === "box" ? <boxGeometry args={[args * 1.4, args * 1.4, args * 1.4]} /> : null}
+        {geo === "box" ? <boxGeometry args={[args * 1.05, args * 1.05, args * 1.05]} /> : null}
         {geo === "torus" ? <torusGeometry args={[args * 0.7, args * 0.28, 16, 48]} /> : null}
         {geo === "core" ? <icosahedronGeometry args={[1.08, 1]} /> : null}
         <meshStandardMaterial
@@ -98,19 +104,21 @@ function NodeMesh({
           <meshBasicMaterial color="#f3eee4" wireframe transparent opacity={0.28} />
         </mesh>
       ) : null}
-      <Html center distanceFactor={12} occlude={false} zIndexRange={[10, 0]}>
-        <button
-          type="button"
-          onClick={() => onFocus(node.id)}
-          className={`pointer-events-auto rounded-full border px-2 py-1 text-[11px] whitespace-nowrap backdrop-blur-md ${
-            active
-              ? "border-ivory/40 bg-void/80 text-ivory"
-              : "border-ivory/10 bg-void/55 text-mist"
-          }`}
-        >
-          {node.kind === "lesson" ? `${node.stage} · ${node.title}` : node.title}
-        </button>
-      </Html>
+      {showLabel ? (
+        <Html center sprite occlude={false} zIndexRange={[2, 0]} distanceFactor={18}>
+          <button
+            type="button"
+            onClick={() => onFocus(node.id)}
+            className={`pointer-events-auto rounded-full border px-2 py-0.5 text-[10px] whitespace-nowrap backdrop-blur-md ${
+              active
+                ? "border-ivory/40 bg-void/85 text-ivory"
+                : "border-ivory/15 bg-void/70 text-mist"
+            }`}
+          >
+            {node.kind === "lesson" ? `${node.stage} ${node.title}` : node.title}
+          </button>
+        </Html>
+      ) : null}
     </group>
   );
 }
@@ -203,6 +211,7 @@ export function CosmosScene({
           key={node.id}
           node={node}
           active={focused === node.id}
+          dimCoreLabel={Boolean(focused)}
           onFocus={onFocus}
           reduced={reduced}
         />

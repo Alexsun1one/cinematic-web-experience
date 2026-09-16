@@ -8,7 +8,7 @@ export function SiteHeader() {
   const pathname = usePathname();
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50">
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-ivory/5 bg-void/75 backdrop-blur-xl">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
         <Link href="/" className="group flex items-baseline gap-3 no-underline">
           <span className="font-serif text-lg tracking-wide text-ivory">{site.name}</span>
