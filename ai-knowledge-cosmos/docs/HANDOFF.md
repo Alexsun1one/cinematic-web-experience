@@ -1,23 +1,17 @@
-# Handoff — 夜览馆 motion
+# Handoff — 夜览馆 motion 2
 
 ## Current goal
 
-Interaction and motion craft on locked 夜览馆 direction. No art-direction reboot.
+Second motion-only pass. Art direction locked. No content reboot.
 
-## Changed this pass
+## What felt wrong / what changed
 
-- Entrance: slit breathe width/glow, stepped grain, double 「向前」chevrons, inertia jump into first hall.
-- Corridor: dwell 0.14/0.86, adaptive catchup lerp, DOM transform via ref, plate tracks distance, spotlight crossfade, arrow-key inertia (cancels previous tween).
-- Exhibits: glyph critically-damped lift + click overshoot + grab cursor; lamp velocity, damping, snap to 猫/它, `ew-resize`/`grabbing`, touch-none.
-- Pages: acid slit-travel wipe gallery ↔ lesson ↔ zine (widens then collapses).
-- Micro: stamp thud, workbench stamp settle, floor-plan 您在此处 pulse, hall-link press, toy button press, rail dots.
-- A11y: `prefers-reduced-motion` kills animations/wipes/inertia; acid 1px/3px focus rings; reduced typecase is a static grid; lamp snaps instantly.
-- Perf: LiveCanvas DPR [1, 1.5] + IntersectionObserver pause; lamp settle rAF only after drag; no new deps.
+See `docs/MOTION.md`. Short version: planted corridor (smootherstep dwell + exp follow + rAF CSS vars), tighter glyph spring, lamp that yields to vertical scroll, 360ms interruptible slit wipe, larger hitboxes, WebGL still pauses offscreen.
 
 ## Evidence
 
-- `docs/previews/motion-*.png` (home mid-breath, chamber handoff, exhibit, lesson)
 - `npm run build` must pass
+- No new `motion2-*.png`: still frames would look the same; the work is timing/physics.
 
 ## Blockers
 

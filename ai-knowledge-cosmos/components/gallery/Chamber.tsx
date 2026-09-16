@@ -29,47 +29,24 @@ export function Chamber({
   chapter,
   visited,
   local,
-  presence = 1,
-  leaving = 0,
+  slot,
 }: {
   chapter: Chapter;
   visited: boolean;
   local: number;
-  presence?: number;
-  leaving?: number;
+  slot: number;
 }) {
-  const lit = 0.22 + presence * 0.78;
-  const approach = Math.max(0, 1 - presence) * 0.55;
-
   return (
-    <section id={chapter.id} className="relative isolate h-svh w-screen shrink-0 overflow-hidden bg-hall">
-      <div className="spot" style={{ opacity: lit }} aria-hidden="true" />
-      <div
-        className="pointer-events-none absolute inset-y-0 left-0 w-12"
-        style={{
-          background: `linear-gradient(90deg, rgba(214,255,58,${0.06 + presence * 0.2 + approach * 0.18}), transparent)`,
-        }}
-        aria-hidden="true"
-      />
-      <div
-        className="pointer-events-none absolute inset-y-0 right-0 w-10"
-        style={{
-          background: `linear-gradient(270deg, rgba(214,255,58,${leaving * 0.28}), transparent)`,
-        }}
-        aria-hidden="true"
-      />
-      <p
-        className="pointer-events-none absolute top-1/2 left-[-3vw] -translate-y-1/2 select-none font-serif leading-none text-acid/10"
-        style={{ fontSize: "min(78vh, 42vw)", opacity: 0.35 + presence * 0.65 }}
-      >
+    <section data-chamber={slot} className="chamber relative isolate h-svh w-screen shrink-0 overflow-hidden bg-hall">
+      <div className="spot" aria-hidden="true" />
+      <div className="chamber-edge-left pointer-events-none absolute inset-y-0 left-0 w-12" aria-hidden="true" />
+      <div className="chamber-edge-right pointer-events-none absolute inset-y-0 right-0 w-10" aria-hidden="true" />
+      <p className="chamber-numeral pointer-events-none absolute top-1/2 left-[-3vw] -translate-y-1/2 select-none font-serif leading-none text-acid/10">
         {chapter.numeral}
       </p>
 
       <div className="relative z-10 grid h-full items-stretch gap-6 px-[5vw] pt-20 pb-10 md:grid-cols-[minmax(22rem,1fr)_minmax(0,1.15fr)]">
-        <div
-          className="flex flex-col justify-between"
-          style={{ opacity: 0.42 + presence * 0.58, transform: `translate3d(${(1 - presence) * -18}px, 0, 0)` }}
-        >
+        <div className="chamber-copy flex flex-col justify-between">
           <div>
             <p className="text-[10px] tracking-[0.42em] text-acid">
               展厅 {chapter.index}
@@ -79,10 +56,7 @@ export function Chamber({
             <p className="mt-8 max-w-sm font-serif text-2xl leading-snug text-bone/90">{chapter.wall}</p>
             <p className="mt-5 max-w-sm text-base leading-8 text-fog">{chapter.metaphor}</p>
           </div>
-          <div
-            className="plate mt-8 w-[min(100%,20rem)]"
-            style={{ transform: `translate3d(0, ${(1 - presence) * 28}px, 0)` }}
-          >
+          <div className="chamber-plate plate mt-8 w-[min(100%,20rem)]">
             <p className="flex items-center justify-between text-[11px] tracking-[0.28em] text-acid">
               <span>{chapter.plate}</span>
               <span className="h-1 w-1 rounded-full bg-acid" />
@@ -96,10 +70,7 @@ export function Chamber({
           </div>
         </div>
 
-        <div
-          className="flex min-h-0 flex-col justify-end"
-          style={{ opacity: 0.5 + presence * 0.5, transform: `translate3d(${(1 - presence) * 14}px, 0, 0)` }}
-        >
+        <div className="chamber-stage flex min-h-0 flex-col justify-end">
           <div className="vitrine min-h-[22rem] flex-1 overflow-hidden md:min-h-0">
             <Exhibit chapter={chapter} progress={local} />
           </div>

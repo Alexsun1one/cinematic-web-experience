@@ -1,16 +1,13 @@
 import Link from "next/link";
 
-export function ExitHall({ presence = 1 }: { presence?: number }) {
+export function ExitHall({ slot }: { slot: number }) {
   return (
-    <section className="relative isolate flex h-svh w-screen shrink-0 items-end overflow-hidden bg-void px-[6vw] py-[10vh]">
-      <p
-        className="pointer-events-none absolute top-1/2 left-[-4vw] -translate-y-1/2 select-none font-serif text-[min(80vh,70vw)] leading-none text-acid/15"
-        style={{ opacity: 0.4 + presence * 0.6 }}
-      >
+    <section data-chamber={slot} className="chamber relative isolate flex h-svh w-screen shrink-0 items-end overflow-hidden bg-void px-[6vw] py-[10vh]">
+      <p className="chamber-numeral pointer-events-none absolute top-1/2 left-[-4vw] -translate-y-1/2 select-none font-serif text-[min(80vh,70vw)] leading-none text-acid/15">
         终
       </p>
       <div className="spot" aria-hidden="true" />
-      <div className="relative z-10 max-w-xl" style={{ opacity: 0.45 + presence * 0.55 }}>
+      <div className="chamber-copy relative z-10 max-w-xl">
         <p className="text-[10px] tracking-[0.42em] text-acid">门厅 · 出口</p>
         <h2 className="mt-5 font-serif text-5xl leading-[1.05] text-bone md:text-7xl">灯还亮着。</h2>
         <p className="mt-6 max-w-md text-lg leading-8 text-fog">

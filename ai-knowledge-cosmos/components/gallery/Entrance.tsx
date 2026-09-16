@@ -6,53 +6,43 @@ import { useReducedMotion } from "@/lib/motion-pref";
 export function Entrance({
   lit,
   total,
-  shift = 0,
-  presence = 1,
   onEnter,
 }: {
   lit: number;
   total: number;
-  shift?: number;
-  presence?: number;
   onEnter?: () => void;
 }) {
   const reduced = useReducedMotion();
 
   return (
-    <section className="relative isolate h-svh w-screen shrink-0 overflow-hidden bg-void">
+    <section data-chamber="0" className="chamber relative isolate h-svh w-screen shrink-0 overflow-hidden bg-void">
       <div className="floor-vanish" aria-hidden="true" />
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(ellipse 50% 40% at 22% 48%, rgba(214,255,58,0.07), transparent 55%), radial-gradient(ellipse 28% 58% at 82% 42%, rgba(214,255,58,0.16), transparent 62%)",
-          opacity: 0.55 + presence * 0.45,
-        }}
-      />
+      <div className="pointer-events-none absolute inset-0 entrance-glow" />
       <div className="hall-grain pointer-events-none absolute inset-0 z-[2]" aria-hidden="true" />
 
-      <motion.p
-        className="pointer-events-none absolute top-1/2 left-[-10vw] select-none font-serif font-bold text-bone"
-        style={{
-          fontSize: "min(94vh, 82vw)",
-          lineHeight: 0.72,
-          letterSpacing: "-0.08em",
-          transform: `translate3d(${shift * -72}px, -48%, 0)`,
-          textShadow: "0 0 90px rgba(214,255,58,0.16)",
-        }}
-        initial={reduced ? false : { opacity: 0, filter: "blur(22px)" }}
-        animate={{ opacity: 1, filter: "blur(0px)" }}
-        transition={reduced ? { duration: 0.01 } : { duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
-      >
-        夜
-      </motion.p>
+      <div className="night-glyph pointer-events-none absolute top-1/2 left-[-10vw]">
+        <motion.p
+          className="select-none font-serif font-bold text-bone"
+          style={{
+            fontSize: "min(94vh, 82vw)",
+            lineHeight: 0.72,
+            letterSpacing: "-0.08em",
+            textShadow: "0 0 90px rgba(214,255,58,0.16)",
+          }}
+          initial={reduced ? false : { opacity: 0, filter: "blur(22px)" }}
+          animate={{ opacity: 1, filter: "blur(0px)" }}
+          transition={reduced ? { duration: 0.01 } : { duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
+        >
+          夜
+        </motion.p>
+      </div>
 
       <div className="door-slit" aria-hidden="true" />
       <button
         type="button"
         aria-label="沿门缝向前走"
         onClick={onEnter}
-        className="absolute top-0 right-[calc(18vw-18px)] z-10 h-full w-10 cursor-pointer border-0 bg-transparent p-0"
+        className="absolute top-0 right-[calc(18vw-22px)] z-10 h-full w-14 cursor-pointer border-0 bg-transparent p-0"
       />
 
       <p className="spine pointer-events-none absolute top-1/2 right-[calc(18vw-2.1rem)] hidden -translate-y-1/2 text-[11px] text-acid/80 md:block">

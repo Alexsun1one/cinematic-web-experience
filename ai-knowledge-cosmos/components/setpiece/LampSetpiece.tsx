@@ -107,7 +107,10 @@ export function LampSetpiece({ progress = 0.35 }: { progress?: number }) {
   const gpu = useGpu();
   const reduced = useReducedMotion();
   const dragging = useRef(false);
+  const pending = useRef(false);
+  const owned = useRef(false);
   const lastX = useRef<number | null>(null);
+  const origin = useRef({ x: 0, y: 0 });
   const lastT = useRef(0);
   const velocity = useRef(0);
   const offset = useRef(0);
@@ -121,7 +124,7 @@ export function LampSetpiece({ progress = 0.35 }: { progress?: number }) {
   reducedRef.current = reduced;
 
   function baseYaw() {
-    return -0.55 + progressRef.current * 1.1;
+    return owned.current ? 0 : -0.55 + progressRef.current * 1.1;
   }
 
   function publish(next: number) {
@@ -143,24 +146,27 @@ export function LampSetpiece({ progress = 0.35 }: { progress?: number }) {
       publish(pole);
       return;
     }
-    function tick() {
+    let frames = 0;
+    let last = performance.now();
+    function tick(now: number) {
+      frames += 1;
+      const dt = Math.min(0.033, (now - last) / 1000);
+      last = now;
       const base = baseYaw();
-      velocity.current *= 0.88;
-      offset.current += velocity.current * 0.42;
-      let done = false;
-      if (Math.abs(velocity.current) < 0.01) {
-        const pole = poleFor(base + offset.current);
-        offset.current += (pole - base - offset.current) * 0.18;
-        if (Math.abs(pole - (base + offset.current)) < 0.004) {
-          offset.current = pole - base;
-          velocity.current = 0;
-          done = true;
-        }
-      }
+      const pole = poleFor(base + offset.current);
+      const desired = pole - base;
+      const omega = 16;
+      const acc = omega * omega * (desired - offset.current) - 2 * omega * velocity.current;
+      velocity.current += acc * dt;
+      offset.current += velocity.current * dt;
       const total = clampYaw(base + offset.current);
       offset.current = total - base;
       publish(total);
-      if (done) {
+      const close = Math.abs(velocity.current) < 0.0009 && Math.abs(desired - offset.current) < 0.004;
+      if (close || frames > 42) {
+        offset.current = desired;
+        velocity.current = 0;
+        publish(clampYaw(base + desired));
         settle.current = 0;
         return;
       }
@@ -170,47 +176,74 @@ export function LampSetpiece({ progress = 0.35 }: { progress?: number }) {
   }
 
   useEffect(() => {
-    if (dragging.current || settle.current) return;
+    if (owned.current || dragging.current || settle.current) return;
     publish(baseYaw() + offset.current);
   }, [progress]);
 
   useEffect(() => () => stopSettle(), []);
 
   function onPointerDown(event: PointerEvent<HTMLDivElement>) {
-    stopSettle();
-    dragging.current = true;
+    pending.current = true;
+    dragging.current = false;
+    origin.current = { x: event.clientX, y: event.clientY };
     lastX.current = event.clientX;
     lastT.current = performance.now();
     velocity.current = 0;
-    event.currentTarget.setPointerCapture(event.pointerId);
-    setHeld(true);
   }
 
   function onPointerMove(event: PointerEvent<HTMLDivElement>) {
-    if (!dragging.current || lastX.current == null) return;
+    if (!pending.current && !dragging.current) return;
+    const dx = event.clientX - origin.current.x;
+    const dy = event.clientY - origin.current.y;
+    if (!dragging.current) {
+      const distance = Math.hypot(dx, dy);
+      const need = event.pointerType === "touch" ? 10 : 3;
+      if (distance < need) return;
+      if (event.pointerType === "touch" && Math.abs(dy) > Math.abs(dx) * 1.15) {
+        pending.current = false;
+        return;
+      }
+      dragging.current = true;
+      if (!owned.current) {
+        const current = clampYaw(baseYaw() + offset.current);
+        owned.current = true;
+        offset.current = current;
+      }
+      stopSettle();
+      event.currentTarget.setPointerCapture(event.pointerId);
+      setHeld(true);
+    }
+    if (lastX.current == null) return;
     const now = performance.now();
-    const dt = Math.max(8, now - lastT.current);
-    const delta = (event.clientX - lastX.current) / 220;
+    const step = Math.max(8, now - lastT.current);
+    const delta = (event.clientX - lastX.current) / 240;
     lastX.current = event.clientX;
     lastT.current = now;
     const total = clampYaw(baseYaw() + offset.current + delta);
     offset.current = total - baseYaw();
-    velocity.current = delta / (dt / 16.67);
+    velocity.current = delta / (step / 16.67);
     publish(total);
   }
 
   function onPointerUp(event: PointerEvent<HTMLDivElement>) {
+    const wasDragging = dragging.current;
+    pending.current = false;
     dragging.current = false;
     lastX.current = null;
-    event.currentTarget.releasePointerCapture(event.pointerId);
     setHeld(false);
-    startSettle();
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    } catch {
+      /* already released */
+    }
+    if (wasDragging) startSettle();
   }
 
   return (
     <div className="flex h-full min-h-[420px] flex-col bg-void">
       <div
-        className={`min-h-[380px] flex-1 touch-none select-none ${held ? "cursor-grabbing" : "cursor-ew-resize"}`}
+        className={`min-h-[380px] flex-1 select-none ${held ? "cursor-grabbing" : "cursor-ew-resize"}`}
+        style={{ touchAction: held ? "none" : "pan-y" }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}

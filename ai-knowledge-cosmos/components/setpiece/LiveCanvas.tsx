@@ -20,15 +20,25 @@ export function LiveCanvas({
 }) {
   const wrap = useRef<HTMLDivElement>(null);
   const [play, setPlay] = useState(false);
+  const seen = useRef(false);
 
   useEffect(() => {
     const node = wrap.current;
     if (!node) return;
-    const io = new IntersectionObserver(([entry]) => setPlay(entry.isIntersecting), {
-      threshold: 0.18,
-    });
+    const sync = () => setPlay(seen.current && !document.hidden);
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        seen.current = entry.isIntersecting;
+        sync();
+      },
+      { threshold: 0.12 },
+    );
     io.observe(node);
-    return () => io.disconnect();
+    document.addEventListener("visibilitychange", sync);
+    return () => {
+      io.disconnect();
+      document.removeEventListener("visibilitychange", sync);
+    };
   }, []);
 
   return (

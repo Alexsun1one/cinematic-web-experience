@@ -14,19 +14,18 @@ export function GalleryRail({
       <div className="pointer-events-auto flex flex-col items-center gap-0">
         <span className="mb-3 font-mono text-[9px] tracking-[0.28em] text-acid/70">厅</span>
         <span className="mb-2 h-8 w-px bg-acid/25" />
-        <ol className="flex flex-col gap-2">
+        <ol className="flex flex-col">
           {Array.from({ length: count }, (_, index) => (
             <li key={index}>
               <button
                 type="button"
                 aria-label={`第 ${index} 厅`}
+                aria-current={index === active ? "true" : undefined}
                 onClick={() => onJump(index)}
-                className={`block h-2 w-2 rounded-full border transition-[transform,background-color,border-color] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                  index === active
-                    ? "scale-125 border-acid bg-acid"
-                    : "border-acid/30 bg-transparent hover:scale-110 hover:border-acid active:scale-90"
-                }`}
-              />
+                className="rail-dot"
+              >
+                <span className={index === active ? "is-here" : undefined} />
+              </button>
             </li>
           ))}
         </ol>

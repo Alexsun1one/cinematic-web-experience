@@ -57,15 +57,19 @@ function Block({
   position,
   lifted,
   hovered,
+  pressed,
   onPick,
   onHover,
+  onPress,
 }: {
   char: string;
   position: [number, number, number];
   lifted: boolean;
   hovered: boolean;
+  pressed: boolean;
   onPick: () => void;
   onHover: (on: boolean) => void;
+  onPress: (on: boolean) => void;
 }) {
   const mesh = useRef<Mesh>(null);
   const vel = useRef(0);
@@ -74,90 +78,100 @@ function Block({
   const texture = useMemo(() => makeFace(char, lifted), [char, lifted]);
 
   useEffect(() => {
-    if (lifted && !wasLifted.current) vel.current += 4.4;
+    if (lifted && !wasLifted.current) vel.current += 1.05;
     wasLifted.current = lifted;
   }, [lifted]);
 
   useFrame((_, delta) => {
     if (!mesh.current) return;
-    const dt = Math.min(0.033, delta);
-    const target = lifted ? 0.72 : hovered ? 0.26 : 0;
-    const omega = lifted ? 17 : 20;
+    const dt = Math.min(0.032, delta);
+    const target = lifted ? 0.52 : pressed ? -0.04 : hovered ? 0.16 : 0;
+    const omega = 28;
     const acc = omega * omega * (target - mesh.current.position.y) - 2 * omega * vel.current;
     vel.current += acc * dt;
     mesh.current.position.y += vel.current * dt;
 
-    const rotTarget = lifted ? -0.16 : hovered ? -0.06 : 0;
-    const rotAcc = 22 * 22 * (rotTarget - mesh.current.rotation.z) - 2 * 22 * rotVel.current;
+    const rotTarget = lifted ? -0.07 : hovered ? -0.03 : 0;
+    const rotAcc = 24 * 24 * (rotTarget - mesh.current.rotation.z) - 2 * 24 * rotVel.current;
     rotVel.current += rotAcc * dt;
     mesh.current.rotation.z += rotVel.current * dt;
-
-    const sTarget = lifted ? 1.045 : hovered ? 1.02 : 1;
-    const s = mesh.current.scale.x + (sTarget - mesh.current.scale.x) * Math.min(1, dt * 14);
-    mesh.current.scale.setScalar(s);
   });
 
   useEffect(() => () => texture?.dispose(), [texture]);
   if (!texture) return null;
 
   return (
-    <mesh
-      ref={mesh}
-      position={position}
-      castShadow
-      onPointerDown={(event) => {
-        event.stopPropagation();
-        document.body.style.cursor = "grabbing";
-        onHover(true);
-      }}
-      onClick={(event) => {
-        event.stopPropagation();
-        onPick();
-      }}
-      onPointerOver={(event) => {
-        event.stopPropagation();
-        document.body.style.cursor = "grab";
-        onHover(true);
-      }}
-      onPointerOut={() => {
-        document.body.style.cursor = "auto";
-        onHover(false);
-      }}
-      onPointerUp={() => {
-        document.body.style.cursor = "grab";
-      }}
-    >
-      <boxGeometry args={[0.7, 0.7, 0.7]} />
-      <meshStandardMaterial attach="material-0" color="#2e2e28" roughness={0.32} metalness={0.28} />
-      <meshStandardMaterial attach="material-1" color="#2e2e28" roughness={0.32} metalness={0.28} />
-      <meshStandardMaterial
-        attach="material-2"
-        map={texture as Texture}
-        roughness={lifted ? 0.22 : 0.4}
-        metalness={lifted ? 0.08 : 0.04}
-        emissive={lifted ? "#d6ff3a" : "#000000"}
-        emissiveIntensity={lifted ? 0.18 : 0}
-      />
-      <meshStandardMaterial attach="material-3" color="#0c0c0a" roughness={0.9} />
-      <meshStandardMaterial attach="material-4" color="#2e2e28" roughness={0.32} metalness={0.28} />
-      <meshStandardMaterial attach="material-5" color="#2e2e28" roughness={0.32} metalness={0.28} />
-    </mesh>
+    <group position={position}>
+      <mesh
+        position={[0, 0.22, 0]}
+        onPointerDown={(event) => {
+          event.stopPropagation();
+          document.body.style.cursor = "grabbing";
+          onHover(true);
+          onPress(true);
+        }}
+        onClick={(event) => {
+          event.stopPropagation();
+          onPick();
+        }}
+        onPointerOver={(event) => {
+          event.stopPropagation();
+          document.body.style.cursor = "grab";
+          onHover(true);
+        }}
+        onPointerOut={() => {
+          document.body.style.cursor = "";
+          onHover(false);
+          onPress(false);
+        }}
+        onPointerUp={() => {
+          document.body.style.cursor = "grab";
+          onPress(false);
+        }}
+      >
+        <boxGeometry args={[0.92, 1.25, 0.92]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+      <mesh ref={mesh} castShadow>
+        <boxGeometry args={[0.7, 0.7, 0.7]} />
+        <meshStandardMaterial attach="material-0" color="#2e2e28" roughness={0.32} metalness={0.28} />
+        <meshStandardMaterial attach="material-1" color="#2e2e28" roughness={0.32} metalness={0.28} />
+        <meshStandardMaterial
+          attach="material-2"
+          map={texture as Texture}
+          roughness={lifted ? 0.22 : 0.4}
+          metalness={lifted ? 0.08 : 0.04}
+          emissive={lifted ? "#d6ff3a" : "#000000"}
+          emissiveIntensity={lifted ? 0.18 : 0}
+        />
+        <meshStandardMaterial attach="material-3" color="#0c0c0a" roughness={0.9} />
+        <meshStandardMaterial attach="material-4" color="#2e2e28" roughness={0.32} metalness={0.28} />
+        <meshStandardMaterial attach="material-5" color="#2e2e28" roughness={0.32} metalness={0.28} />
+      </mesh>
+    </group>
   );
 }
 
 function TypeCaseScene({
   active,
   hover,
+  pressed,
   onPick,
   onHover,
+  onPress,
 }: {
   active: number;
   hover: number | null;
+  pressed: number | null;
   onPick: (index: number) => void;
   onHover: (index: number | null) => void;
+  onPress: (index: number | null) => void;
 }) {
   const tray = useMemo(() => lacquerTexture(), []);
-  useEffect(() => () => tray?.dispose(), [tray]);
+  useEffect(() => () => {
+    tray?.dispose();
+    document.body.style.cursor = "";
+  }, [tray]);
 
   return (
     <>
@@ -191,9 +205,11 @@ function TypeCaseScene({
             char={char}
             lifted={index === active}
             hovered={index === hover}
+            pressed={index === pressed}
             position={[(col - 1.5) * 0.9, 0, (row - 1) * 0.9]}
             onPick={() => onPick(index)}
             onHover={(on) => onHover(on ? index : null)}
+            onPress={(on) => onPress(on ? index : null)}
           />
         );
       })}
@@ -201,7 +217,7 @@ function TypeCaseScene({
       <OrbitControls
         enablePan={false}
         enableDamping
-        dampingFactor={0.1}
+        dampingFactor={0.12}
         minDistance={4.2}
         maxDistance={8.5}
         maxPolarAngle={1.25}
@@ -235,22 +251,37 @@ function TypeCaseFlat({ active, onPick }: { active: number; onPick: (index: numb
 export function TypeCaseSetpiece({ progress = 0 }: { progress?: number }) {
   const gpu = useGpu();
   const reduced = useReducedMotion();
+  const owned = useRef(false);
   const [active, setActive] = useState(4);
   const [hover, setHover] = useState<number | null>(null);
+  const [pressed, setPressed] = useState<number | null>(null);
   const fromScroll = Math.min(11, Math.max(0, Math.round(progress * 11)));
 
   useEffect(() => {
+    if (owned.current) return;
     if (progress > 0.08) setActive(fromScroll);
   }, [fromScroll, progress]);
+
+  function pick(index: number) {
+    owned.current = true;
+    setActive(index);
+  }
 
   return (
     <div className="flex h-full min-h-[420px] flex-col bg-void">
       <div className="min-h-[380px] flex-1 cursor-grab">
         {!gpu || reduced ? (
-          <TypeCaseFlat active={active} onPick={setActive} />
+          <TypeCaseFlat active={active} onPick={pick} />
         ) : (
           <LiveCanvas camera={{ position: [3.6, 3.4, 5.4], fov: 34 }}>
-            <TypeCaseScene active={active} hover={hover} onPick={setActive} onHover={setHover} />
+            <TypeCaseScene
+              active={active}
+              hover={hover}
+              pressed={pressed}
+              onPick={pick}
+              onHover={setHover}
+              onPress={setPressed}
+            />
           </LiveCanvas>
         )}
       </div>

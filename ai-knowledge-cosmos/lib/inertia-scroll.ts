@@ -1,6 +1,10 @@
 let token = 0;
 
-export function inertiaScroll(to: number, duration = 980) {
+export function cancelInertia() {
+  token += 1;
+}
+
+export function inertiaScroll(to: number, duration = 620) {
   const id = ++token;
   const start = window.scrollY;
   const dist = to - start;

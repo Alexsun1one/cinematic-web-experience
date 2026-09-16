@@ -1,55 +1,79 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Chamber } from "@/components/gallery/Chamber";
 import { Entrance } from "@/components/gallery/Entrance";
 import { ExitHall } from "@/components/gallery/ExitHall";
 import { GalleryRail } from "@/components/gallery/GalleryRail";
+import { dwellMap, paintCorridor } from "@/lib/corridor";
 import { CHAPTERS } from "@/lib/journey";
-import { inertiaScroll } from "@/lib/inertia-scroll";
+import { cancelInertia, inertiaScroll } from "@/lib/inertia-scroll";
 import { useReducedMotion } from "@/lib/motion-pref";
 import { getVisited, getVisitedServer, subscribeVisited } from "@/lib/progress";
 
 const LESSONS = CHAPTERS.filter((chapter) => chapter.slug);
 export const GALLERY_COUNT = LESSONS.length + 2;
 
-function dwellMap(progress: number, count: number) {
-  const x = progress * (count - 1);
-  const index = Math.min(count - 2, Math.floor(x));
-  const t = x - index;
-  let local: number;
-  if (t < 0.14) local = (t / 0.14) * 0.08;
-  else if (t > 0.86) local = 0.92 + ((t - 0.86) / 0.14) * 0.08;
-  else local = 0.08 + ((t - 0.14) / 0.72) * 0.84;
-  return index + local;
-}
-
 export function Gallery() {
   const visited = useSyncExternalStore(subscribeVisited, getVisited, getVisitedServer);
   const reduced = useReducedMotion();
-  const target = useRef(0);
   const track = useRef<HTMLDivElement>(null);
+  const alongRef = useRef(0);
+  const activeRef = useRef(0);
   const [along, setAlong] = useState(0);
+  const [active, setActive] = useState(0);
   const lit = visited.filter((slug) => LESSONS.some((chapter) => chapter.slug === slug)).length;
+
+  const jump = useCallback(
+    (index: number) => {
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      const top = (index / (GALLERY_COUNT - 1)) * max;
+      if (reduced) window.scrollTo(0, top);
+      else inertiaScroll(top, 620);
+    },
+    [reduced],
+  );
 
   useEffect(() => {
     if (reduced) return;
+    let frame = 0;
+    let current = alongRef.current;
+    let published = current;
+    let last = performance.now();
+
     function measure() {
       const max = document.documentElement.scrollHeight - window.innerHeight;
       const progress = max <= 0 ? 0 : Math.min(1, Math.max(0, window.scrollY / max));
-      target.current = dwellMap(progress, GALLERY_COUNT);
+      return dwellMap(progress, GALLERY_COUNT);
     }
-    let frame = 0;
-    let current = target.current;
-    let published = current;
-    function tick() {
-      const diff = target.current - current;
-      const catchup = Math.min(1, 0.2 + Math.abs(diff) * 0.62);
-      if (Math.abs(diff) < 0.0004) {
-        current = target.current;
-        if (track.current) {
-          track.current.style.transform = `translate3d(${-current * 100}vw, 0, 0)`;
-        }
+
+    function tick(now: number) {
+      const dt = Math.min(0.048, Math.max(0.008, (now - last) / 1000));
+      last = now;
+      const target = measure();
+      const diff = target - current;
+      const velocity = diff / dt;
+      const lambda = 20 + Math.min(18, Math.abs(velocity) * 0.08);
+      if (Math.abs(diff) < 0.00025) current = target;
+      else current += diff * (1 - Math.exp(-lambda * dt));
+
+      const node = track.current;
+      if (node) {
+        node.style.transform = `translate3d(${-current * 100}vw, 0, 0)`;
+        paintCorridor(node, current, velocity);
+      }
+
+      alongRef.current = current;
+      const nextActive = Math.round(current);
+      if (nextActive !== activeRef.current) {
+        activeRef.current = nextActive;
+        setActive(nextActive);
+      }
+      if (Math.abs(current - published) > 0.045) {
+        published = current;
+        setAlong(current);
+      }
+      if (current === target) {
         if (current !== published) {
           published = current;
           setAlong(current);
@@ -57,24 +81,20 @@ export function Gallery() {
         frame = 0;
         return;
       }
-      current += diff * catchup;
-      if (track.current) {
-        track.current.style.transform = `translate3d(${-current * 100}vw, 0, 0)`;
-      }
-      if (Math.abs(current - published) > 0.012) {
-        published = current;
-        setAlong(current);
-      }
       frame = requestAnimationFrame(tick);
     }
+
     function kick() {
-      if (!frame) frame = requestAnimationFrame(tick);
+      if (!frame) {
+        last = performance.now();
+        frame = requestAnimationFrame(tick);
+      }
     }
+
     function onScroll() {
-      measure();
       kick();
     }
-    measure();
+
     kick();
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll);
@@ -85,26 +105,18 @@ export function Gallery() {
     };
   }, [reduced]);
 
-  const active = Math.round(along);
-
-  function jump(index: number) {
-    const max = document.documentElement.scrollHeight - window.innerHeight;
-    const top = (index / (GALLERY_COUNT - 1)) * max;
-    if (reduced) window.scrollTo(0, top);
-    else inertiaScroll(top, 1080);
-  }
-
   useEffect(() => {
     if (reduced) return;
     function onKey(event: KeyboardEvent) {
       const tag = (event.target as HTMLElement | null)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
-      if (event.key === "ArrowRight") {
+      const index = activeRef.current;
+      if (event.key === "ArrowRight" || event.key === "ArrowDown") {
         event.preventDefault();
-        jump(Math.min(GALLERY_COUNT - 1, active + 1));
-      } else if (event.key === "ArrowLeft") {
+        jump(Math.min(GALLERY_COUNT - 1, index + 1));
+      } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
         event.preventDefault();
-        jump(Math.max(0, active - 1));
+        jump(Math.max(0, index - 1));
       } else if (event.key === "Home") {
         event.preventDefault();
         jump(0);
@@ -114,35 +126,32 @@ export function Gallery() {
       }
     }
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [active, reduced]);
+    window.addEventListener("wheel", cancelInertia, { passive: true });
+    window.addEventListener("touchstart", cancelInertia, { passive: true });
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("wheel", cancelInertia);
+      window.removeEventListener("touchstart", cancelInertia);
+    };
+  }, [jump, reduced]);
 
   const rooms = (
     <>
-      <Entrance
-        lit={lit}
-        total={LESSONS.length}
-        shift={Math.min(1, along)}
-        presence={Math.max(0, 1 - along * 1.05)}
-        onEnter={() => jump(1)}
-      />
+      <Entrance lit={lit} total={LESSONS.length} onEnter={() => jump(1)} />
       {LESSONS.map((chapter, index) => {
         const slot = index + 1;
         const local = Math.min(1, Math.max(0, along - slot + 0.5));
-        const presence = Math.max(0, 1 - Math.abs(along - slot) * 1.15);
-        const leaving = Math.max(0, Math.min(1, (along - slot) * 1.6));
         return (
           <Chamber
             key={chapter.id}
             chapter={chapter}
             visited={Boolean(chapter.slug && visited.includes(chapter.slug))}
             local={local}
-            presence={presence}
-            leaving={leaving}
+            slot={slot}
           />
         );
       })}
-      <ExitHall presence={Math.max(0, 1 - Math.abs(along - (GALLERY_COUNT - 1)) * 1.1)} />
+      <ExitHall slot={GALLERY_COUNT - 1} />
     </>
   );
 
