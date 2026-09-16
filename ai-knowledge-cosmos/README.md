@@ -31,6 +31,7 @@ npm start
 - `reboot-setpiece.png` — 排字盘高潮
 - `reboot-lesson.png` — 课文
 - `reboot-blog.png` — 刊物
+- `reboot-atlas.png` — 墨线图录
 
 ## 页面
 

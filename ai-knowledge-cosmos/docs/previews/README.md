@@ -8,3 +8,4 @@ Reboot stills (paper / ink / gold). Older orb-cosmos shots are obsolete.
 | `reboot-setpiece.png` | type case climax |
 | `reboot-lesson.png` | `/learn/llm-intuition` |
 | `reboot-blog.png` | `/blog` |
+| `reboot-atlas.png` | `/knowledge` |
