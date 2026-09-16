@@ -41,7 +41,7 @@ function LampRig({ yaw }: { yaw: number }) {
     <>
       <color attach="background" args={["#100e0c"]} />
       <fog attach="fog" args={["#100e0c", 7, 14]} />
-      <ambientLight intensity={0.07} />
+      <ambientLight intensity={0.14} />
       <mesh position={[0, -1.22, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <circleGeometry args={[3.4, 48]} />
         <meshStandardMaterial color="#1a1612" roughness={0.95} />

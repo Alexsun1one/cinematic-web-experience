@@ -113,17 +113,17 @@ function TypeCaseScene({ active, onPick }: { active: number; onPick: (index: num
     <>
       <color attach="background" args={["#100e0c"]} />
       <fog attach="fog" args={["#100e0c", 8, 16]} />
-      <hemisphereLight args={["#f3e6cc", "#1a120c", 0.35]} />
+      <hemisphereLight args={["#f3e6cc", "#1a120c", 0.7]} />
       <spotLight
         position={[3.2, 6.4, 2.4]}
-        angle={0.42}
-        penumbra={0.7}
-        intensity={2.4}
+        angle={0.48}
+        penumbra={0.65}
+        intensity={3.6}
         color="#f3e0b8"
         castShadow
         shadow-mapSize={[1024, 1024]}
       />
-      <pointLight position={[-3, 2, -2]} intensity={0.4} color="#b57a28" />
+      <pointLight position={[-3, 2, -2]} intensity={0.7} color="#b57a28" />
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.52, 0]} receiveShadow>
         <boxGeometry args={[5.2, 4.1, 0.22]} />
         <meshStandardMaterial map={wood ?? undefined} color="#5a3a24" roughness={0.86} />

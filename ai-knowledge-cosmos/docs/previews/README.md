@@ -1,11 +1,11 @@
 # Previews
 
-Reboot stills (paper / ink / gold). Older orb-cosmos shots are obsolete.
+Stun-pass stills (paper / ink / gold). Older orb shots removed.
 
 | File | Page |
 | --- | --- |
-| `reboot-home.png` | `/` act 0 |
-| `reboot-setpiece.png` | type case climax |
-| `reboot-lesson.png` | `/learn/llm-intuition` |
-| `reboot-blog.png` | `/blog` |
-| `reboot-atlas.png` | `/knowledge` |
+| `stun-home.png` | `/` first viewport |
+| `stun-pin.png` | pinned type-case act |
+| `stun-setpiece.png` | pinned desk lamp |
+| `stun-lesson.png` | `/learn/llm-intuition` |
+| `stun-blog.png` | `/blog` |
