@@ -8,13 +8,12 @@ export function SiteHeader() {
   const pathname = usePathname();
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 border-b border-ivory/5 bg-void/75 backdrop-blur-xl">
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-ink/10 bg-paper/90 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
-        <Link href="/" className="group flex items-baseline gap-3 no-underline">
-          <span className="font-serif text-lg tracking-wide text-ivory">{site.name}</span>
-          <span className="hidden font-display text-sm text-mute sm:inline">{site.english}</span>
+        <Link href="/" className="font-serif text-[1.15rem] tracking-wide text-ink no-underline">
+          {site.name}
         </Link>
-        <nav className="panel flex items-center gap-1 rounded-full px-2 py-1">
+        <nav className="flex items-center gap-1 text-sm">
           {nav.map((item) => {
             const active =
               item.href === "/"
@@ -24,8 +23,8 @@ export function SiteHeader() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`rounded-full px-3 py-1.5 text-sm no-underline transition-colors ${
-                  active ? "bg-ivory/10 text-ivory" : "text-mist hover:text-ivory"
+                className={`px-3 py-1 no-underline ${
+                  active ? "text-ink decoration-gold underline decoration-2 underline-offset-8" : "text-mist hover:text-ink"
                 }`}
               >
                 {item.label}

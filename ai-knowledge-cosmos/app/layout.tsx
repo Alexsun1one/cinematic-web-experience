@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Instrument_Serif, JetBrains_Mono, Noto_Sans_SC, Noto_Serif_SC } from "next/font/google";
+import { JetBrains_Mono, Noto_Sans_SC, Noto_Serif_SC } from "next/font/google";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { site } from "@/lib/site";
@@ -14,15 +14,8 @@ const sans = Noto_Sans_SC({
 
 const serif = Noto_Serif_SC({
   subsets: ["latin"],
-  weight: ["600", "700"],
+  weight: ["400", "600", "700"],
   variable: "--font-noto-serif",
-  display: "swap",
-});
-
-const display = Instrument_Serif({
-  subsets: ["latin"],
-  weight: "400",
-  variable: "--font-display",
   display: "swap",
 });
 
@@ -35,7 +28,7 @@ const mono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: `${site.name} · ${site.english}`,
+    default: site.name,
     template: `%s · ${site.name}`,
   },
   description: site.description,
@@ -43,12 +36,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="zh-CN"
-      className={`${sans.variable} ${serif.variable} ${display.variable} ${mono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full bg-void font-sans text-ivory">
-        <div className="grain" aria-hidden="true" />
+    <html lang="zh-CN" className={`${sans.variable} ${serif.variable} ${mono.variable} h-full antialiased`}>
+      <body className="min-h-full bg-paper font-sans text-ink">
         <SiteHeader />
         <div className="flex min-h-full flex-col">{children}</div>
         <SiteFooter />

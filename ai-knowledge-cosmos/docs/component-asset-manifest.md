@@ -1,28 +1,12 @@
-# Component Asset Manifest — 智识宇宙
-
-## Source
-
-- project: 智识宇宙 / Knowledge Cosmos
-- source files: `lib/cosmos.ts`, `content/lessons/*`, `content/posts/*`
-- target route: Evidence constellation
-- SSS target: inspectable curriculum world
-
-## Components
+# Component Asset Manifest — 智识宇宙（reboot）
 
 | id | type | source | web layer role | interaction |
 | --- | --- | --- | --- | --- |
-| core | generated icosahedron | curriculum thesis | 理解核 | 点击进入 /learn |
-| lesson-nodes | generated meshes | eight lessons | 可检视主体 | 拖曳场景、点击聚焦、缩放 |
-| filaments | line components | COSMOS_EDGES | 依赖关系 | 聚焦时点亮 |
-| nebula | transparent spheres | atmosphere | 空间深度 | 无直接操作 |
-| hud | DOM overlay | copy + controls | 规格与导航 | 复位 / 缩放 / 静止 |
-| onboard | DOM tip | first-5s overlay | 操作提示 | 可关闭，不挡星图 |
-| atlas | SVG map | same graph | 可读星图 | 点击节点 |
-| fallback | static SVG | same graph | reduced-motion | 键盘与链接仍可用 |
-| attention-toy | canvas heatmap | lesson 08 | 示意权重 | 点选查询词 |
-| magazine | typography system | four essays | 阅读界面 | 进度条 / 引语 |
+| paper-stage | CSS world | 课程序列 | 行程舞台 | 滚动 / 章节锚点 |
+| type-case | R3F 铅字盘 | 续写隐喻 | 高潮一 | 点选抬起、拖曳旋转 |
+| desk-lamp | R3F 台灯 | 注意隐喻 | 高潮二 | 滑杆转灯 |
+| toys | DOM | 各课机制 | 教具 | 对照 / 盖章 / 切砖 / 热力 |
+| ink-atlas | SVG | 同一序列 | 图录 | 点选章节 |
+| fallback | 平面铅字/台灯 | 同一隐喻 | reduced-motion | 仍可点选 |
 
-## Truth labels
-
-- 3D 星体是课程结构的空间化，不是科学模拟。
-- 教学内容为原创，灵感来自公开教育学，非专有文档。
+Truth labels：三维是教学隐喻，不是科学模拟。玩具是示意，不是真实模型。

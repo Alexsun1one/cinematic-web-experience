@@ -27,8 +27,8 @@ export function ReadingProgress() {
   }, []);
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-0 z-[60] h-[3px] bg-ivory/15">
-      <div className="h-full bg-violet" style={{ width: `${Math.max(progress * 100, progress > 0 ? 2 : 0)}%` }} />
+    <div className="pointer-events-none fixed inset-x-0 top-0 z-[60] h-[3px] bg-ink/10">
+      <div className="h-full bg-gold" style={{ width: `${progress * 100}%` }} />
     </div>
   );
 }

@@ -1,20 +1,12 @@
 import type { ReactNode } from "react";
 
-export function PullQuote({
-  children,
-  cite,
-}: {
-  children: ReactNode;
-  cite?: string;
-}) {
+export function PullQuote({ children, cite }: { children: ReactNode; cite?: string }) {
   return (
-    <figure className="pull-quote my-12 border-y border-violet/25 py-9">
-      <blockquote className="font-serif text-[1.65rem] leading-snug text-ivory md:text-[2rem] md:leading-[1.35]">
+    <figure className="my-12 border-y border-ink/15 py-9">
+      <blockquote className="font-serif text-[1.65rem] leading-snug text-ink md:text-[2rem] md:leading-[1.35]">
         {children}
       </blockquote>
-      {cite ? (
-        <figcaption className="mt-5 text-xs tracking-[0.22em] text-mute uppercase">{cite}</figcaption>
-      ) : null}
+      {cite ? <figcaption className="mt-5 text-sm text-mist">{cite}</figcaption> : null}
     </figure>
   );
 }

@@ -1,28 +1,39 @@
-import { LessonCard } from "@/components/ui/Cards";
-import { JourneyWorlds } from "@/components/learn/JourneyWorlds";
+import Link from "next/link";
 import { getLessonMetas } from "@/lib/content";
+import { chapterBySlug } from "@/lib/journey";
 
 export const metadata = {
-  title: "课程",
+  title: "课文",
 };
 
-export default function LearnPage() {
+export default function LearnIndexPage() {
   const lessons = getLessonMetas();
+
   return (
-    <main className="mx-auto max-w-6xl px-5 pt-24 pb-16">
-      <p className="text-xs tracking-[0.28em] text-teal uppercase">Curriculum</p>
-      <h1 className="mt-3 font-serif text-5xl text-ivory">八座世界</h1>
-      <p className="mt-4 max-w-2xl text-lg leading-8 text-mist">
-        0→1 不是清单，是一串可以点亮的世界。打开一课后会记下抵达；回来时，星轨会告诉你走到了哪。
+    <main className="mx-auto max-w-3xl px-5 pt-28 pb-20">
+      <p className="font-serif text-6xl text-gold">目</p>
+      <h1 className="mt-6 font-serif text-5xl text-ink">课文</h1>
+      <p className="mt-5 max-w-xl text-lg leading-8 text-ink-soft">
+        不是卡片墙。按行程的顺序往下读。每课一篇，配一个教得会的玩具。
       </p>
-      <div className="mt-10">
-        <JourneyWorlds lessons={lessons} />
-      </div>
-      <div className="grid gap-4 md:grid-cols-2">
-        {lessons.map((lesson) => (
-          <LessonCard key={lesson.slug} lesson={lesson} />
-        ))}
-      </div>
+      <ol className="mt-14">
+        {lessons.map((lesson) => {
+          const chapter = chapterBySlug(lesson.slug);
+          return (
+            <li key={lesson.slug} className="border-t border-ink/10 py-8">
+              <Link href={`/learn/${lesson.slug}`} className="group block no-underline">
+                <p className="font-serif text-3xl text-gold">{lesson.numeral}</p>
+                <h2 className="mt-3 font-serif text-3xl text-ink group-hover:text-gold-deep">{lesson.title}</h2>
+                <p className="mt-3 font-serif leading-8 text-ink-soft">{lesson.metaphor}</p>
+                <p className="mt-2 text-sm text-mist">
+                  {lesson.duration}
+                  {chapter ? ` · ${chapter.cta}` : ""}
+                </p>
+              </Link>
+            </li>
+          );
+        })}
+      </ol>
     </main>
   );
 }

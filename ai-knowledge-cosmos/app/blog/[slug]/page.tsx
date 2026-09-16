@@ -9,7 +9,7 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const post = await getPost(slug);
-  if (!post) return { title: "未找到笔记" };
+  if (!post) return { title: "未找到" };
   return { title: post.meta.title, description: post.meta.summary };
 }
 
@@ -24,13 +24,13 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
 
   return (
     <ArticleShell
+      magazine
       kicker={post.meta.kicker}
       title={post.meta.title}
       summary={post.meta.summary}
       meta={`${post.meta.date} · ${post.meta.reading}`}
-      prev={prev ? { href: `/blog/${prev.slug}`, label: prev.title } : { href: "/blog", label: "笔记目录" }}
-      next={next ? { href: `/blog/${next.slug}`, label: next.title } : { href: "/learn", label: "回到课程" }}
-      variant="magazine"
+      prev={prev ? { href: `/blog/${prev.slug}`, label: prev.title } : { href: "/blog", label: "刊物目录" }}
+      next={next ? { href: `/blog/${next.slug}`, label: next.title } : { href: "/", label: "回到行程" }}
     >
       {post.content}
     </ArticleShell>

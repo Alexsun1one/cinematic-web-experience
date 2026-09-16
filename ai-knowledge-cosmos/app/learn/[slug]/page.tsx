@@ -9,7 +9,7 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const lesson = await getLesson(slug);
-  if (!lesson) return { title: "未找到课程" };
+  if (!lesson) return { title: "未找到课文" };
   return { title: lesson.meta.title, description: lesson.meta.summary };
 }
 
@@ -22,12 +22,13 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
   return (
     <ArticleShell
       visitSlug={slug}
-      kicker={`${lesson.meta.constellation} · STAGE ${lesson.meta.stage}`}
+      numeral={lesson.meta.numeral}
+      kicker={`${lesson.meta.duration} · ${lesson.meta.metaphor}`}
       title={lesson.meta.title}
       summary={lesson.meta.summary}
-      meta={`${lesson.meta.duration} · ${lesson.meta.kicker}`}
-      prev={prev ? { href: `/learn/${prev.slug}`, label: prev.title } : { href: "/learn", label: "课程目录" }}
-      next={next ? { href: `/learn/${next.slug}`, label: next.title } : { href: "/knowledge", label: "打开星图" }}
+      meta={`第 ${lesson.meta.stage} 课`}
+      prev={prev ? { href: `/learn/${prev.slug}`, label: prev.title } : { href: "/learn", label: "课文目录" }}
+      next={next ? { href: `/learn/${next.slug}`, label: next.title } : { href: "/", label: "回到行程" }}
     >
       {lesson.content}
     </ArticleShell>

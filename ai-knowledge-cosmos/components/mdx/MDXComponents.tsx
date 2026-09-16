@@ -1,36 +1,28 @@
 import type { HTMLAttributes, ReactNode } from "react";
 import { PullQuote } from "@/components/blog/PullQuote";
 import { AttentionHeatmap } from "@/components/learn/AttentionHeatmap";
+import { ClosedLoop } from "@/components/learn/ClosedLoop";
 import { FactCheckToy } from "@/components/learn/FactCheckToy";
+import { NextTokenToy } from "@/components/learn/NextTokenToy";
 import { PromptCompare } from "@/components/learn/PromptCompare";
+import { StampGate } from "@/components/learn/StampGate";
 import { TokenSplitter } from "@/components/learn/TokenSplitter";
+import { ToolLoop } from "@/components/learn/ToolLoop";
 
-function Callout({
-  title,
-  children,
-}: {
-  title: string;
-  children: ReactNode;
-}) {
+function Callout({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <aside className="my-6 rounded-2xl border border-teal/25 bg-teal/5 px-5 py-4">
-      <p className="text-xs tracking-[0.22em] text-teal uppercase">{title}</p>
-      <div className="mt-2 text-[0.98rem] leading-8 text-ivory">{children}</div>
+    <aside className="my-6 border border-ink/10 bg-paper-2/60 px-5 py-4">
+      <p className="font-serif text-gold">{title}</p>
+      <div className="mt-2 text-[0.98rem] leading-8 text-ink-soft">{children}</div>
     </aside>
   );
 }
 
-function Practice({
-  title,
-  children,
-}: {
-  title: string;
-  children: ReactNode;
-}) {
+function Practice({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="my-6 rounded-2xl border border-amber/25 bg-amber/5 px-5 py-4">
-      <p className="text-xs tracking-[0.22em] text-amber uppercase">{title}</p>
-      <div className="mt-2 text-[0.98rem] leading-8 text-ivory">{children}</div>
+    <section className="my-6 border border-gold/40 bg-gold/5 px-5 py-4">
+      <p className="font-serif text-gold-deep">{title}</p>
+      <div className="mt-2 text-[0.98rem] leading-8 text-ink-soft">{children}</div>
     </section>
   );
 }
@@ -50,5 +42,9 @@ export const mdxComponents = {
   PromptCompare,
   FactCheckToy,
   AttentionHeatmap,
+  NextTokenToy,
+  StampGate,
+  ToolLoop,
+  ClosedLoop,
   PullQuote,
 };

@@ -1,30 +1,17 @@
-# Subject Map — 智识宇宙
+# Subject Map — 智识宇宙（reboot）
 
 ## Primary subject
 
-八站 AI 入门课程构成的知识星图。理解核在原点，八课环绕，笔记在外层。
+0→1 课程行程。纸页是舞台。铅字盘与台灯是两件可检视的工作室物件。
 
 ## Secondary subjects
 
-观测笔记四篇：路径、提示词方法、工具现场、公开阅读。杂志排版是笔记的阅读界面，不是主体替代。
+四篇观测笔记、墨线图录。
 
-## Clutter to remove
+## Clutter removed
 
-- 通用 startup hero
-- 地球 / 粒子品牌秀
-- 英文先行的营销口吻
+发光球体、青绿紫配色、英文大写 kicker、课程卡片墙、全屏轨道球。
 
 ## Exact cues to keep
 
-- 中文课名与 STAGE 编号
-- 课与课之间的真实依赖（直觉→token→规格→边界→行动→闭环→核验→注视）
-- 每颗星体可进入对应 MDX
-
-## Spatial route
-
-3D：几何体 + 连线 + 阻尼轨道控制 + 聚焦镜头。
-2D：`/knowledge` 投影星图，供阅读与减弱动效。
-
-## Fallback still
-
-`CosmosFallback` SVG。课程列表在首页折页下仍存在，WebGL 不是唯一入口。
+中文课名、壹到捌、每课一个隐喻、示意玩具、可进入的课文 href。

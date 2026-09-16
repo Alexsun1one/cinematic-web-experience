@@ -3,7 +3,6 @@ import path from "node:path";
 import matter from "gray-matter";
 import { compileMDX } from "next-mdx-remote/rsc";
 import { mdxComponents } from "@/components/mdx/MDXComponents";
-import type { NodeColor } from "@/lib/cosmos";
 
 export type LessonMeta = {
   slug: string;
@@ -11,10 +10,9 @@ export type LessonMeta = {
   summary: string;
   stage: string;
   duration: string;
-  color: NodeColor;
   order: number;
-  constellation: string;
-  kicker: string;
+  numeral: string;
+  metaphor: string;
 };
 
 export type PostMeta = {
