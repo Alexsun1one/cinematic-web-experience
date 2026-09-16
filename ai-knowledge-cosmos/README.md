@@ -10,7 +10,9 @@
 - React Three Fiber + Drei + three
 - Motion
 
-## 本地运行
+## 打开网页（本地即是 live 路径）
+
+此环境没有 Vercel 登录或部署 token，因此没有托管预览 URL。打开页面的方式是本地运行；生产构建已通过。
 
 需要 Node.js 20+。
 
@@ -20,14 +22,24 @@ npm install
 npm run dev
 ```
 
-打开 [http://localhost:3000](http://localhost:3000)。
+浏览器打开 [http://localhost:3000](http://localhost:3000)。这就是当前可用的 live 页面。
+
+生产模式（构建已验证通过）：
 
 ```bash
 npm run build
 npm start
 ```
 
-用于生产构建与本地预览。
+若要托管到 Vercel，在已登录的机器上于本目录执行 `npx vercel`。
+
+## 预览截图
+
+截图在 [`docs/previews/`](docs/previews/)：
+
+- `home-cosmos.png` — 三维学习宇宙
+- `lesson-page.png` — 课程正文
+- `knowledge-atlas.png` — 知识星图
 
 ## 页面
 
