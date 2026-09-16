@@ -23,8 +23,16 @@ export function CosmosExperience() {
       if (event.key === "Escape") setFocused(null);
       if (event.key === "=" || event.key === "+") setDistance((value) => Math.max(4.5, value * 0.88));
       if (event.key === "-" || event.key === "_") setDistance((value) => Math.min(16, value * 1.12));
-      if (/^[1-6]$/.test(event.key)) {
-        const order = ["llm-intuition", "tokens", "prompting", "alignment", "tools-agents", "hands-on"];
+      if (/^[1-7]$/.test(event.key)) {
+        const order = [
+          "llm-intuition",
+          "tokens",
+          "prompting",
+          "alignment",
+          "tools-agents",
+          "hands-on",
+          "verification",
+        ];
         setFocused(order[Number(event.key) - 1] ?? null);
       }
     }

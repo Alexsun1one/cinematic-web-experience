@@ -21,6 +21,7 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
 
   return (
     <ArticleShell
+      visitSlug={slug}
       kicker={`${lesson.meta.constellation} · STAGE ${lesson.meta.stage}`}
       title={lesson.meta.title}
       summary={lesson.meta.summary}

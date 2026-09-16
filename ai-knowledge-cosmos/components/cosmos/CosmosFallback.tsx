@@ -73,7 +73,7 @@ export function CosmosFallback({
                 fill="#f3eee4"
                 fontSize="13"
               >
-                {node.stage} {node.title}
+                {node.stage} {node.short}
               </text>
             </g>
           );

@@ -1,4 +1,7 @@
 import type { HTMLAttributes, ReactNode } from "react";
+import { FactCheckToy } from "@/components/learn/FactCheckToy";
+import { PromptCompare } from "@/components/learn/PromptCompare";
+import { TokenSplitter } from "@/components/learn/TokenSplitter";
 
 function Callout({
   title,
@@ -41,4 +44,7 @@ export const mdxComponents = {
   h3: heading("h3"),
   Callout,
   Practice,
+  TokenSplitter,
+  PromptCompare,
+  FactCheckToy,
 };

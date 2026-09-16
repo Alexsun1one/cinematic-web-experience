@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { VisitBeacon } from "@/components/learn/VisitBeacon";
 
 export function ArticleShell({
   kicker,
@@ -9,6 +10,7 @@ export function ArticleShell({
   children,
   prev,
   next,
+  visitSlug,
 }: {
   kicker: string;
   title: string;
@@ -17,9 +19,11 @@ export function ArticleShell({
   children: ReactNode;
   prev?: { href: string; label: string } | null;
   next?: { href: string; label: string } | null;
+  visitSlug?: string;
 }) {
   return (
     <article className="mx-auto w-full max-w-3xl px-5 pt-24 pb-16">
+      {visitSlug ? <VisitBeacon slug={visitSlug} /> : null}
       <p className="text-xs tracking-[0.28em] text-teal uppercase">{kicker}</p>
       <h1 className="mt-4 font-serif text-4xl leading-tight tracking-tight text-ivory md:text-5xl">
         {title}

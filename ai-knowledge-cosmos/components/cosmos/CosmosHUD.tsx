@@ -29,7 +29,7 @@ export function CosmosHUD({
           把 AI 学成一座可以走进去的宇宙
         </h1>
         <p className="mt-4 max-w-md text-sm leading-7 text-mist md:text-base">
-          拖曳旋转星体，滚轮或按钮缩放，点击课程节点进入 0→1 的六站旅程。这不是装饰性地球仪，星图本身就是课程结构。
+          拖曳旋转星体，滚轮或按钮缩放，点击课程节点进入 0→1 的七座世界。选中时镜头会靠过去：星图本身就是课程结构。
         </p>
       </div>
 
@@ -60,7 +60,7 @@ export function CosmosHUD({
                 boxShadow: focused === item.id ? `0 0 0 1px ${colorHex[item.color]}` : undefined,
               }}
             >
-              {item.stage} {item.title}
+              {item.stage} {item.short}
             </button>
           ))}
         </div>

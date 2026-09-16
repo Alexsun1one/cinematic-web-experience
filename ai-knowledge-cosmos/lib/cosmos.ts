@@ -12,7 +12,7 @@ export type CosmosNode = {
   position: [number, number, number];
   stage?: string;
   duration?: string;
-  geometry: "icosa" | "octa" | "torus" | "tetra" | "dodeca" | "box" | "core";
+  geometry: "icosa" | "octa" | "torus" | "tetra" | "dodeca" | "box" | "core" | "sphere";
 };
 
 export const colorHex: Record<NodeColor, string> = {
@@ -24,6 +24,11 @@ export const colorHex: Record<NodeColor, string> = {
   ivory: "#f3eee4",
 };
 
+function orbit(index: number, y: number, radius = 4.65): [number, number, number] {
+  const angle = ((Math.PI * 2) * index) / 7;
+  return [Math.cos(angle) * radius, y, Math.sin(angle) * radius];
+}
+
 export const COSMOS_NODES: CosmosNode[] = [
   {
     id: "core",
@@ -31,7 +36,7 @@ export const COSMOS_NODES: CosmosNode[] = [
     title: "理解核",
     english: "Comprehension",
     short: "理解核",
-    summary: "六门课共同指向的一件事：把模型当成可检验的系统，而不是神谕。",
+    summary: "七门课共同指向的一件事：把模型当成可检验的系统，而不是神谕。",
     href: "/learn",
     color: "ivory",
     position: [0, 0, 0],
@@ -46,7 +51,7 @@ export const COSMOS_NODES: CosmosNode[] = [
     summary: "它不是在「想」，它是在根据上下文续写。理解这一点，后面所有课才站得住。",
     href: "/learn/llm-intuition",
     color: "teal",
-    position: [4.4, 0.55, 0.4],
+    position: orbit(0, 0.45),
     stage: "01",
     duration: "14 分钟",
     geometry: "icosa",
@@ -60,7 +65,7 @@ export const COSMOS_NODES: CosmosNode[] = [
     summary: "模型看见的不是汉字或单词，而是切分后的编号。预算、价格、怪癖都从这里来。",
     href: "/learn/tokens",
     color: "blue",
-    position: [2.1, -0.35, 4.0],
+    position: orbit(1, -0.28),
     stage: "02",
     duration: "12 分钟",
     geometry: "box",
@@ -74,7 +79,7 @@ export const COSMOS_NODES: CosmosNode[] = [
     summary: "好的提示词像一份可执行的 brief：目标、约束、例子、输出格式。形容词堆砌帮不上忙。",
     href: "/learn/prompting",
     color: "violet",
-    position: [-2.3, 0.7, 3.8],
+    position: orbit(2, 0.52),
     stage: "03",
     duration: "16 分钟",
     geometry: "torus",
@@ -88,7 +93,7 @@ export const COSMOS_NODES: CosmosNode[] = [
     summary: "模型被训练成有偏好的助手。拒绝不是针对你，判断也不能外包给它。",
     href: "/learn/alignment",
     color: "rose",
-    position: [-4.5, -0.25, -0.2],
+    position: orbit(3, -0.18),
     stage: "04",
     duration: "13 分钟",
     geometry: "octa",
@@ -102,7 +107,7 @@ export const COSMOS_NODES: CosmosNode[] = [
     summary: "工具是函数，智能体是循环。模型开始「动手」之后，错误形态也跟着变了。",
     href: "/learn/tools-agents",
     color: "amber",
-    position: [-1.8, 0.45, -4.1],
+    position: orbit(4, 0.38),
     stage: "05",
     duration: "15 分钟",
     geometry: "tetra",
@@ -116,10 +121,24 @@ export const COSMOS_NODES: CosmosNode[] = [
     summary: "最小有用闭环：问题、成功标准、一次尝试、一次检验、一次迭代。",
     href: "/learn/hands-on",
     color: "teal",
-    position: [2.4, -0.55, -3.9],
+    position: orbit(5, -0.42),
     stage: "06",
     duration: "12 分钟",
     geometry: "dodeca",
+  },
+  {
+    id: "verification",
+    kind: "lesson",
+    title: "核验：幻觉、对照与引用",
+    english: "Verification",
+    short: "核验",
+    summary: "流畅不是证据。学会把句子分成可核对的事实、文风，以及必须停下来查的地方。",
+    href: "/learn/verification",
+    color: "ivory",
+    position: orbit(6, 1.12),
+    stage: "07",
+    duration: "13 分钟",
+    geometry: "sphere",
   },
   {
     id: "zero-to-one",
@@ -178,6 +197,7 @@ export const COSMOS_EDGES: [string, string][] = [
   ["core", "alignment"],
   ["core", "tools-agents"],
   ["core", "hands-on"],
+  ["core", "verification"],
   ["llm-intuition", "tokens"],
   ["tokens", "prompting"],
   ["llm-intuition", "prompting"],
@@ -187,11 +207,25 @@ export const COSMOS_EDGES: [string, string][] = [
   ["tools-agents", "hands-on"],
   ["hands-on", "prompting"],
   ["llm-intuition", "alignment"],
+  ["prompting", "verification"],
+  ["llm-intuition", "verification"],
+  ["hands-on", "verification"],
+  ["tokens", "verification"],
   ["llm-intuition", "zero-to-one"],
   ["prompting", "prompts-are-not-spells"],
   ["tools-agents", "when-models-grow-hands"],
   ["hands-on", "reading-in-public"],
 ];
+
+export const LESSON_ORDER = [
+  "llm-intuition",
+  "tokens",
+  "prompting",
+  "alignment",
+  "tools-agents",
+  "hands-on",
+  "verification",
+] as const;
 
 export const lessons = COSMOS_NODES.filter((node) => node.kind === "lesson");
 export const essays = COSMOS_NODES.filter((node) => node.kind === "essay");

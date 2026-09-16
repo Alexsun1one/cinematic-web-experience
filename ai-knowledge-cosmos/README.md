@@ -1,6 +1,6 @@
 # 智识宇宙 / Knowledge Cosmos
 
-中文优先的沉浸式 AI 知识枢纽与个人笔记。首页是可检视的三维学习宇宙：六门 0→1 课程是星体，笔记是外层卫星。拖曳旋转、按钮缩放、点击进入课文。减弱动效时自动切到静态星图，课程与博客仍可完整阅读。
+中文优先的沉浸式 AI 知识枢纽与个人笔记。首页是可检视的三维学习宇宙：七门 0→1 课程是星体，笔记是外层卫星。拖曳旋转、选中时镜头靠过去，点击进入课文。减弱动效时自动切到静态星图。
 
 ## 技术栈
 
@@ -37,16 +37,17 @@ npm start
 
 截图在 [`docs/previews/`](docs/previews/)：
 
-- `home-cosmos.png` — 三维学习宇宙
-- `lesson-page.png` — 课程正文
-- `knowledge-atlas.png` — 知识星图
+- `home-cosmos.png` / `home-cosmos-v2.png` — 三维学习宇宙
+- `learn-worlds-v2.png` — 七座世界轨
+- `lesson-page.png` — 课程正文（含玩具）
+- `knowledge-atlas.png` / `knowledge-atlas-v2.png` — 知识星图
 
 ## 页面
 
 | 路径 | 内容 |
 | --- | --- |
 | `/` | 三维学习宇宙 |
-| `/learn` `/learn/[slug]` | 六站中文课程 |
+| `/learn` `/learn/[slug]` | 七座中文世界（含切分 / 规格对照玩具） |
 | `/blog` `/blog/[slug]` | 观测笔记 |
 | `/knowledge` | 可点击知识星图 |
 | `/about` | 方法、来源与作者 |
@@ -59,6 +60,7 @@ npm start
 
 - `app/` App Router 页面
 - `components/cosmos/` 三维宇宙与 HUD
+- `components/learn/` 世界轨与课文内玩具
 - `content/lessons/` `content/posts/` MDX
 - `lib/cosmos.ts` 星图数据（课程结构本身）
 - `docs/` 路线卡与主体地图
