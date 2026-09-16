@@ -12,9 +12,9 @@ function wallTexture() {
   canvas.height = 512;
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
-  ctx.fillStyle = "#171714";
+  ctx.fillStyle = "#2a2a22";
   ctx.fillRect(0, 0, 1024, 512);
-  ctx.strokeStyle = "rgba(214,255,58,0.08)";
+  ctx.strokeStyle = "rgba(214,255,58,0.16)";
   for (let i = 0; i < 12; i += 1) {
     ctx.beginPath();
     ctx.moveTo(48, 70 + i * 34);
@@ -40,15 +40,17 @@ function LampRig({ yaw }: { yaw: number }) {
   return (
     <>
       <color attach="background" args={["#090908"]} />
-      <fog attach="fog" args={["#090908", 7, 14]} />
-      <ambientLight intensity={0.08} />
+      <fog attach="fog" args={["#090908", 11, 20]} />
+      <hemisphereLight args={["#d6ff3a", "#090908", 0.22]} />
+      <ambientLight intensity={0.28} />
+      <pointLight position={[2.4, 1.6, 3.2]} intensity={2.4} color="#f6ffc8" />
       <mesh position={[0, -1.22, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <circleGeometry args={[3.4, 48]} />
         <meshStandardMaterial color="#10100e" roughness={0.95} />
       </mesh>
       <mesh position={[0, -1.18, 0.35]} rotation={[-Math.PI / 2.12, 0, 0]} receiveShadow>
         <planeGeometry args={[4.8, 2.5]} />
-        <meshStandardMaterial map={texture ?? undefined} color="#171714" roughness={0.92} />
+        <meshStandardMaterial map={texture ?? undefined} color="#2a2a22" roughness={0.92} />
       </mesh>
       <group position={[0, -1.05, -0.9]}>
         <mesh>
@@ -71,13 +73,13 @@ function LampRig({ yaw }: { yaw: number }) {
         </mesh>
         <mesh position={[0, -0.55, 1.25]} rotation={[0.9, 0, 0]}>
           <coneGeometry args={[0.95, 1.8, 24, 1, true]} />
-          <meshBasicMaterial color="#d6ff3a" transparent opacity={0.09} side={DoubleSide} depthWrite={false} />
+          <meshBasicMaterial color="#d6ff3a" transparent opacity={0.18} side={DoubleSide} depthWrite={false} />
         </mesh>
         <spotLight
           position={[0, -0.42, 1.1]}
           angle={0.38}
           penumbra={0.65}
-          intensity={32}
+          intensity={42}
           color="#eaff8a"
           castShadow
           shadow-mapSize={[1024, 1024]}

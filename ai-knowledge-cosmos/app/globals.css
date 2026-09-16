@@ -122,7 +122,7 @@ a {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(135deg, color-mix(in oklab, white 8%, transparent), transparent 36%);
+  background: linear-gradient(135deg, color-mix(in oklab, white 5%, transparent), transparent 32%);
 }
 
 .pedestal {

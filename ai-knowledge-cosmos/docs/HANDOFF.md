@@ -14,8 +14,8 @@ Bold leap from paper-ink magazine (墨金编辑室) to night exhibition 「夜�
 
 ## Next
 
-`npm run build` then capture `docs/previews/bold-*.png`.
+Previews captured: `docs/previews/bold-*.png`. Paper stun/reboot stills removed.
 
 ## Blockers
 
-None known at write time. Headless WebGL may fall back in screenshot capture.
+Headless WebGL lamp is dimmer than desktop; type-case reads clearly. Reduced-motion uses vertical stack.

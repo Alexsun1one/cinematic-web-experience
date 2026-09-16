@@ -49,14 +49,14 @@ export function Chamber({
         {chapter.numeral}
       </p>
 
-      <div className="relative z-10 grid h-full items-stretch gap-6 px-[5vw] pt-20 pb-10 md:grid-cols-[minmax(16rem,0.9fr)_minmax(0,1.25fr)]">
+      <div className="relative z-10 grid h-full items-stretch gap-6 px-[5vw] pt-20 pb-10 md:grid-cols-[minmax(22rem,1fr)_minmax(0,1.15fr)]">
         <div className="flex flex-col justify-between">
           <div>
             <p className="text-[10px] tracking-[0.42em] text-acid">
               展厅 {chapter.index}
               {visited ? " · 已入" : ""}
             </p>
-            <h2 className="mt-5 max-w-md font-serif text-4xl leading-[1.12] text-bone md:text-5xl">{chapter.title}</h2>
+            <h2 className="mt-5 max-w-lg font-serif text-[2.15rem] leading-[1.15] text-bone md:text-[2.7rem]">{chapter.title}</h2>
             <p className="mt-8 max-w-sm font-serif text-2xl leading-snug text-bone/90">{chapter.wall}</p>
             <p className="mt-5 max-w-sm text-base leading-8 text-fog">{chapter.metaphor}</p>
           </div>
