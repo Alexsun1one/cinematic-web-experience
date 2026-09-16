@@ -3,9 +3,9 @@
 - source materials: 原创中文 0→1 课程与个人学习笔记；公开 AI 教育学（大学 NLP 课、实验室公开博客、产品教育）仅作教学法灵感，不作为可贴原文。
 - route: Evidence Constellation + Identity World（知识星图即主体）
 - material/proposal transform: 课程结构 → 可旋转、可聚焦、可复位的三维星体与连线；文字课程作为星体内部。
-- primary subject: 六站学习宇宙（直觉 / Token / 提示词 / 对齐 / 工具循环 / 动手闭环）
+- primary subject: 八站学习宇宙（直觉 / Token / 提示词 / 对齐 / 工具循环 / 动手闭环 / 核验 / 注意力）
 - subject map:
-  - primary subject: 理解核 + 六课星体
+  - primary subject: 理解核 + 八课星体
   - secondary subjects: 四篇观测笔记卫星
   - clutter to remove: 通用 AI 落地页、地球仪、黑金粒子模板
   - background to preserve: 深空、星尘、星云色作为课堂氛围，不抢主体
@@ -14,7 +14,7 @@
   - extraction route: 课程图谱直接建模，无照片底板
   - spatial route: R3F 星图 + 二维 atlas 双通道
   - fallback still: SVG 静态星图
-- interaction freedoms: 拖曳旋转、滚轮/按钮缩放、点击聚焦、键盘 1–6、Escape 复位、静止星图开关
+- interaction freedoms: 拖曳旋转、滚轮/按钮缩放、点击聚焦、键盘 1–8、Escape 复位、静止星图开关、可关闭的前五秒操作提示
 - linked skills: cinematic-web-experience（星图机制）；不使用无关地球仪模板
 - build lane: Next.js + R3F
 - SSS quality target: SS/SSS — 主体可检视，文字可读，减弱动效仍能学

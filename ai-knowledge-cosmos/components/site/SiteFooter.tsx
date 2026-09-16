@@ -11,7 +11,7 @@ export function SiteFooter() {
         </div>
         <div className="flex flex-wrap gap-x-5 gap-y-2">
           <Link href="/learn" className="text-mist no-underline hover:text-teal">
-            六站课程
+            八门课程
           </Link>
           <Link href="/knowledge" className="text-mist no-underline hover:text-teal">
             知识星图

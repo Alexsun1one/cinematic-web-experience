@@ -1,4 +1,6 @@
 import type { HTMLAttributes, ReactNode } from "react";
+import { PullQuote } from "@/components/blog/PullQuote";
+import { AttentionHeatmap } from "@/components/learn/AttentionHeatmap";
 import { FactCheckToy } from "@/components/learn/FactCheckToy";
 import { PromptCompare } from "@/components/learn/PromptCompare";
 import { TokenSplitter } from "@/components/learn/TokenSplitter";
@@ -47,4 +49,6 @@ export const mdxComponents = {
   TokenSplitter,
   PromptCompare,
   FactCheckToy,
+  AttentionHeatmap,
+  PullQuote,
 };

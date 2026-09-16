@@ -30,6 +30,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
       meta={`${post.meta.date} · ${post.meta.reading}`}
       prev={prev ? { href: `/blog/${prev.slug}`, label: prev.title } : { href: "/blog", label: "笔记目录" }}
       next={next ? { href: `/blog/${next.slug}`, label: next.title } : { href: "/learn", label: "回到课程" }}
+      variant="magazine"
     >
       {post.content}
     </ArticleShell>

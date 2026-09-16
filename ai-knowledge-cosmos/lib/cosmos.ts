@@ -24,8 +24,8 @@ export const colorHex: Record<NodeColor, string> = {
   ivory: "#f3eee4",
 };
 
-function orbit(index: number, y: number, radius = 4.65): [number, number, number] {
-  const angle = ((Math.PI * 2) * index) / 7;
+function orbit(index: number, y: number, radius = 4.75): [number, number, number] {
+  const angle = ((Math.PI * 2) * index) / 8;
   return [Math.cos(angle) * radius, y, Math.sin(angle) * radius];
 }
 
@@ -36,7 +36,7 @@ export const COSMOS_NODES: CosmosNode[] = [
     title: "理解核",
     english: "Comprehension",
     short: "理解核",
-    summary: "七门课共同指向的一件事：把模型当成可检验的系统，而不是神谕。",
+    summary: "八门课共同指向的一件事：把模型当成可检验的系统，而不是神谕。",
     href: "/learn",
     color: "ivory",
     position: [0, 0, 0],
@@ -141,6 +141,20 @@ export const COSMOS_NODES: CosmosNode[] = [
     geometry: "sphere",
   },
   {
+    id: "attention",
+    kind: "lesson",
+    title: "注意力：模型在看哪里",
+    english: "Attention",
+    short: "注意",
+    summary: "生成下一个词时，模型会把目光分给上下文里的不同位置。注意不是理解，是加权。",
+    href: "/learn/attention",
+    color: "violet",
+    position: orbit(7, 0.22),
+    stage: "08",
+    duration: "14 分钟",
+    geometry: "torus",
+  },
+  {
     id: "zero-to-one",
     kind: "essay",
     title: "从 0 到 1 的路径",
@@ -198,6 +212,7 @@ export const COSMOS_EDGES: [string, string][] = [
   ["core", "tools-agents"],
   ["core", "hands-on"],
   ["core", "verification"],
+  ["core", "attention"],
   ["llm-intuition", "tokens"],
   ["tokens", "prompting"],
   ["llm-intuition", "prompting"],
@@ -211,6 +226,9 @@ export const COSMOS_EDGES: [string, string][] = [
   ["llm-intuition", "verification"],
   ["hands-on", "verification"],
   ["tokens", "verification"],
+  ["tokens", "attention"],
+  ["llm-intuition", "attention"],
+  ["prompting", "attention"],
   ["llm-intuition", "zero-to-one"],
   ["prompting", "prompts-are-not-spells"],
   ["tools-agents", "when-models-grow-hands"],
@@ -225,6 +243,7 @@ export const LESSON_ORDER = [
   "tools-agents",
   "hands-on",
   "verification",
+  "attention",
 ] as const;
 
 export const lessons = COSMOS_NODES.filter((node) => node.kind === "lesson");

@@ -17,7 +17,7 @@ export function JourneyWorlds({ lessons }: { lessons: LessonMeta[] }) {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs tracking-[0.24em] text-teal uppercase">Worlds 0 → 1</p>
-          <h2 className="mt-2 font-serif text-3xl text-ivory">七座世界，一座星图</h2>
+          <h2 className="mt-2 font-serif text-3xl text-ivory">八座世界，一座星图</h2>
         </div>
         <p className="text-sm text-mist">
           已点亮 <span className="text-ivory">{lit}</span> / {lessons.length}
@@ -26,7 +26,7 @@ export function JourneyWorlds({ lessons }: { lessons: LessonMeta[] }) {
       <div className="mt-5 h-px bg-ivory/10">
         <div className="h-px bg-teal transition-[width] duration-500" style={{ width: `${Math.max(ratio * 100, 3)}%` }} />
       </div>
-      <ol className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-7">
+      <ol className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-8">
         {lessons.map((lesson) => {
           const litNode = visited.includes(lesson.slug);
           const accent = colorHex[lesson.color as NodeColor] ?? colorHex.teal;

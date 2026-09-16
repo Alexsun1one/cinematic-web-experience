@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
+import { CosmosOnboarding } from "@/components/cosmos/CosmosOnboarding";
 import { COSMOS_NODES, colorHex, getNode, lessons } from "@/lib/cosmos";
 
 export function CosmosHUD({
@@ -29,8 +30,9 @@ export function CosmosHUD({
           把 AI 学成一座可以走进去的宇宙
         </h1>
         <p className="mt-4 max-w-md text-sm leading-7 text-mist md:text-base">
-          拖曳旋转星体，滚轮或按钮缩放，点击课程节点进入 0→1 的七座世界。选中时镜头会靠过去：星图本身就是课程结构。
+          拖曳旋转星体，滚轮或按钮缩放，点击课程节点进入 0→1 的八座世界。选中时镜头会靠过去：星图本身就是课程结构。
         </p>
+        <CosmosOnboarding />
       </div>
 
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">

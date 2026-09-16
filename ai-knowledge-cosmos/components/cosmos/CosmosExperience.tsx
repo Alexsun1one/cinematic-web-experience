@@ -5,6 +5,7 @@ import { useReducedMotion } from "motion/react";
 import { useEffect, useState } from "react";
 import { CosmosFallback } from "@/components/cosmos/CosmosFallback";
 import { CosmosHUD } from "@/components/cosmos/CosmosHUD";
+import { LESSON_ORDER } from "@/lib/cosmos";
 
 const CosmosCanvas = dynamic(() => import("@/components/cosmos/CosmosCanvas"), {
   ssr: false,
@@ -23,17 +24,8 @@ export function CosmosExperience() {
       if (event.key === "Escape") setFocused(null);
       if (event.key === "=" || event.key === "+") setDistance((value) => Math.max(4.5, value * 0.88));
       if (event.key === "-" || event.key === "_") setDistance((value) => Math.min(16, value * 1.12));
-      if (/^[1-7]$/.test(event.key)) {
-        const order = [
-          "llm-intuition",
-          "tokens",
-          "prompting",
-          "alignment",
-          "tools-agents",
-          "hands-on",
-          "verification",
-        ];
-        setFocused(order[Number(event.key) - 1] ?? null);
+      if (/^[1-8]$/.test(event.key)) {
+        setFocused(LESSON_ORDER[Number(event.key) - 1] ?? null);
       }
     }
     window.addEventListener("keydown", onKey);

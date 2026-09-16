@@ -12,12 +12,15 @@
 | id | type | source | web layer role | interaction |
 | --- | --- | --- | --- | --- |
 | core | generated icosahedron | curriculum thesis | 理解核 | 点击进入 /learn |
-| lesson-nodes | generated meshes | six lessons | 可检视主体 | 拖曳场景、点击聚焦、缩放 |
+| lesson-nodes | generated meshes | eight lessons | 可检视主体 | 拖曳场景、点击聚焦、缩放 |
 | filaments | line components | COSMOS_EDGES | 依赖关系 | 聚焦时点亮 |
 | nebula | transparent spheres | atmosphere | 空间深度 | 无直接操作 |
 | hud | DOM overlay | copy + controls | 规格与导航 | 复位 / 缩放 / 静止 |
+| onboard | DOM tip | first-5s overlay | 操作提示 | 可关闭，不挡星图 |
 | atlas | SVG map | same graph | 可读星图 | 点击节点 |
 | fallback | static SVG | same graph | reduced-motion | 键盘与链接仍可用 |
+| attention-toy | canvas heatmap | lesson 08 | 示意权重 | 点选查询词 |
+| magazine | typography system | four essays | 阅读界面 | 进度条 / 引语 |
 
 ## Truth labels
 
