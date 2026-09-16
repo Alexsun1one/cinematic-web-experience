@@ -1,0 +1,170 @@
+@import "tailwindcss";
+
+:root {
+  --void: #05060c;
+  --ink: #0b0d16;
+  --panel: rgba(12, 14, 24, 0.72);
+  --line: rgba(243, 238, 228, 0.12);
+  --ivory: #f3eee4;
+  --mist: #c9c3b6;
+  --mute: #8a8578;
+  --teal: #3ee0c6;
+  --violet: #9b8cff;
+  --rose: #ff6b8a;
+  --amber: #e8b86d;
+  --blue: #6aa8ff;
+}
+
+@theme inline {
+  --color-void: var(--void);
+  --color-ink: var(--ink);
+  --color-ivory: var(--ivory);
+  --color-mist: var(--mist);
+  --color-mute: var(--mute);
+  --color-teal: var(--teal);
+  --color-violet: var(--violet);
+  --color-rose: var(--rose);
+  --color-amber: var(--amber);
+  --color-blue: var(--blue);
+  --font-sans: var(--font-noto-sans), "Noto Sans SC", sans-serif;
+  --font-serif: var(--font-noto-serif), "Noto Serif SC", serif;
+  --font-display: var(--font-display), "Instrument Serif", serif;
+  --font-mono: var(--font-mono), ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  background: var(--void);
+  color: var(--ivory);
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--teal) 40%, transparent);
+  color: var(--ivory);
+}
+
+a {
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.22em;
+}
+
+.grain {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  opacity: 0.07;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.9'/></svg>");
+}
+
+.vignette {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(1200px 700px at 50% 40%, transparent 0%, rgba(5, 6, 12, 0.18) 55%, rgba(5, 6, 12, 0.78) 100%),
+    linear-gradient(to bottom, rgba(5, 6, 12, 0.2), transparent 18%, transparent 72%, rgba(5, 6, 12, 0.92));
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(18px);
+}
+
+.prose-cosmos {
+  color: var(--mist);
+  font-size: 1.05rem;
+  line-height: 1.9;
+}
+
+.prose-cosmos h2 {
+  font-family: var(--font-serif);
+  color: var(--ivory);
+  font-size: 1.55rem;
+  line-height: 1.4;
+  margin: 2.4rem 0 0.8rem;
+  letter-spacing: -0.02em;
+}
+
+.prose-cosmos h3 {
+  color: var(--ivory);
+  font-size: 1.12rem;
+  margin: 1.8rem 0 0.55rem;
+}
+
+.prose-cosmos p,
+.prose-cosmos ul,
+.prose-cosmos ol {
+  margin: 0.95rem 0;
+}
+
+.prose-cosmos ul,
+.prose-cosmos ol {
+  padding-left: 1.2rem;
+}
+
+.prose-cosmos li + li {
+  margin-top: 0.35rem;
+}
+
+.prose-cosmos strong {
+  color: var(--ivory);
+  font-weight: 600;
+}
+
+.prose-cosmos a {
+  color: var(--teal);
+}
+
+.prose-cosmos code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  color: var(--amber);
+  background: rgba(232, 184, 109, 0.08);
+  padding: 0.1em 0.35em;
+  border-radius: 0.3rem;
+}
+
+.prose-cosmos pre {
+  overflow-x: auto;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--line);
+  background: rgba(8, 9, 16, 0.8);
+  border-radius: 0.9rem;
+  margin: 1.3rem 0;
+}
+
+.prose-cosmos pre code {
+  background: transparent;
+  padding: 0;
+  color: var(--mist);
+}
+
+.prose-cosmos blockquote {
+  border-left: 2px solid var(--violet);
+  padding-left: 1rem;
+  color: var(--ivory);
+  font-family: var(--font-serif);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .grain {
+    display: none;
+  }
+}

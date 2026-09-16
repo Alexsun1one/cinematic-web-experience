@@ -48,6 +48,10 @@ source/reference -> subject map -> extraction/cleanup/componentization -> depth/
 - `globe-atelier-physical` additionally passes `--require-object-manipulation`.
 - Desktop and mobile screenshots were inspected; failed intermediate screenshots were removed before commit.
 
+## Parallel app (do not overwrite Skill files)
+
+Standalone Next.js hub lives in `ai-knowledge-cosmos/`. It is a Chinese-first learning cosmos + blog, not a replacement for this Skill. Do not delete or restyle Skill templates to match it.
+
 ## Next Work
 
 - Add short interaction recordings/GIFs for each example.
