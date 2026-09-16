@@ -67,7 +67,12 @@ function Block({
       }}
     >
       <boxGeometry args={[0.72, 0.72, 0.72]} />
-      <meshStandardMaterial map={texture as Texture} roughness={0.55} metalness={0.05} />
+      <meshStandardMaterial attach="material-0" color="#8d6a3a" roughness={0.7} />
+      <meshStandardMaterial attach="material-1" color="#8d6a3a" roughness={0.7} />
+      <meshStandardMaterial attach="material-2" map={texture as Texture} roughness={0.5} />
+      <meshStandardMaterial attach="material-3" color="#5c4030" roughness={0.85} />
+      <meshStandardMaterial attach="material-4" color="#8d6a3a" roughness={0.7} />
+      <meshStandardMaterial attach="material-5" color="#8d6a3a" roughness={0.7} />
     </mesh>
   );
 }

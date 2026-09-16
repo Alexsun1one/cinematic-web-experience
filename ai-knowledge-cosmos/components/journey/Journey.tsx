@@ -31,7 +31,7 @@ function Act({ chapter, visited }: { chapter: Chapter; visited: string[] }) {
   const lit = chapter.slug ? visited.includes(chapter.slug) : false;
 
   return (
-    <article id={chapter.id} className="border-t border-ink/10">
+    <article id={chapter.id} className="scroll-mt-28 border-t border-ink/10">
       <div className="mx-auto max-w-3xl px-5 py-24 md:py-32">
         <p className="font-serif text-6xl leading-none text-gold md:text-7xl">{chapter.numeral}</p>
         <p className="mt-6 text-sm text-mist">
@@ -99,8 +99,7 @@ export function Journey() {
                 href={`#${chapter.id}`}
                 className="flex items-baseline gap-2 whitespace-nowrap px-3 py-1 text-mist no-underline hover:text-ink"
               >
-                <span className="font-serif text-gold">{chapter.numeral}</span>
-                {chapter.title.slice(0, 4)}
+                <span className="font-serif text-lg text-gold">{chapter.numeral}</span>
               </a>
             </li>
           ))}

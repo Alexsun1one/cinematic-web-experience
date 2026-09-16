@@ -44,7 +44,7 @@ export function InkAtlas() {
                 fontSize="13"
                 fontFamily="Noto Serif SC, serif"
               >
-                {chapter.numeral} {chapter.title.slice(0, 2)}
+                {chapter.numeral}
               </text>
             </g>
           );
