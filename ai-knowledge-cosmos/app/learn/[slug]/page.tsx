@@ -27,8 +27,8 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
       title={lesson.meta.title}
       summary={lesson.meta.summary}
       meta={`第 ${lesson.meta.stage} 课`}
-      prev={prev ? { href: `/learn/${prev.slug}`, label: prev.title } : { href: "/learn", label: "课文目录" }}
-      next={next ? { href: `/learn/${next.slug}`, label: next.title } : { href: "/", label: "回到行程" }}
+      prev={prev ? { href: `/learn/${prev.slug}`, label: prev.title } : { href: "/learn", label: "展墙目录" }}
+      next={next ? { href: `/learn/${next.slug}`, label: next.title } : { href: "/", label: "回到走廊" }}
     >
       {lesson.content}
     </ArticleShell>

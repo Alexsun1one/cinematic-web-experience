@@ -11,18 +11,18 @@ import { ToolLoop } from "@/components/learn/ToolLoop";
 
 function Callout({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <aside className="my-6 border border-ink/10 bg-paper-2/60 px-5 py-4">
-      <p className="font-serif text-gold">{title}</p>
-      <div className="mt-2 text-[0.98rem] leading-8 text-ink-soft">{children}</div>
+    <aside className="my-6 border border-acid/20 bg-wall px-5 py-4">
+      <p className="font-serif text-acid">{title}</p>
+      <div className="mt-2 text-[0.98rem] leading-8 text-fog">{children}</div>
     </aside>
   );
 }
 
 function Practice({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="my-6 border border-gold/40 bg-gold/5 px-5 py-4">
-      <p className="font-serif text-gold-deep">{title}</p>
-      <div className="mt-2 text-[0.98rem] leading-8 text-ink-soft">{children}</div>
+    <section className="my-6 border border-acid/50 bg-acid/10 px-5 py-4">
+      <p className="font-serif text-acid">{title}</p>
+      <div className="mt-2 text-[0.98rem] leading-8 text-fog">{children}</div>
     </section>
   );
 }

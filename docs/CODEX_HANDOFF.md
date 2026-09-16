@@ -50,7 +50,7 @@ source/reference -> subject map -> extraction/cleanup/componentization -> depth/
 
 ## Parallel app (do not overwrite Skill files)
 
-Standalone Next.js hub lives in `ai-knowledge-cosmos/`. It is a Chinese-first learning cosmos + blog, not a replacement for this Skill. Do not delete or restyle Skill templates to match it.
+Standalone Next.js hub lives in `ai-knowledge-cosmos/`. Current identity: **夜览馆** — night exhibition / playable graphic essay (charcoal + acid chartreuse, horizontal gallery corridor). It is a Chinese-first learning walk, not a replacement for this Skill. Do not delete or restyle Skill templates to match it.
 
 ## Next Work
 

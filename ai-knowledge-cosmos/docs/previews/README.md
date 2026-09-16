@@ -1,11 +1,11 @@
 # Previews
 
-Stun-pass stills (paper / ink / gold). Older orb shots removed.
+Bold-pass stills（夜览馆：炭黑 + 电酸色）。纸杂志 stun 镜头已替换。
 
 | File | Page |
 | --- | --- |
-| `stun-home.png` | `/` first viewport |
-| `stun-pin.png` | pinned type-case act |
-| `stun-setpiece.png` | pinned desk lamp |
-| `stun-lesson.png` | `/learn/llm-intuition` |
-| `stun-blog.png` | `/blog` |
+| `bold-home.png` | `/` 门厅第一屏 |
+| `bold-chamber.png` | 展厅壹 |
+| `bold-exhibit.png` | 展品近景 |
+| `bold-lesson.png` | `/learn/llm-intuition` |
+| `bold-blog.png` | `/blog` |

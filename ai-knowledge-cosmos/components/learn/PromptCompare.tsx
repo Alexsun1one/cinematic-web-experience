@@ -23,8 +23,8 @@ export function PromptCompare() {
 
   return (
     <section className="toy">
-      <p className="font-serif text-gold">示意 · 两种写法</p>
-      <p className="mt-2 text-sm leading-7 text-mist">右边不是真实调用。看的是规格如何把续写从空话里拖出来。</p>
+      <p className="font-serif text-acid">示意 · 两块铭牌</p>
+      <p className="mt-2 text-sm leading-7 text-fog">右边不是真实调用。看的是规格如何把续写从空话里拖出来。</p>
       <div className="mt-4 flex gap-2">
         {(Object.keys(modes) as Array<keyof typeof modes>).map((key) => (
           <button
@@ -32,7 +32,7 @@ export function PromptCompare() {
             type="button"
             onClick={() => setMode(key)}
             className={`border px-3 py-1.5 text-sm ${
-              mode === key ? "border-gold bg-gold text-night" : "border-ink/15 text-ink-soft"
+              mode === key ? "border-acid bg-acid text-void" : "border-bone/15 text-fog"
             }`}
           >
             {modes[key].label}
@@ -40,13 +40,13 @@ export function PromptCompare() {
         ))}
       </div>
       <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <div className="border border-ink/10 bg-paper p-4">
-          <p className="text-xs text-mist">你说</p>
+        <div className="border border-acid/15 bg-void p-4">
+          <p className="text-xs text-fog">你说</p>
           <p className="mt-2 text-sm leading-7">{current.prompt}</p>
         </div>
-        <div className="border border-ink/10 bg-paper p-4">
-          <p className="text-xs text-mist">它可能接着写</p>
-          <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-ink-soft">{current.result}</p>
+        <div className="border border-acid/15 bg-void p-4">
+          <p className="text-xs text-fog">它可能接着写</p>
+          <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-fog">{current.result}</p>
         </div>
       </div>
     </section>

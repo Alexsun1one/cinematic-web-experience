@@ -27,8 +27,8 @@ export function ReadingProgress() {
   }, []);
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-0 z-[60] h-[3px] bg-ink/10">
-      <div className="h-full bg-gold" style={{ width: `${progress * 100}%` }} />
+    <div className="pointer-events-none fixed inset-x-0 top-0 z-[60] h-[3px] bg-bone/10">
+      <div className="h-full bg-acid" style={{ width: `${progress * 100}%` }} />
     </div>
   );
 }

@@ -28,37 +28,47 @@ export function ArticleShell({
   magazine?: boolean;
 }) {
   return (
-    <article className="relative mx-auto w-full max-w-3xl px-5 pt-28 pb-20">
+    <article className="relative w-full pb-20">
       {magazine ? <ReadingProgress /> : null}
       {visitSlug ? <VisitBeacon slug={visitSlug} /> : null}
-      {numeral ? (
-        <p className="pointer-events-none absolute top-16 -left-2 hidden font-serif text-[11rem] leading-none text-gold/25 select-none lg:block">
-          {numeral}
-        </p>
-      ) : null}
-      {numeral ? <p className="font-serif text-6xl text-gold lg:hidden">{numeral}</p> : null}
-      <p className="mt-8 text-xs tracking-[0.28em] text-mist">{kicker}</p>
-      <h1 className="mt-5 font-serif text-[2.6rem] leading-[1.12] tracking-tight text-ink md:text-6xl">{title}</h1>
-      <p className="mt-7 max-w-xl font-serif text-2xl leading-snug text-ink">{summary}</p>
-      <p className="mt-5 text-sm text-mist">{magazine ? `${site.author} · ${meta}` : meta}</p>
-      <div className="mt-8 h-px w-24 bg-gold" />
-      <div className={`prose-studio mt-10 ${magazine ? "prose-magazine" : ""}`}>{children}</div>
-      <nav className="mt-16 grid gap-px bg-ink/10 sm:grid-cols-2">
-        {prev ? (
-          <Link href={prev.href} className="bg-paper p-5 no-underline hover:bg-paper-2">
-            <p className="text-xs tracking-wide text-mist">{magazine ? "上一篇" : "上一课"}</p>
-            <p className="mt-2 font-serif text-xl text-ink">{prev.label}</p>
-          </Link>
+      <header className="relative min-h-[78vh] overflow-hidden px-5 pt-28 pb-16 md:px-12">
+        {numeral ? (
+          <p className="pointer-events-none absolute top-10 -left-4 select-none font-serif text-[min(70vh,58vw)] leading-none text-acid/12">
+            {numeral}
+          </p>
         ) : (
-          <span className="bg-paper" />
+          <p className="pointer-events-none absolute top-8 -left-2 select-none font-serif text-[min(48vh,40vw)] leading-none text-acid/12">
+            刊
+          </p>
         )}
-        {next ? (
-          <Link href={next.href} className="bg-paper p-5 text-right no-underline hover:bg-paper-2">
-            <p className="text-xs tracking-wide text-mist">{magazine ? "下一篇" : "下一课"}</p>
-            <p className="mt-2 font-serif text-xl text-ink">{next.label}</p>
-          </Link>
-        ) : null}
-      </nav>
+        <div className="relative z-10 max-w-3xl">
+          <p className="text-[10px] tracking-[0.36em] text-acid">{kicker}</p>
+          <h1 className="mt-6 font-serif text-[clamp(2.4rem,7vw,5.6rem)] leading-[1.05] tracking-tight text-bone">
+            {title}
+          </h1>
+          <p className="mt-8 max-w-xl font-serif text-2xl leading-snug text-bone/90">{summary}</p>
+          <p className="mt-6 text-sm text-fog">{magazine ? `${site.author} · ${meta}` : meta}</p>
+        </div>
+      </header>
+      <div className="workbench px-5 py-12 md:px-12">
+        <div className={`prose-wall mx-auto max-w-2xl ${magazine ? "prose-zine" : ""}`}>{children}</div>
+        <nav className="mx-auto mt-16 grid max-w-2xl gap-px bg-acid/20 sm:grid-cols-2">
+          {prev ? (
+            <Link href={prev.href} className="bg-void p-5 no-underline hover:bg-hall">
+              <p className="text-xs tracking-wide text-fog">{magazine ? "上一篇" : "上一厅"}</p>
+              <p className="mt-2 font-serif text-xl text-bone">{prev.label}</p>
+            </Link>
+          ) : (
+            <span className="bg-void" />
+          )}
+          {next ? (
+            <Link href={next.href} className="bg-void p-5 text-right no-underline hover:bg-hall">
+              <p className="text-xs tracking-wide text-fog">{magazine ? "下一篇" : "下一厅"}</p>
+              <p className="mt-2 font-serif text-xl text-bone">{next.label}</p>
+            </Link>
+          ) : null}
+        </nav>
+      </div>
     </article>
   );
 }

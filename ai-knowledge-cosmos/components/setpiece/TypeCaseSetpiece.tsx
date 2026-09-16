@@ -9,20 +9,20 @@ import { useGpu, useReducedMotion } from "@/lib/motion-pref";
 
 const GLYPHS = ["今", "晚", "月", "色", "很", "好", "不", "错", "像", "霜", "的", "风"];
 
-function woodTexture() {
+function lacquerTexture() {
   const canvas = document.createElement("canvas");
   canvas.width = 512;
   canvas.height = 512;
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
-  ctx.fillStyle = "#5a3a24";
+  ctx.fillStyle = "#141412";
   ctx.fillRect(0, 0, 512, 512);
-  for (let i = 0; i < 48; i += 1) {
-    ctx.strokeStyle = `rgba(20,12,6,${0.08 + (i % 5) * 0.03})`;
-    ctx.lineWidth = 2 + (i % 3);
+  for (let i = 0; i < 40; i += 1) {
+    ctx.strokeStyle = `rgba(214,255,58,${0.015 + (i % 7) * 0.008})`;
+    ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(0, i * 11);
-    ctx.bezierCurveTo(180, i * 11 + 8, 320, i * 11 - 6, 512, i * 11 + 4);
+    ctx.moveTo(0, i * 13);
+    ctx.bezierCurveTo(160, i * 13 + 6, 340, i * 13 - 4, 512, i * 13 + 2);
     ctx.stroke();
   }
   const texture = new CanvasTexture(canvas);
@@ -36,14 +36,12 @@ function makeFace(char: string, lifted: boolean) {
   canvas.height = 256;
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
-  ctx.fillStyle = lifted ? "#b57a28" : "#ead9bb";
+  ctx.fillStyle = lifted ? "#d6ff3a" : "#1a1a16";
   ctx.fillRect(0, 0, 256, 256);
-  ctx.fillStyle = "rgba(22,18,14,0.08)";
-  for (let i = 0; i < 14; i += 1) ctx.fillRect(12, 18 + i * 16, 232, 1);
-  ctx.strokeStyle = "#16120e";
-  ctx.lineWidth = 5;
+  ctx.strokeStyle = lifted ? "#090908" : "#d6ff3a";
+  ctx.lineWidth = 6;
   ctx.strokeRect(10, 10, 236, 236);
-  ctx.fillStyle = "#16120e";
+  ctx.fillStyle = lifted ? "#090908" : "#eeece4";
   ctx.font = "132px 'Noto Serif SC', serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -95,42 +93,42 @@ function Block({
       }}
     >
       <boxGeometry args={[0.7, 0.7, 0.7]} />
-      <meshStandardMaterial attach="material-0" color="#7a5230" roughness={0.72} />
-      <meshStandardMaterial attach="material-1" color="#7a5230" roughness={0.72} />
-      <meshStandardMaterial attach="material-2" map={texture as Texture} roughness={0.42} />
-      <meshStandardMaterial attach="material-3" color="#4a2f1c" roughness={0.9} />
-      <meshStandardMaterial attach="material-4" color="#7a5230" roughness={0.72} />
-      <meshStandardMaterial attach="material-5" color="#7a5230" roughness={0.72} />
+      <meshStandardMaterial attach="material-0" color="#2a2a24" roughness={0.38} metalness={0.18} />
+      <meshStandardMaterial attach="material-1" color="#2a2a24" roughness={0.38} metalness={0.18} />
+      <meshStandardMaterial attach="material-2" map={texture as Texture} roughness={0.32} />
+      <meshStandardMaterial attach="material-3" color="#0c0c0a" roughness={0.9} />
+      <meshStandardMaterial attach="material-4" color="#2a2a24" roughness={0.38} metalness={0.18} />
+      <meshStandardMaterial attach="material-5" color="#2a2a24" roughness={0.38} metalness={0.18} />
     </mesh>
   );
 }
 
 function TypeCaseScene({ active, onPick }: { active: number; onPick: (index: number) => void }) {
-  const wood = useMemo(() => woodTexture(), []);
-  useEffect(() => () => wood?.dispose(), [wood]);
+  const tray = useMemo(() => lacquerTexture(), []);
+  useEffect(() => () => tray?.dispose(), [tray]);
 
   return (
     <>
-      <color attach="background" args={["#100e0c"]} />
-      <fog attach="fog" args={["#100e0c", 8, 16]} />
-      <hemisphereLight args={["#f3e6cc", "#1a120c", 0.7]} />
+      <color attach="background" args={["#090908"]} />
+      <fog attach="fog" args={["#090908", 8, 16]} />
+      <hemisphereLight args={["#d6ff3a", "#090908", 0.28]} />
       <spotLight
         position={[3.2, 6.4, 2.4]}
-        angle={0.48}
-        penumbra={0.65}
-        intensity={3.6}
-        color="#f3e0b8"
+        angle={0.42}
+        penumbra={0.7}
+        intensity={4.2}
+        color="#f2ffe0"
         castShadow
         shadow-mapSize={[1024, 1024]}
       />
-      <pointLight position={[-3, 2, -2]} intensity={0.7} color="#b57a28" />
+      <pointLight position={[-2.4, 2.2, -1.4]} intensity={1.4} color="#d6ff3a" />
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.52, 0]} receiveShadow>
         <boxGeometry args={[5.2, 4.1, 0.22]} />
-        <meshStandardMaterial map={wood ?? undefined} color="#5a3a24" roughness={0.86} />
+        <meshStandardMaterial map={tray ?? undefined} color="#141412" roughness={0.55} metalness={0.2} />
       </mesh>
       <mesh position={[0, -0.32, -2.05]}>
         <boxGeometry args={[5.2, 0.4, 0.16]} />
-        <meshStandardMaterial color="#3d2616" roughness={0.8} />
+        <meshStandardMaterial color="#d6ff3a" roughness={0.35} metalness={0.1} />
       </mesh>
       {GLYPHS.map((char, index) => {
         const col = index % 4;
@@ -145,7 +143,7 @@ function TypeCaseScene({ active, onPick }: { active: number; onPick: (index: num
           />
         );
       })}
-      <ContactShadows position={[0, -0.62, 0]} opacity={0.55} scale={9} blur={2.4} far={3.5} color="#000000" />
+      <ContactShadows position={[0, -0.62, 0]} opacity={0.7} scale={9} blur={2.4} far={3.5} color="#000000" />
       <OrbitControls
         enablePan={false}
         enableDamping
@@ -161,15 +159,15 @@ function TypeCaseScene({ active, onPick }: { active: number; onPick: (index: num
 
 function TypeCaseFlat({ active, onPick }: { active: number; onPick: (index: number) => void }) {
   return (
-    <div className="grid h-full place-items-center bg-night p-8">
+    <div className="grid h-full place-items-center bg-void p-8">
       <div className="grid grid-cols-4 gap-3">
         {GLYPHS.map((char, index) => (
           <button
             key={`${char}-${index}`}
             type="button"
             onClick={() => onPick(index)}
-            className={`grid h-[4.4rem] w-[4.4rem] place-items-center font-serif text-3xl shadow-[inset_0_0_0_1px_#16120e] ${
-              index === active ? "-translate-y-3 bg-gold text-night" : "bg-paper-2 text-ink"
+            className={`grid h-[4.4rem] w-[4.4rem] place-items-center border font-serif text-3xl ${
+              index === active ? "-translate-y-3 border-acid bg-acid text-void" : "border-acid/30 bg-wall text-bone"
             }`}
           >
             {char}
@@ -191,8 +189,8 @@ export function TypeCaseSetpiece({ progress = 0 }: { progress?: number }) {
   }, [fromScroll, progress]);
 
   return (
-    <div className="h-full min-h-[420px] bg-night">
-      <div className="h-[calc(100%-3rem)] min-h-[380px]">
+    <div className="flex h-full min-h-[420px] flex-col bg-void">
+      <div className="min-h-[380px] flex-1">
         {!gpu || reduced ? (
           <TypeCaseFlat active={active} onPick={setActive} />
         ) : (
@@ -201,8 +199,8 @@ export function TypeCaseSetpiece({ progress = 0 }: { progress?: number }) {
           </Canvas>
         )}
       </div>
-      <p className="px-5 py-3 text-sm text-paper/80">
-        被捡起的是「{GLYPHS[active]}」。排字工不理解月亮，他只是手快。
+      <p className="px-5 py-3 text-sm text-fog">
+        被点亮的是「{GLYPHS[active]}」。馆员不理解月亮，他只是伸手。
       </p>
     </div>
   );

@@ -1,5 +1,5 @@
-import { Journey } from "@/components/journey/Journey";
+import { Gallery } from "@/components/gallery/Gallery";
 
 export default function HomePage() {
-  return <Journey />;
+  return <Gallery />;
 }

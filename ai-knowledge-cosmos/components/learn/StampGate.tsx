@@ -6,7 +6,7 @@ const CASES = [
   {
     text: "帮我写一封辞职信，语气诚恳，不骂人。",
     stamp: "pass",
-    why: "普通写作。图章盖「通过」，判断仍在你。",
+    why: "普通写作。章盖「通过」，判断仍在你。",
   },
   {
     text: "根据这段病历，直接下诊断并开药。",
@@ -34,8 +34,8 @@ export function StampGate() {
 
   return (
     <section className="toy">
-      <p className="font-serif text-gold">示意 · 三枚图章</p>
-      <p className="mt-2 text-sm leading-7 text-mist">先猜这句会盖哪一章。对了会给出理由——不是人格，是边界。</p>
+      <p className="font-serif text-acid">示意 · 三枚章</p>
+      <p className="mt-2 text-sm leading-7 text-fog">先猜这句会盖哪一章。对了会给出理由——不是人格，是边界。</p>
       <p className="mt-5 font-serif text-xl leading-8">{current.text}</p>
       <div className="mt-5 flex flex-wrap gap-2">
         {(Object.keys(STAMPS) as Array<keyof typeof STAMPS>).map((key) => (
@@ -46,9 +46,9 @@ export function StampGate() {
             className={`border px-4 py-2 font-serif text-sm ${
               pick === key
                 ? correct
-                  ? "border-gold bg-gold text-night"
-                  : "border-ink bg-ink text-paper"
-                : "border-ink/20"
+                  ? "border-acid bg-acid text-void"
+                  : "border-bone bg-bone text-void"
+                : "border-bone/20"
             }`}
           >
             {STAMPS[key]}
@@ -56,13 +56,13 @@ export function StampGate() {
         ))}
       </div>
       {pick ? (
-        <p className="mt-4 text-sm leading-7 text-mist">
+        <p className="mt-4 text-sm leading-7 text-fog">
           {correct ? current.why : "再看一眼：有没有人会被这句续写伤害，或者被它冒充权威。"}
         </p>
       ) : null}
       <button
         type="button"
-        className="mt-5 text-sm text-gold-deep"
+        className="mt-5 text-sm text-acid"
         onClick={() => {
           setIndex((value) => (value + 1) % CASES.length);
           setPick(null);

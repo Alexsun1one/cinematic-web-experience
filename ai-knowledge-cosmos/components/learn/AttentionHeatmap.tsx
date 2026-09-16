@@ -46,7 +46,7 @@ function HeatmapCanvas({
     ctx.textBaseline = "middle";
 
     for (let i = 0; i < n; i += 1) {
-      ctx.fillStyle = i === query ? "#1a1612" : "#6e675c";
+      ctx.fillStyle = i === query ? "#d6ff3a" : "#9c9a90";
       ctx.fillText(TOKENS[i], LABEL + i * CELL + CELL / 2, 16);
       ctx.fillText(TOKENS[i], 20, LABEL + i * CELL + CELL / 2);
     }
@@ -56,17 +56,17 @@ function HeatmapCanvas({
         const value = WEIGHTS[row]?.[col] ?? 0;
         const active = row === query;
         const alpha = 0.08 + value * (active ? 0.92 : 0.28);
-        ctx.fillStyle = `rgba(184, 137, 58, ${alpha})`;
+        ctx.fillStyle = `rgba(214, 255, 58, ${alpha})`;
         const x = LABEL + col * CELL + 2;
         const y = LABEL + row * CELL + 2;
         ctx.fillRect(x, y, CELL - 4, CELL - 4);
         if (active) {
-          ctx.fillStyle = "#1a1612";
+          ctx.fillStyle = "#090908";
           ctx.fillText(value.toFixed(2), x + (CELL - 4) / 2, y + (CELL - 4) / 2);
         }
       }
     }
-    ctx.strokeStyle = "#1a1612";
+    ctx.strokeStyle = "#d6ff3a";
     ctx.strokeRect(LABEL, LABEL + query * CELL, n * CELL, CELL);
   }, [query, width, height, n]);
 
@@ -102,8 +102,8 @@ export function AttentionHeatmap() {
 
   return (
     <section className="toy" id="attention-toy">
-      <p className="font-serif text-gold">示意 · 灯照在哪</p>
-      <p className="mt-2 text-sm leading-7 text-mist">
+      <p className="font-serif text-acid">示意 · 灯照在哪</p>
+      <p className="mt-2 text-sm leading-7 text-fog">
         点一个「正在写下」的词。亮的是这一步分出去的份额。手写矩阵，不是真实注意力头。
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
@@ -113,14 +113,14 @@ export function AttentionHeatmap() {
             type="button"
             onClick={() => setQuery(index)}
             className={`border px-3 py-1.5 text-sm ${
-              query === index ? "border-gold bg-gold text-night" : "border-ink/15"
+              query === index ? "border-acid bg-acid text-void" : "border-bone/15"
             }`}
           >
             {token}
           </button>
         ))}
       </div>
-      <p className="mt-4 text-xs text-mist">查询词：{TOKENS[query]}</p>
+      <p className="mt-4 text-xs text-fog">查询词：{TOKENS[query]}</p>
       <div className="overflow-x-auto">
         <HeatmapCanvas query={query} onPickRow={setQuery} />
       </div>
@@ -128,10 +128,10 @@ export function AttentionHeatmap() {
         {ranked.map((item) => (
           <li key={item.index} className="flex items-center gap-3">
             <span className="w-14 shrink-0 font-mono text-xs">{TOKENS[item.index]}</span>
-            <span className="h-1.5 flex-1 bg-ink/10">
-              <span className="block h-full bg-gold" style={{ width: `${item.value * 100}%` }} />
+            <span className="h-1.5 flex-1 bg-bone/10">
+              <span className="block h-full bg-acid" style={{ width: `${item.value * 100}%` }} />
             </span>
-            <span className="w-10 text-right font-mono text-[11px] text-mist">{Math.round(item.value * 100)}%</span>
+            <span className="w-10 text-right font-mono text-[11px] text-fog">{Math.round(item.value * 100)}%</span>
           </li>
         ))}
       </ul>

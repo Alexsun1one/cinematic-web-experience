@@ -29,8 +29,8 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
       title={post.meta.title}
       summary={post.meta.summary}
       meta={`${post.meta.date} · ${post.meta.reading}`}
-      prev={prev ? { href: `/blog/${prev.slug}`, label: prev.title } : { href: "/blog", label: "刊物目录" }}
-      next={next ? { href: `/blog/${next.slug}`, label: next.title } : { href: "/", label: "回到行程" }}
+      prev={prev ? { href: `/blog/${prev.slug}`, label: prev.title } : { href: "/blog", label: "夜刊目录" }}
+      next={next ? { href: `/blog/${next.slug}`, label: next.title } : { href: "/", label: "回到走廊" }}
     >
       {post.content}
     </ArticleShell>

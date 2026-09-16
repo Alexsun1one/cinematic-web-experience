@@ -20,14 +20,14 @@ export function FactCheckToy() {
 
   return (
     <section className="toy">
-      <p className="font-serif text-gold">示意 · 三个抽屉</p>
-      <p className="mt-2 text-sm leading-7 text-mist">给每句找去处。对了留下，错了再试。训练的是停下来的肌肉。</p>
+      <p className="font-serif text-acid">示意 · 三只抽屉</p>
+      <p className="mt-2 text-sm leading-7 text-fog">给每句找去处。对了留下，错了再试。训练的是停下来的肌肉。</p>
       <ul className="mt-4 space-y-3">
         {lines.map((line, index) => {
           const pick = picks[index];
           const correct = pick === line.kind;
           return (
-            <li key={line.text} className="border border-ink/10 p-3">
+            <li key={line.text} className="border border-acid/15 p-3">
               <p className="text-sm leading-7">{line.text}</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {(Object.keys(labels) as Array<keyof typeof labels>).map((key) => (
@@ -38,9 +38,9 @@ export function FactCheckToy() {
                     className={`border px-3 py-1 text-xs ${
                       pick === key
                         ? correct
-                          ? "border-gold bg-gold text-night"
-                          : "border-ink bg-ink text-paper"
-                        : "border-ink/20 text-mist"
+                          ? "border-acid bg-acid text-void"
+                          : "border-bone bg-bone text-void"
+                        : "border-bone/20 text-fog"
                     }`}
                   >
                     {labels[key]}

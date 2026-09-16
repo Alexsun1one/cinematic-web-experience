@@ -37,8 +37,8 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="zh-CN" className={`${sans.variable} ${serif.variable} ${mono.variable} h-full antialiased`}>
-      <body className="min-h-full bg-paper font-sans text-ink">
-        <div className="paper-grain" aria-hidden="true" />
+      <body className="min-h-full bg-void font-sans text-bone">
+        <div className="night-grain" aria-hidden="true" />
         <SiteHeader />
         <div className="flex min-h-full flex-col">{children}</div>
         <SiteFooter />

@@ -14,8 +14,8 @@ export function ToolLoop() {
 
   return (
     <section className="toy">
-      <p className="font-serif text-gold">示意 · 伸手的一圈</p>
-      <p className="mt-2 text-sm leading-7 text-mist">点下一步。智能体不是灵魂，是这四拍。少一拍，事故半径就藏起来。</p>
+      <p className="font-serif text-acid">示意 · 伸手的一圈</p>
+      <p className="mt-2 text-sm leading-7 text-fog">点下一步。智能体不是灵魂，是这四拍。少一拍，事故半径就藏起来。</p>
       <ol className="mt-5 grid grid-cols-4 gap-2">
         {STEPS.map((item, index) => (
           <li key={item.title}>
@@ -23,7 +23,7 @@ export function ToolLoop() {
               type="button"
               onClick={() => setStep(index)}
               className={`w-full border px-2 py-3 font-serif ${
-                step === index ? "border-gold bg-gold text-night" : "border-ink/15"
+                step === index ? "border-acid bg-acid text-void" : "border-bone/15"
               }`}
             >
               {item.title}
@@ -31,8 +31,8 @@ export function ToolLoop() {
           </li>
         ))}
       </ol>
-      <p className="mt-5 text-sm leading-7 text-ink-soft">
-        <span className="text-gold">{STEPS[step].title}。</span> {STEPS[step].detail}
+      <p className="mt-5 text-sm leading-7 text-fog">
+        <span className="text-acid">{STEPS[step].title}。</span> {STEPS[step].detail}
       </p>
     </section>
   );

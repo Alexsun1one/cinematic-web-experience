@@ -16,8 +16,8 @@ export function ClosedLoop() {
 
   return (
     <section className="toy">
-      <p className="font-serif text-gold">示意 · 五格闭环</p>
-      <p className="mt-2 text-sm leading-7 text-mist">
+      <p className="font-serif text-acid">示意 · 五块砖</p>
+      <p className="mt-2 text-sm leading-7 text-fog">
         点亮一格，表示你真的写过。不要追求完美提示词。目标是把「帮我看看」跑完一圈。已点 {done} / 5
       </p>
       <ol className="mt-5 space-y-2">
@@ -27,13 +27,13 @@ export function ClosedLoop() {
               type="button"
               onClick={() => setFilled((prev) => ({ ...prev, [slot.key]: !prev[slot.key] }))}
               className={`flex w-full items-start gap-3 border px-3 py-3 text-left ${
-                filled[slot.key] ? "border-gold bg-gold/15" : "border-ink/15"
+                filled[slot.key] ? "border-acid bg-acid/15" : "border-bone/15"
               }`}
             >
-              <span className="font-serif text-gold">{filled[slot.key] ? "●" : "○"}</span>
+              <span className="font-serif text-acid">{filled[slot.key] ? "●" : "○"}</span>
               <span>
                 <span className="font-serif">{slot.label}</span>
-                <span className="mt-1 block text-sm text-mist">{slot.hint}</span>
+                <span className="mt-1 block text-sm text-fog">{slot.hint}</span>
               </span>
             </button>
           </li>
