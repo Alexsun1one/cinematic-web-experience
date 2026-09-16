@@ -436,6 +436,10 @@ a {
   transform: scale(0.97);
 }
 
+:focus {
+  outline: none;
+}
+
 :focus-visible {
   outline: 1px solid var(--acid);
   outline-offset: 2px;

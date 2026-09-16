@@ -53,8 +53,8 @@ export function Gallery() {
       const target = measure();
       const diff = target - current;
       const velocity = diff / dt;
-      const lambda = 20 + Math.min(18, Math.abs(velocity) * 0.08);
-      if (Math.abs(diff) < 0.00025) current = target;
+      const lambda = 32 + Math.min(20, Math.abs(velocity) * 0.1);
+      if (Math.abs(diff) < 0.0015) current = target;
       else current += diff * (1 - Math.exp(-lambda * dt));
 
       const node = track.current;
@@ -165,10 +165,7 @@ export function Gallery() {
         <div
           ref={track}
           className="flex h-full will-change-transform"
-          style={{
-            width: `${GALLERY_COUNT * 100}vw`,
-            transform: `translate3d(${-along * 100}vw, 0, 0)`,
-          }}
+          style={{ width: `${GALLERY_COUNT * 100}vw` }}
         >
           {rooms}
         </div>
