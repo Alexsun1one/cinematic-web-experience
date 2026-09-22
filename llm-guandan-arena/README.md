@@ -6,19 +6,21 @@ A four-player Guandan spectator table. Seats 0 and 2 are partners (North–South
 
 ## 一键开房 / One-click room
 
-大厅点 **一键开房** → 得到房间码与 `/room/[code]` 链接。默认四席自动填 Mock。房主点 **开打** 开局；把链接发给人类，对方进房即为 **观众**（只读围观：牌桌、快推理、级牌轨、统计）。第二标签页打开同一链接即可验证围观。
+大厅点 **一键开房** → 得到房间码与 `/room/[code]`。房主点 **复制给 Agent**，把整段说明交给对方的 Agent。那个 Agent 先自检：没有 `TYPESAFE_API_KEY` 就告诉人「缺 Jev，不能打」并停止；没有自己的 LLM、或打不到房间地址，也停止。合格后它用自己的 Jev 和自己的 LLM 入座自打。服务器只列出合法着法，不接收密钥，也不替客人调用 Jev 或模型。回合超时则服务器用 Mock 推进，牌桌不冻结。
 
-1. `npm run dev` → open lobby → **一键开房**
-2. Copy room code / link (share button)
-3. Host: **开打** (or replace a seat with Mock / env key / OpenAI-compatible agent)
-4. Spectator: open `/room/CODE` in another tab → watch only
-5. Optional: **围观聊天** for short reactions
+人类打开同一链接就是 **观众**（只读：牌桌、快推理、级牌轨、统计）。本地没有客人时，**高级 · 本地 Mock** 或 `npm run watch` 用四席 Mock 开打。
+
+1. `npm run dev` → 大厅 → **一键开房**
+2. **复制给 Agent**（整段协议，不是只发链接）
+3. 对方 Agent 自检 Jev + LLM + 房间可达，再 `claim-seat` / `act`
+4. 观众打开 `/room/CODE` 围观
+5. 可选：**围观聊天**
 
 房间状态在服务端内存 Map 里（与对局相同）。重启进程会清空。多实例部署需要 Redis 之类的共享状态——本 MVP 未接。
 
 Room + match state live in the current Node process `Map`. Restart clears them. Multi-instance needs a shared store later (Redis etc.); this demo is single-process.
 
-自带 Agent 入座：Mock、环境已配置供应商、或粘贴 OpenAI 兼容 `base URL + model + API key`。密钥只存在房间会话服务端，公开 API / SSE 快照不会带出。
+参考玩家：`node scripts/guest-agent.mjs`，环境变量 `ROOM_URL` `SEAT_TOKEN` `TYPESAFE_API_KEY` `LLM_API_KEY`。密钥只留在客人进程里。
 
 ## 座位 / Seats
 
@@ -34,6 +36,8 @@ Mock 模式下界面仍显示这些名字，决策不访问网络。大厅里的
 In Mock mode the UI still shows those names and never calls a provider. Live mode sends a seat to its model only when that key exists. Optional Jev / TypeSafe assist (`TYPESAFE_API_KEY`) may answer a Noul and a Choice over the engine's legal moves. The model must still pick a listed move. One illegal answer is retried with the rejection reason; a second failure falls back to Mock.
 
 本地围观：`npm run watch`
+
+发给你的 Agent：房间页 **复制给 Agent**。它必须自备 `TYPESAFE_API_KEY`（没有就停并说「缺 Jev，不能打」）和自己的 LLM，然后 `claim-seat` + `act`。服务器不替客人跑 Jev。参考 `scripts/guest-agent.mjs`。回合超时则服务器 Mock/过牌，桌子不停。
 
 ## 运行 / Run
 

@@ -1,9 +1,10 @@
-import { createMatch, parseStartLevel, type Match } from "./guandan/match";
+import { createMatch, currentLegal, parseStartLevel, type Match } from "./guandan/match";
 import type { FaceRank, ProviderId, SeatConfig, VendorId } from "./guandan/types";
 import { SEAT_WIND, teamOf } from "./guandan/types";
+import { buildInviteBlock, JEV_BUDGET_MS, TURN_BUDGET_MS } from "./invite";
 import { ROSTER } from "./roster-data";
 import { keyStatus, vendorReady } from "./roster";
-import { remember } from "./store";
+import { remember, matchStore } from "./store";
 import { toView, type MatchView } from "./view";
 
 export type RoomSeries = "open" | "three" | "full";
@@ -12,13 +13,22 @@ export type RoomStatus = "lobby" | "playing" | "finished";
 export interface RoomSeatAgent {
   name: string;
   short: string;
-  kind: "mock" | "env" | "openai";
+  kind: "mock" | "env" | "openai" | "self";
+  drive: "mock" | "self";
   provider: ProviderId;
   vendor: VendorId;
   model: string;
   ready: boolean;
+  /** Guest act auth. Never included in public views. */
+  seatToken?: string | null;
   /** Server-only secrets — stripped from public view. */
   custom?: { baseUrl: string; apiKey: string } | null;
+}
+
+export interface SeatInvite {
+  token: string;
+  seat: number;
+  used: boolean;
 }
 
 export interface RoomSeatPublic {
@@ -28,7 +38,8 @@ export interface RoomSeatPublic {
   empty: boolean;
   name: string | null;
   short: string | null;
-  kind: "mock" | "env" | "openai" | null;
+  kind: "mock" | "env" | "openai" | "self" | null;
+  drive: "mock" | "self" | null;
   provider: ProviderId | null;
   vendor: VendorId | null;
   model: string | null;
@@ -59,6 +70,8 @@ export interface Room {
   chatSeq: number;
   matchId: string | null;
   autoFillMock: boolean;
+  invites: SeatInvite[];
+  onAct?: (seat: number) => void;
 }
 
 type GlobalRooms = {
@@ -111,6 +124,7 @@ export function createRoom(input: {
     chatSeq: 0,
     matchId: null,
     autoFillMock: input.autoFillMock !== false,
+    invites: [],
   };
   if (room.autoFillMock) fillMockSeats(room);
   rooms().set(code, room);
@@ -141,6 +155,7 @@ export function fillMockSeats(room: Room) {
       name: roster.name,
       short: roster.short,
       kind: "mock",
+      drive: "mock",
       provider: "mock",
       vendor: roster.vendor,
       model: roster.model,
@@ -175,6 +190,7 @@ export function claimSeat(
       name: input.name?.trim() || roster.name,
       short: (input.name?.trim() || roster.short).slice(0, 12),
       kind: "mock",
+      drive: "mock",
       provider: "mock",
       vendor: roster.vendor,
       model: roster.model,
@@ -189,6 +205,7 @@ export function claimSeat(
       name: input.name?.trim() || row.name,
       short: (input.name?.trim() || row.short).slice(0, 12),
       kind: "env",
+      drive: "mock",
       provider: vendor,
       vendor,
       model: input.model?.trim() || row.model,
@@ -205,6 +222,7 @@ export function claimSeat(
       name: label,
       short: label.slice(0, 12),
       kind: "openai",
+      drive: "mock",
       provider: "openai",
       vendor: roster.vendor,
       model,
@@ -254,6 +272,57 @@ export function postChat(room: Room, name: string, text: string, role: "host" | 
   touch(room);
 }
 
+export function issueInvite(room: Room, origin: string) {
+  if (room.status !== "lobby") throw new Error("已经开打，不能再发入座邀请");
+  const empty = room.seats.findIndex((seat) => !seat);
+  const seat = empty >= 0 ? empty : 0;
+  let invite = room.invites.find((item) => item.seat === seat && !item.used);
+  if (!invite) {
+    invite = { token: crypto.randomUUID(), seat, used: false };
+    room.invites.push(invite);
+  }
+  touch(room);
+  const block = buildInviteBlock({
+    origin,
+    code: room.code,
+    seat,
+    wind: SEAT_WIND[seat],
+    token: invite.token,
+  });
+  return { token: invite.token, seat, wind: SEAT_WIND[seat], block };
+}
+
+export function claimByToken(room: Room, token: string, name?: string) {
+  if (room.status !== "lobby") throw new Error("已经开打");
+  const invite = room.invites.find((item) => item.token === token && !item.used);
+  if (!invite) throw new Error("seatToken 无效或已使用");
+  const roster = ROSTER[invite.seat];
+  const label = (name?.trim() || "Guest Agent").slice(0, 24);
+  invite.used = true;
+  room.seats[invite.seat] = {
+    name: label,
+    short: label.slice(0, 12),
+    kind: "self",
+    drive: "self",
+    provider: "mock",
+    vendor: roster.vendor,
+    model: "guest",
+    ready: true,
+    seatToken: token,
+    custom: null,
+  };
+  touch(room);
+  return invite.seat;
+}
+
+export function seatIndexByToken(room: Room, token: string): number {
+  return room.seats.findIndex((seat) => seat?.seatToken === token);
+}
+
+export function notifyAct(room: Room, seat: number) {
+  room.onAct?.(seat);
+}
+
 export function seatsReady(room: Room): boolean {
   return room.seats.every((seat) => seat && seat.ready);
 }
@@ -298,6 +367,7 @@ export function startRoomMatch(room: Room): Match {
 
 function seatBadge(seat: RoomSeatAgent | null): string {
   if (!seat) return "空位";
+  if (seat.drive === "self" || seat.kind === "self") return "自驾";
   if (seat.kind === "mock") return "Mock";
   if (seat.kind === "env") return seat.vendor;
   return "OpenAI";
@@ -323,6 +393,7 @@ export function toRoomView(
   chat: ChatMessage[];
   keys: ReturnType<typeof keyStatus>;
   updatedAt: number;
+  turnBudgetMs: number;
 } {
   pruneSpectators(room);
   return {
@@ -343,6 +414,7 @@ export function toRoomView(
       name: seat?.name ?? null,
       short: seat?.short ?? null,
       kind: seat?.kind ?? null,
+      drive: seat?.drive ?? null,
       provider: seat?.provider ?? null,
       vendor: seat?.vendor ?? null,
       model: seat?.model ?? null,
@@ -355,5 +427,31 @@ export function toRoomView(
     chat: room.chat.slice(-24),
     keys: keyStatus(),
     updatedAt: room.updatedAt,
+    turnBudgetMs: TURN_BUDGET_MS,
+  };
+}
+
+export function stateForToken(room: Room, token: string | null) {
+  const match = room.matchId ? matchStore().get(room.matchId) ?? null : null;
+  const view = toRoomView(room, { isHost: false, match });
+  const seat = token ? seatIndexByToken(room, token) : -1;
+  if (seat < 0) return { ...view, you: null };
+  const yourTurn = Boolean(match && match.status === "playing" && match.trick.currentSeat === seat);
+  const legal =
+    yourTurn && match
+      ? currentLegal(match).map((move) => ({ id: move.id, label: move.label, kind: move.kind }))
+      : [];
+  return {
+    ...view,
+    you: {
+      seat,
+      wind: SEAT_WIND[seat],
+      name: room.seats[seat]?.name ?? "",
+      yourTurn,
+      turnBudgetMs: TURN_BUDGET_MS,
+      jevBudgetMs: JEV_BUDGET_MS,
+      hand: match ? match.hands[seat].map((card) => ({ id: card.id, suit: card.suit, rank: card.rank })) : [],
+      legal,
+    },
   };
 }

@@ -1,3 +1,4 @@
+import { ensureRoomDriver } from "@/lib/room-driver";
 import { getRoom, isHost, startRoomMatch, toRoomView } from "@/lib/room";
 
 export const runtime = "nodejs";
@@ -17,6 +18,7 @@ export async function POST(request: Request, context: { params: Promise<{ code: 
   }
   try {
     const match = startRoomMatch(room);
+    ensureRoomDriver(room.code);
     return json(toRoomView(room, { isHost: true, match }));
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : "开打失败" }, 400);

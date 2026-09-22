@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
 import {
+  claimByToken,
   claimSeat,
   createRoom,
   fillMockSeats,
   getRoom,
+  issueInvite,
   makeRoomCode,
   seatsReady,
   startRoomMatch,
+  stateForToken,
   toRoomView,
 } from "./room";
 
@@ -54,7 +57,27 @@ function testByoSeatStripsSecret() {
   assert.ok(getRoom(room.code));
 }
 
+function testGuestInvite() {
+  const { room } = createRoom({ series: "three", autoFillMock: true });
+  const issued = issueInvite(room, "http://localhost:3456");
+  assert.match(issued.block, /缺 Jev，不能打/);
+  assert.match(issued.block, /你自己的 Jev/);
+  assert.match(issued.block, /claim-seat/);
+  assert.match(issued.block, /\/act/);
+  assert.equal(issued.block.includes("apiKey"), false);
+  assert.equal(issued.block.includes(issued.token), true);
+  const seat = claimByToken(room, issued.token, "Guest");
+  assert.equal(room.seats[seat]?.drive, "self");
+  assert.throws(() => claimByToken(room, issued.token, "Again"));
+  const secretView = JSON.stringify(toRoomView(room, { isHost: false }));
+  assert.equal(secretView.includes(issued.token), false);
+  const state = stateForToken(room, issued.token);
+  assert.equal(state.you?.seat, seat);
+  assert.equal(JSON.stringify(state).includes("apiKey"), false);
+}
+
 testCodes();
 testMockRoomFlow();
 testByoSeatStripsSecret();
+testGuestInvite();
 console.log("room tests passed");

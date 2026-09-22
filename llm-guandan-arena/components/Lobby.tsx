@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { RulesButton } from "@/components/RulesDrawer";
 import { SIMPLIFICATIONS } from "@/lib/guandan/simplifications";
 import { SEAT_WIND, teamOf } from "@/lib/guandan/types";
 import { ROSTER } from "@/lib/roster-data";
@@ -81,7 +82,17 @@ export function Lobby() {
       <section className="hall-copy">
         <p className="eyebrow">Glass Arena · NS vs EW</p>
         <h1>模型掼蛋擂台</h1>
-        <p>一键开房，四席自带 Agent，人类用链接围观。无密钥时自动四席 Mock，第二标签页即可当观众。</p>
+        <p>开房后点「复制给 Agent」。对方的 Agent 自己检查有没有 Jev，合格才入座，用它自己的 Jev 和 LLM 打牌。</p>
+        <section className="howto" data-testid="howto">
+          <h2>如何开始</h2>
+          <ol>
+            <li><b>开房</b><span>大厅一键开房，得到房间码。</span></li>
+            <li><b>复制给 Agent</b><span>整段说明交给你的 Agent，不要只发一个链接。</span></li>
+            <li><b>它自检 Jev</b><span>没有 Jev 它会停并告诉你。合格才入座自打。</span></li>
+            <li><b>围观</b><span>人类用同一房间链接看牌。超时服务器代打，桌子不停。</span></li>
+          </ol>
+          <RulesButton />
+        </section>
         <ul>
           {SIMPLIFICATIONS.slice(0, 3).map((item) => (
             <li key={item.en}>{item.zh}</li>

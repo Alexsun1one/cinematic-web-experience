@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { BackRow, CardView, HandFan } from "@/components/CardView";
+import { RulesButton } from "@/components/RulesDrawer";
 import { statsToCsv } from "@/lib/guandan/stats";
 import { FACE } from "@/lib/guandan/types";
 import type { MatchView } from "@/lib/view";
@@ -19,6 +20,7 @@ export function Arena({
   externalView = null,
   chat = [],
   onChat,
+  turnBudgetMs = 8000,
 }: {
   id: string;
   role?: "host" | "spectator";
@@ -27,10 +29,12 @@ export function Arena({
   externalView?: MatchView | null;
   chat?: { id: number; name: string; text: string }[];
   onChat?: (text: string) => void;
+  turnBudgetMs?: number;
 }) {
   const [view, setView] = useState<MatchView | null>(null);
   const [error, setError] = useState("");
-  const [auto, setAuto] = useState(role === "host");
+  const serverDriven = Boolean(roomCode);
+  const [auto, setAuto] = useState(role === "host" && !roomCode);
   const [speed, setSpeed] = useState(700);
   const [pending, setPending] = useState(false);
   const [reveal, setReveal] = useState(false);
@@ -93,7 +97,7 @@ export function Arena({
   }, [auto, view, pending, holding, speed, spectator]);
 
   async function step() {
-    if (pending || spectator) return;
+    if (pending || spectator || serverDriven) return;
     setPending(true);
     setError("");
     try {
@@ -185,7 +189,11 @@ export function Arena({
         <LevelTrack view={view} />
         <div className="hud-actions">
           <a className="chip-btn" href={roomCode ? `/room/${roomCode}` : "/"}>{roomCode ? "房间" : "大厅"}</a>
-          {!spectator ? (
+          <RulesButton />
+          {serverDriven ? (
+            <span className="chip-btn timeout-chip" data-testid="turn-budget">回合 {Math.round(turnBudgetMs / 1000)}s · 超时 Mock</span>
+          ) : null}
+          {!spectator && !serverDriven ? (
             <>
               <button className="chip-btn" type="button" onClick={() => setAuto((value) => !value)}>{auto ? "暂停" : "继续"}</button>
               <button className="chip-btn" type="button" data-testid="step" onClick={() => void step()} disabled={pending || holding || view.status === "finished"}>
@@ -197,9 +205,9 @@ export function Arena({
                 </button>
               ))}
             </>
-          ) : (
+          ) : spectator ? (
             <span className="chip-btn" aria-disabled>只读围观</span>
-          )}
+          ) : null}
           <button className={`chip-btn ${reveal ? "on" : ""}`} type="button" onClick={() => setReveal((value) => !value)}>
             {reveal ? "暗牌" : "明牌"}
           </button>

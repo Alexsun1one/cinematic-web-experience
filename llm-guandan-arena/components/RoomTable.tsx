@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Arena } from "@/components/Arena";
-import { SEAT_WIND } from "@/lib/guandan/types";
+import { RulesButton } from "@/components/RulesDrawer";
 import type { MatchView } from "@/lib/view";
 
 type RoomSeries = "open" | "three" | "full";
@@ -14,7 +14,8 @@ interface RoomSeat {
   empty: boolean;
   name: string | null;
   short: string | null;
-  kind: "mock" | "env" | "openai" | null;
+  kind: "mock" | "env" | "openai" | "self" | null;
+  drive: "mock" | "self" | null;
   provider: string | null;
   vendor: string | null;
   model: string | null;
@@ -39,6 +40,7 @@ interface RoomView {
   chat: { id: number; at: number; name: string; text: string; role: string }[];
   keys: Record<string, boolean>;
   updatedAt: number;
+  turnBudgetMs?: number;
 }
 
 const SERIES_LABEL: Record<RoomSeries, string> = {
@@ -63,14 +65,10 @@ export function RoomTable({ code }: { code: string }) {
   const [spectatorId, setSpectatorId] = useState<string | null>(null);
   const [spectatorName, setSpectatorName] = useState("观众");
   const [busy, setBusy] = useState(false);
-  const [seatForm, setSeatForm] = useState<number | null>(null);
-  const [kind, setKind] = useState<"mock" | "env" | "openai">("mock");
-  const [agentName, setAgentName] = useState("");
-  const [model, setModel] = useState("");
-  const [baseUrl, setBaseUrl] = useState("");
-  const [apiKey, setApiKey] = useState("");
   const [chatText, setChatText] = useState("");
   const [copied, setCopied] = useState(false);
+  const [invite, setInvite] = useState("");
+  const [inviteSeat, setInviteSeat] = useState("");
 
   const headers = useMemo(() => {
     const next: Record<string, string> = { "content-type": "application/json" };
@@ -160,6 +158,24 @@ export function RoomTable({ code }: { code: string }) {
   }, [upper, apply]);
 
   useEffect(() => {
+    if (!view?.isHost || !hostSecret || view.status !== "lobby") return;
+    let gone = false;
+    void fetch(`/api/rooms/${upper}/invite`, { headers: { "x-room-host": hostSecret } })
+      .then(async (response) => {
+        const data = (await response.json()) as { block?: string; wind?: string; error?: string };
+        if (!response.ok || !data.block) return;
+        if (!gone) {
+          setInvite(data.block);
+          setInviteSeat(data.wind ?? "");
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      gone = true;
+    };
+  }, [view?.isHost, view?.status, view?.updatedAt, hostSecret, upper]);
+
+  useEffect(() => {
     if (!view) return;
     const streamHeaders: Record<string, string> = {};
     if (hostSecret) streamHeaders["x-room-host"] = hostSecret;
@@ -200,20 +216,6 @@ export function RoomTable({ code }: { code: string }) {
     }
   }
 
-  async function claim() {
-    if (seatForm === null) return;
-    await api(`/api/rooms/${upper}/seat`, {
-      seat: seatForm,
-      kind,
-      name: agentName || undefined,
-      model: model || undefined,
-      baseUrl: baseUrl || undefined,
-      apiKey: apiKey || undefined,
-    });
-    setSeatForm(null);
-    setApiKey("");
-  }
-
   if (error && !view) {
     return (
       <main className="room quiet">
@@ -232,7 +234,8 @@ export function RoomTable({ code }: { code: string }) {
         role={role}
         roomCode={view.code}
         spectatorCount={view.spectatorCount}
-        externalView={role === "spectator" ? view.match : null}
+        externalView={view.match}
+        turnBudgetMs={view.turnBudgetMs}
         chat={view.chat}
         onChat={(text) => void api(`/api/rooms/${upper}/chat`, { text, name: view.isHost ? "房主" : spectatorName })}
       />
@@ -244,12 +247,13 @@ export function RoomTable({ code }: { code: string }) {
       <section className="hall-copy">
         <p className="eyebrow">Room · {SERIES_LABEL[view.series]}</p>
         <h1>房间 {view.code}</h1>
-        <p>分享链接让人类围观。四席可坐自带 Agent（Mock / 环境密钥 / OpenAI 兼容）。密钥只留在服务端房间会话，不会进前端包。</p>
+        <p>发给你的 Agent → 它自检 Jev → 合格再入座自打。密钥不要贴进这页。人类用同一链接围观。</p>
         <div className="room-share">
           <code data-testid="room-code">{view.code}</code>
-          <button className="chip-btn gold" type="button" data-testid="copy-room-link" onClick={() => void copyLink()}>
-            {copied ? "已复制" : "复制链接"}
+          <button className="chip-btn" type="button" data-testid="copy-room-link" onClick={() => void copyLink()}>
+            {copied ? "已复制" : "复制围观链接"}
           </button>
+          <RulesButton />
           <a className="chip-btn" href="/">大厅</a>
         </div>
         <p className="room-path">/room/{view.code}</p>
@@ -260,6 +264,27 @@ export function RoomTable({ code }: { code: string }) {
       </section>
 
       <section className="hall-table room-panel">
+        {view.isHost && view.status === "lobby" ? (
+          <div className="invite-card" data-testid="agent-invite">
+            <p className="invite-kicker">发给你的 Agent → 它自检 Jev → 合格再入座自打</p>
+            <button
+              className="chip-btn gold cta-room"
+              type="button"
+              data-testid="copy-agent-invite"
+              disabled={!invite}
+              onClick={() => {
+                void navigator.clipboard.writeText(invite).then(() => {
+                  setCopied(true);
+                  window.setTimeout(() => setCopied(false), 1600);
+                });
+              }}
+            >
+              {copied ? "已复制给 Agent" : "复制给 Agent"}
+            </button>
+            <small>{inviteSeat ? `这段话会让它坐 ${inviteSeat}。没有 Jev 它应当停下来告诉你。` : "正在生成邀请…"}</small>
+            <pre data-testid="invite-preview">{invite || "…"}</pre>
+          </div>
+        ) : null}
         <div className="name-grid room-seats">
           {view.seats.map((seat) => (
             <article key={seat.index} className={`hall-seat room-seat ${seat.team} ${seat.ready ? "ready" : ""}`} data-testid={`room-seat-${seat.index}`}>
@@ -270,10 +295,7 @@ export function RoomTable({ code }: { code: string }) {
               {seat.empty ? (
                 <>
                   <strong>空位</strong>
-                  <small>坐上我的 Agent</small>
-                  <button className="chip-btn tiny" type="button" disabled={busy} onClick={() => { setSeatForm(seat.index); setKind("mock"); }}>
-                    坐上我的 Agent
-                  </button>
+                  <small>留给复制给 Agent 的自驾席</small>
                 </>
               ) : (
                 <>
@@ -293,44 +315,21 @@ export function RoomTable({ code }: { code: string }) {
           ))}
         </div>
 
-        {seatForm !== null ? (
-          <div className="seat-form" data-testid="seat-form">
-            <p>入座 · {SEAT_WIND[seatForm]}</p>
-            <div className="hall-levels">
-              <button className={`chip-btn ${kind === "mock" ? "on" : ""}`} type="button" onClick={() => setKind("mock")}>Mock</button>
-              <button className={`chip-btn ${kind === "env" ? "on" : ""}`} type="button" onClick={() => setKind("env")}>环境密钥</button>
-              <button className={`chip-btn ${kind === "openai" ? "on" : ""}`} type="button" onClick={() => setKind("openai")}>OpenAI 兼容</button>
-            </div>
-            <input placeholder="Agent 显示名（可选）" value={agentName} onChange={(event) => setAgentName(event.target.value)} />
-            {kind === "openai" ? (
-              <>
-                <input placeholder="Base URL" value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} />
-                <input placeholder="Model id" value={model} onChange={(event) => setModel(event.target.value)} />
-                <input placeholder="API key（仅服务端保存）" type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} autoComplete="off" />
-              </>
-            ) : null}
-            {kind === "env" ? (
-              <input placeholder="Model 覆盖（可选）" value={model} onChange={(event) => setModel(event.target.value)} />
-            ) : null}
-            <div className="hall-levels">
-              <button className="chip-btn gold" type="button" disabled={busy} onClick={() => void claim()}>确认入座</button>
-              <button className="chip-btn" type="button" onClick={() => setSeatForm(null)}>取消</button>
-            </div>
-          </div>
-        ) : null}
-
         <div className="hall-levels">
           {view.isHost ? (
-            <>
-              <button className="chip-btn" type="button" data-testid="fill-mock" disabled={busy} onClick={() => void api(`/api/rooms/${upper}/fill-mock`)}>
-                空位填 Mock
-              </button>
-              <button className="chip-btn gold" type="button" data-testid="room-start" disabled={busy || !view.ready} onClick={() => void api(`/api/rooms/${upper}/start`)}>
-                {busy ? "发牌…" : "开打"}
-              </button>
-            </>
+            <details className="advanced-seats">
+              <summary>高级 · 本地 Mock</summary>
+              <div className="hall-levels">
+                <button className="chip-btn" type="button" data-testid="fill-mock" disabled={busy} onClick={() => void api(`/api/rooms/${upper}/fill-mock`)}>
+                  空位填 Mock
+                </button>
+                <button className="chip-btn" type="button" data-testid="room-start" disabled={busy || !view.ready} onClick={() => void api(`/api/rooms/${upper}/start`)}>
+                  {busy ? "发牌…" : view.ready ? "可开打" : "席未齐"}
+                </button>
+              </div>
+            </details>
           ) : (
-            <span className="muted">你是观众 · 等待房主开打</span>
+            <span className="muted">你是观众 · 等待 Agent 入座开打</span>
           )}
         </div>
 

@@ -2,15 +2,15 @@
 
 ## Current Goal
 
-Glass Arena + rooms. Local one-shot: `npm run watch` (alias `arena:watch`) starts dev on :3456 if needed, fills 4 Mock seats, starts the match, opens `/room/CODE?role=spectator`. Host URL is printed with `?host=<secret>`. In-browser: `/watch-now`.
+Glass Arena. **复制给 Agent** is a self-check + self-play protocol: guest owns Jev and LLM. Server lists legal moves and Mock/passes on timeout. Bigger cards, smaller felt. `npm run watch` still opens a Mock spectator match.
 
 ## Changed Files
 
-- `llm-guandan-arena/lib/room.ts` + `lib/room.test.ts` — room state machine
-- `llm-guandan-arena/app/api/rooms/**` — create/join/seat/fill/start/chat/stream
-- `llm-guandan-arena/components/RoomTable.tsx`, `Lobby.tsx`, `Arena.tsx`
-- `llm-guandan-arena/app/room/[code]/page.tsx`
-- `llm-guandan-arena/lib/llm/decide.ts`, `providers.ts`, `guandan/types.ts` — openai BYO
+- `llm-guandan-arena/lib/invite.ts`, `lib/room.ts`, `lib/room-driver.ts`, `lib/room.test.ts`
+- `llm-guandan-arena/app/api/room/[code]/{claim-seat,state,act}`
+- `llm-guandan-arena/app/api/rooms/[code]/invite`
+- `llm-guandan-arena/scripts/guest-agent.mjs`
+- `llm-guandan-arena/components/RoomTable.tsx`, `Lobby.tsx`, `Arena.tsx`, `RulesDrawer.tsx`
 - `llm-guandan-arena/app/globals.css`, `README.md`
 
 ## Validation Evidence
