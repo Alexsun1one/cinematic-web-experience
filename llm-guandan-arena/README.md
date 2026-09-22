@@ -37,7 +37,29 @@ Mock 模式下界面仍显示这些名字，决策不访问网络。大厅里的
 
 In Mock mode the UI still shows those names and never calls a provider. Live mode sends a seat to its model only when that key exists. Optional Jev / TypeSafe assist (`TYPESAFE_API_KEY`) may answer a Noul and a Choice over the engine's legal moves. The model must still pick a listed move. One illegal answer is retried with the rejection reason; a second failure falls back to Mock.
 
-本地围观：`npm run watch`
+本地围观：`npm run watch` 开 3 个 Mock 机器人 + 南家空位，并打印 claim / state / act。`npm run operator` 以「知识」入座，打 6 手合法着法后退出。
+
+操作席循环（不要把密钥发给服务器）：
+
+```bash
+curl -s -X POST http://127.0.0.1:3456/api/rooms \
+  -H 'content-type: application/json' \
+  -d '{"operator":true,"operatorSeat":2,"series":"open","startLevel":"T"}'
+# 响应里的 operator.seatToken 只出现这一次
+
+curl -s -X POST http://127.0.0.1:3456/api/room/CODE/claim-seat \
+  -H 'content-type: application/json' \
+  -d '{"seatToken":"TOKEN","name":"知识"}'
+
+curl -s "http://127.0.0.1:3456/api/room/CODE/state?seatToken=TOKEN"
+# you.yourTurn 为 true 时，从 you.legal 里选一个 id
+
+curl -s -X POST http://127.0.0.1:3456/api/room/CODE/act \
+  -H 'content-type: application/json' \
+  -d '{"seatToken":"TOKEN","moveId":"m0"}'
+```
+
+其它三席是启发式 Mock，轮到它们时服务器自己出牌。操作席超过回合时限则服务器代打。旁观：`/room/CODE?role=spectator`。
 
 发给你的 Agent：房间页 **复制给 Agent**。它必须自备 `TYPESAFE_API_KEY`（没有就停并说「缺 Jev，不能打」）和自己的 LLM，然后 `claim-seat` + `act`。服务器不替客人跑 Jev。参考 `scripts/guest-agent-player.mjs`（`scripts/guest-agent.mjs` 是同一入口）。回合超时则服务器 Mock/过牌，桌子不停。座位状态是等待 / 自检中 / 就绪 / 出牌中 / 超时。
 

@@ -1,10 +1,4 @@
-import {
-  createRoom,
-  getRoom,
-  listRooms,
-  toRoomView,
-  isHost,
-} from "@/lib/room";
+import { createRoom, listRooms, openOperatorTable, toRoomView } from "@/lib/room";
 import { matchStore } from "@/lib/store";
 
 export const runtime = "nodejs";
@@ -33,9 +27,29 @@ export async function POST(request: Request) {
     startLevel?: unknown;
     seatsOpen?: unknown;
     autoFillMock?: unknown;
+    operator?: unknown;
+    operatorSeat?: unknown;
   };
+  const series = body.series === "full" || body.series === "three" || body.series === "open" ? body.series : "three";
+  if (body.operator === true || typeof body.operatorSeat === "number") {
+    const opened = openOperatorTable({
+      seat: typeof body.operatorSeat === "number" ? body.operatorSeat : 2,
+      series: body.series === "full" || body.series === "three" || body.series === "open" ? body.series : "open",
+      startLevel: body.startLevel,
+    });
+    return json({
+      hostSecret: opened.hostSecret,
+      operator: {
+        seat: opened.seat,
+        wind: opened.wind,
+        name: "知识",
+        seatToken: opened.seatToken,
+      },
+      ...toRoomView(opened.room, { isHost: true, match: null }),
+    });
+  }
   const { room, hostSecret } = createRoom({
-    series: body.series === "full" || body.series === "three" || body.series === "open" ? body.series : "three",
+    series,
     startLevel: body.startLevel,
     seatsOpen: body.seatsOpen !== false,
     autoFillMock: body.autoFillMock !== false,

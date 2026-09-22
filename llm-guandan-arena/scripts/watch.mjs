@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * Local one-shot: ensure dev server, create a Mock room, start the match, open the spectator URL.
+ * Local one-shot: ensure dev server, open 3 bots + 1 operator seat, print the claim/act loop.
  * Usage: npm run watch
+ * The seat stays empty until something claims it. npm run operator plays it.
  */
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -64,34 +65,24 @@ async function main() {
   const created = await fetch(`${ORIGIN}/api/rooms`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ series: "three", startLevel: "T", seatsOpen: true, autoFillMock: true }),
+    body: JSON.stringify({ operator: true, operatorSeat: 2, series: "open", startLevel: "T" }),
   });
   const room = await created.json();
-  if (!created.ok || !room.code || !room.hostSecret) {
-    throw new Error(room.error || "create room failed");
+  if (!created.ok || !room.code || !room.operator?.seatToken) {
+    throw new Error(room.error || "operator room failed");
   }
 
-  const filled = await fetch(`${ORIGIN}/api/rooms/${room.code}/fill-mock`, {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-room-host": room.hostSecret },
-    body: JSON.stringify({ hostSecret: room.hostSecret }),
-  });
-  const seated = await filled.json();
-  if (!filled.ok || !seated.ready) throw new Error(seated.error || "mock fill failed");
-
-  const started = await fetch(`${ORIGIN}/api/rooms/${room.code}/start`, {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-room-host": room.hostSecret },
-    body: JSON.stringify({ hostSecret: room.hostSecret }),
-  });
-  const live = await started.json();
-  if (!started.ok || live.status !== "playing") throw new Error(live.error || "start failed");
-
   const publicOrigin = `http://localhost:${PORT}`;
+  const token = room.operator.seatToken;
   const spectatorUrl = `${publicOrigin}/room/${room.code}?role=spectator`;
   const hostUrl = `${publicOrigin}/room/${room.code}?host=${encodeURIComponent(room.hostSecret)}`;
   console.log(`spectator ${spectatorUrl}`);
   console.log(`host      ${hostUrl}`);
+  console.log(`operator  seat ${room.operator.seat} ${room.operator.wind}  token ${token}`);
+  console.log(`claim     curl -s -X POST ${ORIGIN}/api/room/${room.code}/claim-seat -H 'content-type: application/json' -d '{"seatToken":"${token}","name":"知识"}'`);
+  console.log(`state     curl -s '${ORIGIN}/api/room/${room.code}/state?seatToken=${token}'`);
+  console.log(`act       curl -s -X POST ${ORIGIN}/api/room/${room.code}/act -H 'content-type: application/json' -d '{"seatToken":"${token}","moveId":"MOVE"}'`);
+  console.log("play it   npm run operator");
   openBrowser(spectatorUrl);
 }
 

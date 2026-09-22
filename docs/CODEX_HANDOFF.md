@@ -2,10 +2,14 @@
 
 ## Current Goal
 
-Tasteful esports highlight layer on the teal glass table: combo FX, 高光 banners, and a sequential ranking ceremony. Guest protocol unchanged.
+Operator seat: three Mock bots plus one open seat the coordinator claims and plays through claim → state → act. `npm run operator` is the smoke. Tribute, sound, and a larger felt stay queued.
 
 ## Changed Files
 
+- `llm-guandan-arena/lib/room.ts` — `openOperatorTable`
+- `llm-guandan-arena/app/api/rooms/route.ts` — `operator: true`
+- `llm-guandan-arena/scripts/operator-smoke-play.mjs`, `scripts/watch.mjs`
+- `llm-guandan-arena/BACKEND.md`, `README.md`
 - `llm-guandan-arena/lib/guandan/highlight.ts` — FX kind and banner rank
 - `llm-guandan-arena/lib/guandan/match.ts` — `moveKind` and `highlight` on the play log
 - `llm-guandan-arena/lib/view.ts` — zones expose `moveKind` and `highlight`
@@ -15,7 +19,8 @@ Tasteful esports highlight layer on the teal glass table: combo FX, 高光 banne
 
 ## Validation Evidence
 
-- `npm run test:engine` passed (engine + room)
+- `npm run test:engine` (includes operator table)
+- `npm run operator` claims 知识 and plays 6 legal moves against 3 bots
 - `npm run build` passed
 - Frozen matches: 钢板 seed 8 step 1, 首炸/4炸 seed 1 step 7, 同花顺 seed 1 step 257, 头游 seed 1 step 47, 双下 ceremony seed 1 step 73
 - Screenshots: `guandan-hl-plate.png`, `guandan-hl-bomb.png`, `guandan-hl-flush.png`, `guandan-hl-firstout.png`, `guandan-hl-ceremony.png`

@@ -8,7 +8,8 @@
     "start": "next start",
     "test:engine": "tsx lib/guandan/engine.test.ts && tsx lib/room.test.ts",
     "watch": "node scripts/watch.mjs",
-    "arena:watch": "node scripts/watch.mjs"
+    "arena:watch": "node scripts/watch.mjs",
+    "operator": "node scripts/operator-smoke-play.mjs"
   },
   "dependencies": {
     "next": "^15.5.3",

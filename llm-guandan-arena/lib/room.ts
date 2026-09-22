@@ -164,23 +164,50 @@ export function isHost(room: Room, secret: string | null | undefined): boolean {
   return Boolean(secret && secret === room.hostSecret);
 }
 
+function mockAgent(index: number): RoomSeatAgent {
+  const roster = ROSTER[index];
+  return {
+    name: roster.name,
+    short: roster.short,
+    kind: "mock",
+    drive: "mock",
+    provider: "mock",
+    vendor: roster.vendor,
+    model: roster.model,
+    ready: true,
+    custom: null,
+  };
+}
+
 export function fillMockSeats(room: Room) {
   for (let i = 0; i < 4; i++) {
     if (room.seats[i]) continue;
-    const roster = ROSTER[i];
-    room.seats[i] = {
-      name: roster.name,
-      short: roster.short,
-      kind: "mock",
-      drive: "mock",
-      provider: "mock",
-      vendor: roster.vendor,
-      model: roster.model,
-      ready: true,
-      custom: null,
-    };
+    room.seats[i] = mockAgent(i);
   }
   touch(room);
+}
+
+/** Three heuristic bots plus one open self-drive seat. The seatToken is only returned here. */
+export function openOperatorTable(input?: {
+  seat?: number;
+  series?: RoomSeries;
+  startLevel?: unknown;
+}): { room: Room; hostSecret: string; seat: number; wind: string; seatToken: string } {
+  const seat = input?.seat === 0 || input?.seat === 1 || input?.seat === 2 || input?.seat === 3 ? input.seat : 2;
+  const { room, hostSecret } = createRoom({
+    series: input?.series ?? "open",
+    startLevel: input?.startLevel ?? "T",
+    autoFillMock: false,
+    seatsOpen: true,
+  });
+  for (let index = 0; index < 4; index += 1) {
+    if (index === seat) continue;
+    room.seats[index] = mockAgent(index);
+  }
+  const seatToken = crypto.randomUUID();
+  room.invites.push({ token: seatToken, seat, used: false });
+  touch(room);
+  return { room, hostSecret, seat, wind: SEAT_WIND[seat], seatToken };
 }
 
 export function claimSeat(

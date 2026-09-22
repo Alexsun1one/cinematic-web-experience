@@ -10,6 +10,7 @@ import {
   issueInvite,
   makeRoomCode,
   seatsReady,
+  openOperatorTable,
   startRoomMatch,
   stateForToken,
   toRoomView,
@@ -141,10 +142,49 @@ function testSettleNamesNextLeader() {
   assert.equal(state.leaderSeat, match.finishOrder[0]);
 }
 
+function testOperatorTable() {
+  const opened = openOperatorTable({ seat: 2, series: "open", startLevel: "T" });
+  assert.equal(opened.seat, 2);
+  assert.equal(opened.wind, "南");
+  assert.equal(opened.room.seats.filter((seat) => seat?.drive === "mock").length, 3);
+  assert.equal(opened.room.seats[2], null);
+  assert.equal(seatsReady(opened.room), false);
+  const hidden = JSON.stringify(toRoomView(opened.room, { isHost: false }));
+  assert.equal(hidden.includes(opened.seatToken), false);
+  const seat = claimByToken(opened.room, opened.seatToken, "知识");
+  assert.equal(seat, 2);
+  assert.equal(opened.room.seats[2]?.name, "知识");
+  assert.equal(opened.room.seats[2]?.drive, "self");
+  assert.equal(seatsReady(opened.room), true);
+  const match = startRoomMatch(opened.room);
+  const state = stateForToken(opened.room, opened.seatToken);
+  assert.equal(state.you?.seat, 2);
+  assert.equal(state.you?.yourTurn, false);
+  assert.equal(state.currentTurn, 0);
+  assert.equal(state.legalMoves, null);
+  const lead = currentLegal(match).find((move) => move.kind !== "pass");
+  assert.ok(lead);
+  commitMove(match, lead, { source: "mock", provider: "mock", retries: 0, note: "bot" });
+  commitMove(match, currentLegal(match)[0], { source: "mock", provider: "mock", retries: 0, note: "bot" });
+  const yours = stateForToken(opened.room, opened.seatToken);
+  assert.equal(yours.you?.yourTurn, true);
+  assert.ok((yours.you?.legal.length ?? 0) > 0);
+  const moveId = yours.you?.legal[0]?.id;
+  assert.ok(moveId);
+  commitMove(match, currentLegal(match).find((move) => move.id === moveId)!, {
+    source: "llm",
+    provider: "guest",
+    retries: 0,
+    note: "知识",
+  });
+  assert.equal(stateForToken(opened.room, opened.seatToken).you?.yourTurn, false);
+}
+
 testCodes();
 testMockRoomFlow();
 testByoSeatStripsSecret();
 testGuestInvite();
+testOperatorTable();
 testSeatPresence();
 testSettleNamesNextLeader();
 console.log("room tests passed");
