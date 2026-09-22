@@ -1,5 +1,6 @@
-import { beginRound, commitMove, currentLegal, pushReject } from "@/lib/guandan/match";
+import { beginRound, commitMove, currentLegal, logReason, pushReject } from "@/lib/guandan/match";
 import { decide } from "@/lib/llm/decide";
+import { quickReason } from "@/lib/llm/quick-reason";
 import { matchStore, withMatchLock } from "@/lib/store";
 import { toView } from "@/lib/view";
 
@@ -21,6 +22,7 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
       }
       const seat = match.trick.currentSeat;
       const moves = currentLegal(match);
+      logReason(match, await quickReason(match, moves));
       const decision = await decide(match, moves);
       for (const reason of decision.rejected) pushReject(match, seat, reason);
       commitMove(match, decision.move, decision.meta);

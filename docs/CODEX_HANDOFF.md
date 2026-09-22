@@ -2,7 +2,7 @@
 
 ## Current Goal
 
-Ship `llm-guandan-arena/` as a Jiangsu-style spectator table: square wood-rimmed felt, a play zone per seat, South as an overlapping fan (or rank columns), opponent card backs by default. Seats keep model display names and play with the Mock legal-move player when no API keys are set.
+Ship `llm-guandan-arena/` as a Jiangsu-style spectator table, and show a short 快推理 beat beside the seat about to play. Jev runs when `TYPESAFE_API_KEY` is set (800ms timeout). Otherwise the beat is Mock, from the same engine facts.
 
 The cinematic-web-experience skill in the repo root is unchanged.
 

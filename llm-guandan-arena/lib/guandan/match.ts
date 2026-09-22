@@ -1,3 +1,4 @@
+import type { QuickBeat } from "../llm/quick-reason";
 import { createDeck, deal, shuffle, subtract } from "./cards";
 import { chooseHeuristic } from "./heuristic";
 import { leadAfterTrick, legalMoves, nextSeatWithCards, type Move } from "./legal";
@@ -30,7 +31,7 @@ export interface AssistNote {
   error?: string;
 }
 
-export type LogKind = "deal" | "play" | "pass" | "reject" | "finish" | "lead" | "round" | "match";
+export type LogKind = "deal" | "play" | "pass" | "reject" | "finish" | "lead" | "round" | "match" | "reason";
 
 export interface LogEvent {
   id: number;
@@ -45,6 +46,7 @@ export interface LogEvent {
   note?: string;
   assist?: AssistNote | null;
   trick?: number;
+  reason?: QuickBeat;
 }
 
 export interface RoundSummary {
@@ -249,10 +251,27 @@ function countTrailingPasses(match: Match): number {
   for (let index = match.log.length - 1; index >= 0; index -= 1) {
     const event = match.log[index];
     if (event.round !== match.round) break;
+    if (event.kind === "reason" || event.kind === "reject") continue;
     if (event.kind !== "pass") break;
     passes += 1;
   }
   return passes;
+}
+
+export function logReason(match: Match, beat: QuickBeat): LogEvent {
+  const seat = match.trick.currentSeat;
+  const who = beat.source === "jev" ? "Jev 快推理" : "Mock 快推理";
+  const line = beat.timedOut ? "超时跳过" : beat.lines.join(" · ");
+  return pushLog(match, {
+    seat,
+    kind: "reason",
+    trick: match.trickSerial,
+    zh: `${seatName(match, seat)} · ${who} · ${line}`,
+    en: `${seatNameEn(match, seat)} · ${who} · ${line}`,
+    source: beat.source,
+    note: beat.note ?? undefined,
+    reason: beat,
+  });
 }
 
 function closeTrick(match: Match, winner: number) {

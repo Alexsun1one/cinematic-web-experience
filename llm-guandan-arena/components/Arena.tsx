@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BackRow, CardView, HandFan } from "@/components/CardView";
 import { FACE } from "@/lib/guandan/types";
 import type { MatchView } from "@/lib/view";
+
+type LogEvent = MatchView["log"][number];
 
 const PLACES = ["头游", "二游", "三游", "末游"];
 const WIND = ["n", "e", "s", "w"] as const;
@@ -17,6 +19,9 @@ export function Arena({ id }: { id: string }) {
   const [reveal, setReveal] = useState(false);
   const [columns, setColumns] = useState(false);
   const [swept, setSwept] = useState(false);
+  const [holding, setHolding] = useState(false);
+  const [preview, setPreview] = useState<LogEvent | null>(null);
+  const holdTimer = useRef<number | null>(null);
 
   useEffect(() => {
     let gone = false;
@@ -44,11 +49,17 @@ export function Arena({ id }: { id: string }) {
   }, [view?.trick.closed, trickKey]);
 
   useEffect(() => {
-    if (!auto || !view || pending || view.status === "finished") return;
+    return () => {
+      if (holdTimer.current) window.clearTimeout(holdTimer.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!auto || !view || pending || holding || view.status === "finished") return;
     const delay = view.status === "between_rounds" ? Math.max(speed, 1600) : speed;
     const timer = setTimeout(() => void step(), delay);
     return () => clearTimeout(timer);
-  }, [auto, view, pending, speed]);
+  }, [auto, view, pending, holding, speed]);
 
   async function step() {
     if (pending) return;
@@ -58,7 +69,24 @@ export function Arena({ id }: { id: string }) {
       const response = await fetch(`/api/matches/${id}/step`, { method: "POST" });
       const data = (await response.json()) as MatchView & { error?: string };
       if (!response.ok) throw new Error(data.error || "出牌失败");
-      setView(data);
+      const previous = view?.log.at(-1)?.id ?? -1;
+      const reason = [...data.log].reverse().find((event) => event.kind === "reason" && event.id > previous);
+      if (reason?.reason) {
+        setPreview(reason);
+        setHolding(true);
+        const wait = reason.reason.timedOut ? 650 : beatDuration(speed);
+        if (holdTimer.current) window.clearTimeout(holdTimer.current);
+        holdTimer.current = window.setTimeout(() => {
+          setView(data);
+          setPreview(null);
+          setHolding(false);
+          holdTimer.current = null;
+        }, wait);
+      } else {
+        setPreview(null);
+        setHolding(false);
+        setView(data);
+      }
     } catch (cause) {
       setAuto(false);
       setError(cause instanceof Error ? cause.message : "出牌失败");
@@ -112,7 +140,7 @@ export function Arena({ id }: { id: string }) {
         <div className="hud-actions">
           <a className="wood-btn" href="/">大厅</a>
           <button className="wood-btn" type="button" onClick={() => setAuto((value) => !value)}>{auto ? "暂停" : "继续"}</button>
-          <button className="wood-btn" type="button" data-testid="step" onClick={() => void step()} disabled={pending || view.status === "finished"}>
+          <button className="wood-btn" type="button" data-testid="step" onClick={() => void step()} disabled={pending || holding || view.status === "finished"}>
             {pending ? "…" : "下一步"}
           </button>
           {([240, 700, 1400] as const).map((value) => (
@@ -150,6 +178,14 @@ export function Arena({ id }: { id: string }) {
             {WIND.map((wind, index) => (
               <PlayZone key={wind} view={view} index={index} wind={wind} hidden={hideZones} />
             ))}
+            {preview?.reason && preview.seat !== null ? (
+              <div className={`reason-bubble ${WIND[preview.seat]}`} data-testid="quick-reason">
+                <em>{preview.reason.source === "jev" ? "Jev 快推理" : "Mock 快推理"}</em>
+                {(preview.reason.timedOut ? ["超时跳过"] : preview.reason.lines).map((line, index) => (
+                  <b key={`${index}-${line}`}>{line}</b>
+                ))}
+              </div>
+            ) : null}
             {view.status !== "playing" && latestRound ? (
               <div className="round-banner" data-testid="result">
                 <b>{view.status === "finished" ? (view.winner === "ns" ? "南北过A" : "东西过A") : "本局结算"}</b>
@@ -176,10 +212,10 @@ export function Arena({ id }: { id: string }) {
             <button className="wood-btn tiny" type="button" data-testid="export" onClick={() => void exportReplay()}>复盘</button>
           </h2>
           <div className="record-list">
-            {view.log.slice(-24).map((event) => (
-              <p key={event.id}>
+            {(preview ? [...view.log, preview] : view.log).slice(-24).map((event) => (
+              <p key={event.id} className={event.kind === "reason" ? "reason-line" : ""}>
                 <b>{event.zh}</b>
-                <small>{event.source ? event.source : ""}</small>
+                <small>{event.reason ? `${event.reason.latencyMs}ms` : event.source ? event.source : ""}</small>
               </p>
             ))}
           </div>
@@ -187,6 +223,12 @@ export function Arena({ id }: { id: string }) {
       </section>
     </main>
   );
+}
+
+function beatDuration(speed: number): number {
+  if (speed <= 240) return 800;
+  if (speed >= 1400) return 1500;
+  return 1100;
 }
 
 function PlayZone({

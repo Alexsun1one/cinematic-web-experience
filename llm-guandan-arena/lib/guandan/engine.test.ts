@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { createDeck, deal, shuffle } from "./cards";
 import { chooseHeuristic } from "./heuristic";
 import { beats, leadAfterTrick, legalMoves, type Move } from "./legal";
-import { beginRound, commitMove, createMatch, currentLegal, stepLocal, type MoveMeta } from "./match";
+import { beginRound, commitMove, createMatch, currentLegal, logReason, stepLocal, type MoveMeta } from "./match";
+import { mockQuickReason } from "../llm/quick-reason";
 import { parseMoveId } from "../llm/parse";
 import { buildPrompt } from "../llm/prompt";
 import { handOrder, presentCards } from "./present";
@@ -308,6 +309,40 @@ function testPresentation() {
   assert.equal(ordered[1].suit, "H");
 }
 
+function testQuickReason() {
+  const lead = fresh("K");
+  const opening = mockQuickReason(lead, currentLegal(lead));
+  assert.equal(opening.source, "mock");
+  assert.equal(opening.timedOut, false);
+  assert.ok(opening.questions.length >= 1 && opening.questions.length <= 3);
+  assert.ok(opening.lines.length >= 1);
+  assert.ok(opening.questions.some((item) => item.prompt.length > 0 && item.answer.length > 0));
+
+  const follow = fresh("2");
+  follow.hands = [
+    [card(0, "S", "A"), card(0, "S", "3")],
+    [card(0, "S", "4")],
+    [card(0, "S", "5")],
+    [card(0, "S", "6")],
+  ];
+  follow.finishOrder = [];
+  follow.trick = { currentSeat: 0, lastPlay: null, lastSeat: null, closed: false };
+  commitMove(follow, findMove(currentLegal(follow), "single", "A"), meta);
+  const beat = mockQuickReason(follow, currentLegal(follow));
+  assert.equal(beat.questions.find((item) => item.id === "should_pass")?.answer, "只能过");
+  logReason(follow, beat);
+  commitMove(follow, currentLegal(follow)[0], meta);
+  logReason(follow, mockQuickReason(follow, currentLegal(follow)));
+  commitMove(follow, currentLegal(follow)[0], meta);
+  logReason(follow, mockQuickReason(follow, currentLegal(follow)));
+  commitMove(follow, currentLegal(follow)[0], meta);
+  assert.equal(follow.trick.closed, true);
+  assert.ok(follow.log.some((event) => event.kind === "reason" && event.reason?.lines.length));
+  const replay = follow.log.filter((event) => event.kind === "reason");
+  assert.ok(replay.every((event) => event.seat !== null && typeof event.reason?.latencyMs === "number"));
+}
+
+testQuickReason();
 testPresentation();
 testDeck();
 testRanking();

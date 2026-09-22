@@ -38,6 +38,9 @@ Open [http://localhost:3000](http://localhost:3000) and press start. The match i
 - 桌心红心级牌即逢人配。手牌里的红心级牌标 ★。
 - 南家是主视角：横排重叠扇，或「理牌」竖组成列。北东西默认牌背加张数。
 - 升级条是「打到几」。出完显示头游 / 二游 / 三游 / 末游。不要盖在该家出牌区。
+- 每家出牌前先闪一句「快推理」。有 `TYPESAFE_API_KEY` 时问 Jev，约 800ms 超时就写「超时跳过」；没有密钥时用局面事实写 Mock 快推理。问题和答案记进复盘。
+
+Before each play the table flashes a short 快推理 line beside that seat. With `TYPESAFE_API_KEY` it asks Jev and gives up after about 800ms (`超时跳过`). With no key it shows a Mock line from the same facts. Questions, answers, and latency are stored on the replay log.
 
 These follow a Jiangsu-style square table rather than a casino oval: wood rim, four bearings, a play zone per seat, heart level-card in the center, South as the fanned hand, and rank-column sorting as a second layout.
 
