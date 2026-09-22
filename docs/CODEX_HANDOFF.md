@@ -9,7 +9,8 @@
 - `llm-guandan-arena/lib/guandan/score.ts`, `match.ts` — reaching A does not win; on A, 头游+二游 or 头游+三游 passes; 头游+末游 counts a fail; the third fail drops that side to 2
 - `llm-guandan-arena/lib/room-store.ts`, `redis-client.ts`, `room.ts`, `store.ts` — `RoomStore`, memory by default, Redis when `REDIS_URL` is set; `tenantId`; `TENANT_MAX_ROOMS`
 - `llm-guandan-arena/MULTI_TENANT.md`, README, invite prompt, procedure
-- Engine and room tests for the pass, the fail, the drop, the reset, and tenant isolation
+- Room saves use `rev` so a stale copy cannot overwrite a newer room. Prune deletes finished rooms only.
+- `llm-guandan-arena/CYCLE.md` — what passed and what is next
 
 ## Validation Evidence
 
