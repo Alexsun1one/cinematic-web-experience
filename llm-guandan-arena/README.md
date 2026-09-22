@@ -25,9 +25,9 @@ npm install
 npm run dev
 ```
 
-打开 [http://localhost:3000](http://localhost:3000)，按「开始」。观赛页是一张方桌：北东南西各有出牌区，南家手牌横排重叠（可切换竖组理牌），对手默认牌背。可以暂停、单步、变速，并导出 JSON 复盘。
+打开 [http://localhost:3000](http://localhost:3000)，按「开始」。观赛页是一张方桌：北东南西各有出牌区，南家默认错落垂直理牌（可改横排扇形），对手默认牌背。顶栏是 2→A 级牌轨道。一局结束会报头游到末游，以及双下 / 头游+三游 / 头游+末游。侧栏「统计」可导出 CSV 和 JSON。
 
-Open [http://localhost:3000](http://localhost:3000) and press start. The match is a square felt with a play zone on each side. South’s hand is an overlapping fan (or rank columns via 理牌). North, East, and West show card backs until 明牌. Pause, step, change speed, or export a JSON replay from 复盘.
+Open [http://localhost:3000](http://localhost:3000) and press start. The match is a square felt with a play zone on each side. South’s hand defaults to staggered vertical columns (switch to a fan with 横排扇形). North, East, and West show card backs until 明牌. The top bar is the 2-to-ace level track. End of hand names the finish order and the upgrade. The 统计 tab exports CSV and JSON.
 
 ### 牌桌约定 / Table conventions
 
@@ -36,13 +36,15 @@ Open [http://localhost:3000](http://localhost:3000) and press start. The match i
 - 方毡、木边、四角方位。南北对坐，东西对坐。
 - 每家出牌落在自己身边的出牌区。一圈结束后牌面淡出。三带二先三后对，顺子从左到右升序。
 - 桌心红心级牌即逢人配。手牌里的红心级牌标 ★。
-- 南家是主视角：横排重叠扇，或「理牌」竖组成列。北东西默认牌背加张数。
-- 升级条是「打到几」。出完显示头游 / 二游 / 三游 / 末游。不要盖在该家出牌区。
+- 南家是主视角，默认「垂直理牌」：同一点数竖叠成列，列与列错落，炸弹、同花顺、钢板靠左，散牌靠右，逢人配单独成列并标 ★。可改「横排扇形」。北东西默认牌背加张数。
+- 顶栏始终显示本副打到哪一级，以及南北、东西在 2→A 上的位置。本副逢人配跟着庄家的级牌。
+- 一局结束宣布头游、二游、三游、末游。升级只升不降，按常见线上记法：双下 +3，头游+三游 +2，头游+末游 +1。动画写出「南北 打8 → 打J」这种前后级牌。打满一盘从 2 打到过 A；选「三局」则打完三副就按级牌高低收场。
+- 统计按座位记下局数、队伍胜率、头游率、末游率、平均名次、炸弹、同花顺、过牌、快推理耗时、拒牌次数，以及对家走完时自己还剩几张。队伍记下升级数、双下次数、到 A 的局数。复盘 JSON 和 CSV 都带这份记录。
 - 每家出牌前先闪一句「快推理」。有 `TYPESAFE_API_KEY` 时问 Jev，约 800ms 超时就写「超时跳过」；没有密钥时用局面事实写 Mock 快推理。问题和答案记进复盘。
 
 Before each play the table flashes a short 快推理 line beside that seat. With `TYPESAFE_API_KEY` it asks Jev and gives up after about 800ms (`超时跳过`). With no key it shows a Mock line from the same facts. Questions, answers, and latency are stored on the replay log.
 
-These follow a Jiangsu-style square table rather than a casino oval: wood rim, four bearings, a play zone per seat, heart level-card in the center, South as the fanned hand, and rank-column sorting as a second layout.
+These follow a Jiangsu-style square table rather than a casino oval: wood rim, four bearings, a play zone per seat, heart level-card in the center, and South’s hand in staggered vertical columns. Upgrades follow the common online rule, winners only: 双下 +3, 头游+三游 +2, 头游+末游 +1.
 
 ```bash
 npm run test:engine

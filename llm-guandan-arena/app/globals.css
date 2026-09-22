@@ -72,6 +72,31 @@ button:disabled { opacity: 0.45; cursor: wait; }
   line-height: 1;
 }
 .level-plate span { font-size: 12px; color: var(--gold); }
+.level-track { flex: 1; min-width: 0; }
+.track-rail { display: flex; gap: 3px; align-items: center; }
+.track-stop {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 2px 0;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.28);
+}
+.track-stop b { font-size: 12px; font-weight: 700; line-height: 1; color: #efe2cf; }
+.track-stop .mark {
+  font-style: normal;
+  font-size: 10px;
+  line-height: 1;
+  min-height: 12px;
+  color: transparent;
+}
+.track-stop .mark.ns.on { color: #fff; background: var(--ns); border-radius: 999px; padding: 0 4px; }
+.track-stop .mark.ew.on { color: #fff; background: var(--ew); border-radius: 999px; padding: 0 4px; }
+.track-stop.deal { box-shadow: inset 0 0 0 1px var(--gold); background: rgba(230, 194, 122, 0.16); }
+.track-stop.deal b { color: #ffd7d2; }
 .ladders { display: flex; flex-direction: column; gap: 4px; flex: 1; }
 .ladder { display: flex; align-items: center; gap: 8px; font-size: 12px; }
 .ladder span { width: 32px; color: var(--gold); }
@@ -111,11 +136,12 @@ button:disabled { opacity: 0.45; cursor: wait; }
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 206px;
+  grid-template-columns: minmax(0, 1fr) 280px;
   grid-template-rows: auto minmax(0, 1fr) 156px;
   gap: 8px 12px;
   align-items: stretch;
 }
+.room.vertical .board { grid-template-rows: auto minmax(0, 1fr) 222px; }
 .seat-plate.north { grid-column: 1; grid-row: 1; }
 .table-row {
   grid-column: 1;
@@ -140,6 +166,7 @@ button:disabled { opacity: 0.45; cursor: wait; }
   min-width: 0;
 }
 .south-hand { grid-column: 1; grid-row: 3; height: 156px; overflow: hidden; }
+.room.vertical .south-hand { height: 222px; }
 .record { grid-column: 2; grid-row: 1 / span 3; }
 
 .seat-plate {
@@ -341,10 +368,19 @@ button:disabled { opacity: 0.45; cursor: wait; }
   padding: 14px 16px;
 }
 .round-banner b { font-family: "WenQuanYi Micro Hei", "Droid Sans Fallback", Palatino, serif; font-size: 26px; color: var(--gold); }
+.ceremony { animation: ceremony-in 640ms ease; }
+.ceremony .places { display: flex; justify-content: center; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
+.ceremony .places span { display: flex; flex-direction: column; min-width: 64px; font-size: 12px; }
+.ceremony .places em { font-style: normal; color: var(--gold); font-size: 13px; }
+.ceremony .climb { margin: 2px 0; font-size: 16px; }
+.ceremony .climb.ns { color: #ffd0c8; animation: climb-shift 900ms ease; }
+.ceremony .climb.ew { color: #d5e6ff; animation: climb-shift 900ms ease; }
+.ceremony small { color: var(--muted); }
 
 .south-hand { padding-top: 0; }
-.south-meta { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
-.south-meta .nameplate { min-width: 280px; }
+.south-meta { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; gap: 8px; }
+.south-meta .nameplate { min-width: 240px; }
+.sort-toggle { display: flex; gap: 4px; }
 
 .hand-fan {
   display: flex;
@@ -373,15 +409,32 @@ button:disabled { opacity: 0.45; cursor: wait; }
 .rank-columns {
   display: flex;
   justify-content: center;
-  align-items: flex-start;
-  gap: 5px;
-  height: 124px;
+  align-items: flex-end;
+  height: 176px;
+  padding: 0 4px 2px;
   overflow: hidden;
 }
-.rank-col { display: flex; flex-direction: column; align-items: center; }
-.rank-col .poker { width: 50px; height: 68px; }
-.rank-col-card { margin-top: -52px; }
-.rank-col-card:first-child { margin-top: 0; }
+.rank-col {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  position: relative;
+}
+.rank-col .poker { width: 42px; height: 58px; border-radius: 5px; }
+.rank-col .poker .corner b { font-size: 11px; }
+.rank-col .poker .corner i { font-size: 9px; }
+.rank-col .poker .pips span,
+.rank-col .poker .wild-star,
+.rank-col .poker .level-tab { font-size: 11px; }
+.rank-col .poker .face-rank,
+.rank-col .poker .joker-face { font-size: 14px; }
+.rank-col-card { margin-bottom: -44px; position: relative; }
+.rank-col-card:first-child { margin-bottom: 0; }
+.rank-col.role-wild .poker { box-shadow: 0 0 0 1px #e6c27a, 0 8px 14px rgba(0,0,0,0.28); }
+.rank-col.role-bomb .poker,
+.rank-col.role-jokerBomb .poker,
+.rank-col.role-flush .poker { box-shadow: 0 0 0 1px rgba(230, 194, 122, 0.85), 0 8px 12px rgba(0,0,0,0.28); }
+.rank-col-card.depart { animation: leave-col 320ms ease forwards; pointer-events: none; }
 
 .back-row { position: relative; display: flex; }
 .back-row.row { justify-content: center; }
@@ -594,9 +647,38 @@ button:disabled { opacity: 0.45; cursor: wait; }
 @keyframes sweep { to { opacity: 0; transform: scale(0.92); } }
 @keyframes bump { 40% { transform: translateY(-4px); } }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes leave-col { to { opacity: 0; transform: translateY(-26px) scale(0.9); } }
+@keyframes ceremony-in { from { opacity: 0; transform: translate(-50%, -46%); } to { opacity: 1; transform: translate(-50%, -50%); } }
+@keyframes climb-shift { from { letter-spacing: 0.12em; opacity: 0.2; } to { letter-spacing: 0; opacity: 1; } }
+
+.record-tabs { display: flex; gap: 8px; }
+.record-tabs button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 0;
+  font-family: "WenQuanYi Micro Hei", "Droid Sans Fallback", Palatino, serif;
+  font-size: 16px;
+}
+.record-tabs button.on { color: var(--gold); }
+.stats-panel { overflow: auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; padding-right: 2px; }
+.stats-actions { display: flex; gap: 6px; }
+.team-stat header { display: flex; flex-wrap: wrap; gap: 6px 10px; font-size: 12px; color: var(--muted); }
+.team-stat header b { color: var(--cream); }
+.team-stat.ns header b { color: #ffd0c8; }
+.team-stat.ew header b { color: #d5e6ff; }
+.spark { width: 100%; height: 28px; }
+.spark polyline { fill: none; stroke: var(--gold); stroke-width: 2; }
+.spark.ew polyline { stroke: #8eb6ef; }
+.spark.ns polyline { stroke: #e07a68; }
+.stats-panel table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.stats-panel th, .stats-panel td { text-align: center; padding: 3px 1px; border-bottom: 1px solid rgba(228, 196, 138, 0.18); }
+.stats-panel th { color: var(--gold); font-weight: 600; }
+.hand-log { margin: 0; padding-left: 16px; color: var(--muted); font-size: 12px; }
+.hand-log li { margin: 3px 0; }
 
 @media (prefers-reduced-motion: reduce) {
-  .zone-cards, .felt-square.clearing .zone-cards, .record-list p:last-child { animation: none; }
+  .zone-cards, .felt-square.clearing .zone-cards, .record-list p:last-child, .rank-col-card.depart, .ceremony, .ceremony .climb { animation: none; }
 }
 @media (max-width: 1100px) {
   .room { height: auto; overflow: auto; }

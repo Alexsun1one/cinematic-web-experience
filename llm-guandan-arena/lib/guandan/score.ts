@@ -6,6 +6,13 @@ export function upgradeDelta(places: number[]): number {
   return 1;
 }
 
+/** Ceremony name for the upgrade-only rule: 双下 +3, 头游+三游 +2, 头游+末游 +1. */
+export function outcomeLabel(delta: number): string {
+  if (delta >= 3) return "双下";
+  if (delta === 2) return "头游+三游";
+  return "头游+末游";
+}
+
 export function teamPlaces(order: number[], team: TeamId): number[] {
   const places: number[] = [];
   order.forEach((seat, index) => {

@@ -32,14 +32,20 @@ export async function POST(request: Request) {
     jevAssist?: unknown;
     startLevel?: unknown;
     seed?: unknown;
+    series?: unknown;
+    handLimit?: unknown;
   };
   const live = body.live === true;
   const keys = keyStatus();
+  const series = body.series === "full" || body.series === "three" || body.series === "open" ? body.series : "open";
+  const requestedLimit = typeof body.handLimit === "number" && body.handLimit > 0 ? Math.floor(body.handLimit) : null;
+  const handLimit = series === "three" ? 3 : series === "full" ? null : requestedLimit;
   const match = createMatch({
     id: crypto.randomUUID(),
     seats: seatConfigs(live),
     jevAssist: body.jevAssist === true && keys.typesafe,
-    startLevel: parseStartLevel(body.startLevel),
+    startLevel: series === "full" ? "2" : parseStartLevel(body.startLevel),
+    handLimit,
     seed: typeof body.seed === "number" ? body.seed : undefined,
   });
   remember(match);

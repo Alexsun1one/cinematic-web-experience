@@ -1,6 +1,7 @@
 import { sortCards } from "./guandan/cards";
 import { currentLegal, type Match } from "./guandan/match";
 import { presentCards } from "./guandan/present";
+import { matchStats } from "./guandan/stats";
 import { SEAT_WIND, SEAT_WIND_EN, teamOf } from "./guandan/types";
 
 function trickZones(match: Match) {
@@ -30,6 +31,7 @@ export function toView(match: Match) {
     createdAt: match.createdAt,
     jevAssist: match.jevAssist,
     startLevel: match.startLevel,
+    handLimit: match.handLimit,
     levels: match.levels,
     dealer: match.dealer,
     level: match.level,
@@ -70,6 +72,7 @@ export function toView(match: Match) {
     legalCount,
     log: match.log,
     rounds: match.rounds,
+    stats: matchStats(match),
   };
 }
 

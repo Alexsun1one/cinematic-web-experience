@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { BackRow, CardView, HandFan } from "@/components/CardView";
+import { statsToCsv } from "@/lib/guandan/stats";
 import { FACE } from "@/lib/guandan/types";
 import type { MatchView } from "@/lib/view";
 
@@ -17,7 +18,8 @@ export function Arena({ id }: { id: string }) {
   const [speed, setSpeed] = useState(700);
   const [pending, setPending] = useState(false);
   const [reveal, setReveal] = useState(false);
-  const [columns, setColumns] = useState(false);
+  const [columns, setColumns] = useState(true);
+  const [panel, setPanel] = useState<"log" | "stats">("log");
   const [swept, setSwept] = useState(false);
   const [holding, setHolding] = useState(false);
   const [preview, setPreview] = useState<LogEvent | null>(null);
@@ -95,16 +97,20 @@ export function Arena({ id }: { id: string }) {
     }
   }
 
-  async function exportReplay() {
-    const response = await fetch(`/api/matches/${id}/replay`);
-    const data = await response.json();
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  function download(filename: string, text: string, type: string) {
+    const blob = new Blob([text], { type });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `guandan-${id.slice(0, 8)}.json`;
+    link.download = filename;
     link.click();
     URL.revokeObjectURL(url);
+  }
+
+  async function exportReplay() {
+    const response = await fetch(`/api/matches/${id}/replay`);
+    const data = await response.json();
+    download(`guandan-${id.slice(0, 8)}.json`, JSON.stringify(data, null, 2), "application/json");
   }
 
   if (error && !view) {
@@ -121,22 +127,21 @@ export function Arena({ id }: { id: string }) {
   const latestRound = view.rounds.at(-1);
   const hideZones = view.trick.closed && swept;
 
+  const seriesNote = view.handLimit ? ` · 共${view.handLimit}局` : view.startLevel === "2" ? " · 2→A" : "";
+
   return (
-    <main className="room" data-testid="table">
+    <main className={`room ${columns ? "vertical" : ""}`} data-testid="table">
       <header className="hud">
         <div className="hud-brand">
           <b>模型掼蛋擂台</b>
-          <span>第 {view.round} 局 · {id.slice(0, 8)}</span>
+          <span>第 {view.round} 局{seriesNote} · {id.slice(0, 8)}</span>
         </div>
         <div className="level-plate" data-testid="level-plate">
-          <em>打</em>
+          <em>打到</em>
           <strong>{levelLabel}</strong>
           <span>逢人配 ★ 红心{levelLabel}</span>
         </div>
-        <div className="ladders">
-          <Ladder name="南北" team="ns" level={view.levels.ns} other={view.levels.ew} />
-          <Ladder name="东西" team="ew" level={view.levels.ew} other={view.levels.ns} />
-        </div>
+        <LevelTrack view={view} />
         <div className="hud-actions">
           <a className="wood-btn" href="/">大厅</a>
           <button className="wood-btn" type="button" onClick={() => setAuto((value) => !value)}>{auto ? "暂停" : "继续"}</button>
@@ -150,9 +155,6 @@ export function Arena({ id }: { id: string }) {
           ))}
           <button className={`wood-btn ${reveal ? "on" : ""}`} type="button" onClick={() => setReveal((value) => !value)}>
             {reveal ? "暗牌" : "明牌"}
-          </button>
-          <button className={`wood-btn ${columns ? "on" : ""}`} type="button" onClick={() => setColumns((value) => !value)}>
-            {columns ? "横排" : "理牌"}
           </button>
         </div>
       </header>
@@ -187,12 +189,27 @@ export function Arena({ id }: { id: string }) {
               </div>
             ) : null}
             {view.status !== "playing" && latestRound ? (
-              <div className="round-banner" data-testid="result">
-                <b>{view.status === "finished" ? (view.winner === "ns" ? "南北过A" : "东西过A") : "本局结算"}</b>
-                <p>{latestRound.order.map((seat, index) => `${PLACES[index]} ${view.seats[seat].short}`).join("  ")}</p>
-                <p>
-                  {latestRound.winner === "ns" ? "南北" : "东西"} +{latestRound.delta} · {latestRound.from === "T" ? "10" : latestRound.from} → {latestRound.to === "T" ? "10" : latestRound.to}
+              <div className="round-banner ceremony" data-testid="result" key={latestRound.round}>
+                <b>{latestRound.outcome} +{latestRound.delta}</b>
+                <div className="places">
+                  {latestRound.order.map((seat, index) => (
+                    <span key={seat}>
+                      <em>{PLACES[index]}</em>
+                      {view.seats[seat].short}
+                    </span>
+                  ))}
+                </div>
+                <p className={latestRound.winner === "ns" ? "climb ns" : "climb"}>
+                  南北 打{chip(latestRound.nsBefore)} → 打{chip(latestRound.nsAfter)}
                 </p>
+                <p className={latestRound.winner === "ew" ? "climb ew" : "climb"}>
+                  东西 打{chip(latestRound.ewBefore)} → 打{chip(latestRound.ewAfter)}
+                </p>
+                {view.status === "finished" ? (
+                  <small>{view.winner === "ns" ? "南北" : "东西"}{latestRound.matchWon ? " 过A" : " 领先"}</small>
+                ) : (
+                  <small>只升不降 · 双下+3 · 头游+三游+2 · 头游+末游+1</small>
+                )}
               </div>
             ) : null}
           </div>
@@ -202,27 +219,45 @@ export function Arena({ id }: { id: string }) {
         <section className="south-hand">
           <div className="south-meta">
             <NameBlock view={view} index={2} />
-            <span className="sort-note">{columns ? "竖组理牌 · 同点一列" : "横排理牌 · 从大到小"}</span>
+            <div className="sort-toggle">
+              <button className={`wood-btn tiny ${columns ? "on" : ""}`} type="button" data-testid="layout-vertical" onClick={() => setColumns(true)}>
+                垂直理牌
+              </button>
+              <button className={`wood-btn tiny ${columns ? "" : "on"}`} type="button" data-testid="layout-fan" onClick={() => setColumns(false)}>
+                横排扇形
+              </button>
+            </div>
           </div>
           <HandFan cards={view.hands[2]} level={view.level} mode={columns ? "columns" : "fan"} />
         </section>
         <aside className="record" data-testid="play-log">
           <h2>
-            出牌记录
+            <span className="record-tabs">
+              <button className={panel === "log" ? "on" : ""} type="button" onClick={() => setPanel("log")}>记录</button>
+              <button className={panel === "stats" ? "on" : ""} type="button" data-testid="stats-tab" onClick={() => setPanel("stats")}>统计</button>
+            </span>
             <button className="wood-btn tiny" type="button" data-testid="export" onClick={() => void exportReplay()}>复盘</button>
           </h2>
-          <div className="record-list">
-            {(preview ? [...view.log, preview] : view.log).slice(-24).map((event) => (
-              <p key={event.id} className={event.kind === "reason" ? "reason-line" : ""}>
-                <b>{event.zh}</b>
-                <small>{event.reason ? `${event.reason.latencyMs}ms` : event.source ? event.source : ""}</small>
-              </p>
-            ))}
-          </div>
+          {panel === "log" ? (
+            <div className="record-list">
+              {(preview ? [...view.log, preview] : view.log).slice(-24).map((event) => (
+                <p key={event.id} className={event.kind === "reason" ? "reason-line" : ""}>
+                  <b>{event.zh}</b>
+                  <small>{event.reason ? `${event.reason.latencyMs}ms` : event.source ? event.source : ""}</small>
+                </p>
+              ))}
+            </div>
+          ) : (
+            <StatsPanel view={view} onCsv={() => download(`guandan-${id.slice(0, 8)}-stats.csv`, statsToCsv(view.stats), "text/csv")} onJson={() => download(`guandan-${id.slice(0, 8)}-stats.json`, JSON.stringify(view.stats, null, 2), "application/json")} />
+          )}
         </aside>
       </section>
     </main>
   );
+}
+
+function chip(rank: string): string {
+  return rank === "T" ? "10" : rank;
 }
 
 function beatDuration(speed: number): number {
@@ -307,21 +342,98 @@ function NameBlock({ view, index }: { view: MatchView; index: number }) {
   );
 }
 
-function Ladder({ name, team, level, other }: { name: string; team: "ns" | "ew"; level: string; other: string }) {
+function LevelTrack({ view }: { view: MatchView }) {
   return (
-    <div className="ladder">
-      <span>{name}</span>
-      <div>
+    <div className="level-track" data-testid="level-track">
+      <div className="track-rail">
         {FACE.map((rank) => {
-          const here = rank === level;
-          const shared = here && rank === other;
+          const ns = view.levels.ns === rank;
+          const ew = view.levels.ew === rank;
+          const deal = view.level === rank;
           return (
-            <i key={rank} className={shared ? "both" : here ? team : ""}>
-              {rank === "T" ? "10" : rank}
-            </i>
+            <div key={rank} className={`track-stop ${deal ? "deal" : ""} ${ns ? "has-ns" : ""} ${ew ? "has-ew" : ""}`}>
+              <i className={`mark ns ${ns ? "on" : ""}`}>{ns ? "南" : ""}</i>
+              <b>{chip(rank)}</b>
+              <i className={`mark ew ${ew ? "on" : ""}`}>{ew ? "东" : ""}</i>
+            </div>
           );
         })}
       </div>
     </div>
+  );
+}
+
+function StatsPanel({ view, onCsv, onJson }: { view: MatchView; onCsv: () => void; onJson: () => void }) {
+  const stats = view.stats;
+  return (
+    <div className="stats-panel" data-testid="stats-panel">
+      <div className="stats-actions">
+        <button className="wood-btn tiny" type="button" data-testid="export-csv" onClick={onCsv}>CSV</button>
+        <button className="wood-btn tiny" type="button" data-testid="export-json" onClick={onJson}>JSON</button>
+      </div>
+      {stats.teams.map((team) => (
+        <section key={team.team} className={`team-stat ${team.team}`}>
+          <header>
+            <b>{team.name}</b>
+            <span>打{chip(team.level)} · 升{team.levelsClimbed} · 双下 {team.doubleDowns}</span>
+            <span>{team.timeToA === null ? "未到A" : `${team.timeToA} 局到A`}</span>
+          </header>
+          <Sparkline values={team.timeline} team={team.team} />
+        </section>
+      ))}
+      <table>
+        <thead>
+          <tr>
+            <th>座位</th>
+            <th>胜率</th>
+            <th>头游</th>
+            <th>末游</th>
+            <th>名次</th>
+            <th>炸</th>
+            <th>同花</th>
+            <th>过</th>
+            <th>思考</th>
+            <th>拒</th>
+            <th>余牌</th>
+          </tr>
+        </thead>
+        <tbody>
+          {stats.seats.map((seat) => (
+            <tr key={seat.seat}>
+              <td>{view.seats[seat.seat].wind}</td>
+              <td>{Math.round(seat.teamWinRate * 100)}%</td>
+              <td>{Math.round(seat.firstRate * 100)}%</td>
+              <td>{Math.round(seat.lastRate * 100)}%</td>
+              <td>{seat.avgFinish ?? "—"}</td>
+              <td>{seat.bombs}</td>
+              <td>{seat.flushes}</td>
+              <td>{seat.passes}</td>
+              <td>{seat.avgThinkMs === null ? "—" : `${seat.avgThinkMs}`}</td>
+              <td>{seat.retries}</td>
+              <td>{seat.partnerCardsLeft ?? "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <ol className="hand-log">
+        {stats.hands.map((hand) => (
+          <li key={hand.round}>
+            第{hand.round}局 {hand.outcome}+{hand.delta} · 南北 打{chip(hand.nsBefore)}→打{chip(hand.nsAfter)} · 东西 打{chip(hand.ewBefore)}→打{chip(hand.ewAfter)}
+          </li>
+        ))}
+        {stats.hands.length === 0 ? <li>本局尚未结束</li> : null}
+      </ol>
+    </div>
+  );
+}
+
+function Sparkline({ values, team }: { values: number[]; team: "ns" | "ew" }) {
+  if (values.length === 0) return <svg className="spark" viewBox="0 0 120 28" aria-hidden />;
+  const step = values.length === 1 ? 0 : 112 / (values.length - 1);
+  const points = values.map((value, index) => `${4 + index * step},${24 - (value / 12) * 20}`).join(" ");
+  return (
+    <svg className={`spark ${team}`} viewBox="0 0 120 28" aria-hidden>
+      <polyline points={points} />
+    </svg>
   );
 }

@@ -1,5 +1,9 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { arrangeColumns } from "@/lib/guandan/arrange";
 import { isRed, isWild, rankCompact, suitGlyph } from "@/lib/guandan/cards";
-import { handColumns, handOrder } from "@/lib/guandan/present";
+import { handOrder } from "@/lib/guandan/present";
 import type { Card, FaceRank } from "@/lib/guandan/types";
 
 type Spot = { x: number; y: number; turn?: boolean };
@@ -101,6 +105,21 @@ export function CardBack({ size = "mini" }: { size?: "mini" | "side" }) {
   );
 }
 
+function useLeaving(cards: Card[]): Card[] {
+  const prev = useRef(cards);
+  const [leaving, setLeaving] = useState<Card[]>([]);
+  useEffect(() => {
+    const ids = new Set(cards.map((card) => card.id));
+    const gone = prev.current.filter((card) => !ids.has(card.id));
+    prev.current = cards;
+    if (gone.length === 0) return;
+    setLeaving(gone);
+    const timer = window.setTimeout(() => setLeaving([]), 340);
+    return () => window.clearTimeout(timer);
+  }, [cards]);
+  return leaving;
+}
+
 export function HandFan({
   cards,
   level,
@@ -114,15 +133,26 @@ export function HandFan({
   size?: "hand" | "mini";
   axis?: "row" | "col";
 }) {
+  const leaving = useLeaving(cards);
   const ordered = handOrder(cards, level);
   if (mode === "columns") {
-    const columns = handColumns(cards, level);
+    const live = new Set(cards.map((card) => card.id));
+    const columns = arrangeColumns([...cards, ...leaving], level);
+    const squeeze = columns.length > 14 ? Math.min(18, (columns.length - 14) * 2) : 0;
     return (
-      <div className="rank-columns">
-        {columns.map((column) => (
-          <div className="rank-col" key={column.key}>
+      <div className="rank-columns" data-testid="vertical-hand">
+        {columns.map((column, columnIndex) => (
+          <div
+            className={`rank-col role-${column.role}`}
+            key={column.key}
+            data-role={column.role}
+            style={{
+              transform: `translateY(-${column.lift + (columnIndex % 2 === 0 ? 0 : 5)}px)`,
+              marginLeft: columnIndex === 0 ? 0 : -squeeze,
+            }}
+          >
             {column.cards.map((card, index) => (
-              <div key={card.id} className="rank-col-card" style={{ zIndex: index }}>
+              <div key={card.id} className={`rank-col-card ${live.has(card.id) ? "" : "depart"}`} style={{ zIndex: index + 1 }}>
                 <CardView card={card} level={level} />
               </div>
             ))}

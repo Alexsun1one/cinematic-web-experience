@@ -1,3 +1,4 @@
+import { matchStats } from "@/lib/guandan/stats";
 import { matchStore } from "@/lib/store";
 
 export const runtime = "nodejs";
@@ -15,11 +16,13 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
       seats: match.seats,
       jevAssist: match.jevAssist,
       startLevel: match.startLevel,
+      handLimit: match.handLimit,
       levels: match.levels,
       dealer: match.dealer,
       status: match.status,
       winner: match.winner,
       rounds: match.rounds,
+      stats: matchStats(match),
       log: match.log,
     },
     { headers: { "cache-control": "no-store" } },

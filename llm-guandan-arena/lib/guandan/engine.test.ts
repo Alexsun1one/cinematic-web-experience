@@ -6,8 +6,10 @@ import { beginRound, commitMove, createMatch, currentLegal, logReason, stepLocal
 import { mockQuickReason } from "../llm/quick-reason";
 import { parseMoveId } from "../llm/parse";
 import { buildPrompt } from "../llm/prompt";
+import { arrangeColumns } from "./arrange";
 import { handOrder, presentCards } from "./present";
-import { bumpLevel, upgradeDelta } from "./score";
+import { bumpLevel, outcomeLabel, upgradeDelta } from "./score";
+import { matchStats, statsToCsv } from "./stats";
 import { seatConfigs } from "../roster";
 import { FACE, type Card, type FaceRank, type Rank, type Suit } from "./types";
 
@@ -342,6 +344,84 @@ function testQuickReason() {
   assert.ok(replay.every((event) => event.seat !== null && typeof event.reason?.latencyMs === "number"));
 }
 
+function testArrangeSeriesAndStats() {
+  assert.equal(outcomeLabel(3), "双下");
+  assert.equal(outcomeLabel(2), "头游+三游");
+  assert.equal(outcomeLabel(1), "头游+末游");
+
+  const bomb = arrangeColumns(
+    [card(0, "S", "9"), card(1, "S", "9"), card(0, "D", "9"), card(0, "C", "9"), card(0, "S", "3")],
+    "2",
+  );
+  assert.equal(bomb[0].role, "bomb");
+  assert.equal(bomb[bomb.length - 1].role, "single");
+  assert.ok(bomb.findIndex((column) => column.role === "bomb") < bomb.findIndex((column) => column.role === "single"));
+
+  const wild = arrangeColumns([card(0, "H", "5"), card(0, "S", "K")], "5");
+  assert.equal(wild[0].role, "wild");
+  assert.equal(wild[0].key, "wild-5");
+  assert.ok(wild[0].lift > wild[1].lift);
+
+  const flush = arrangeColumns(
+    [card(0, "S", "T"), card(0, "S", "J"), card(0, "S", "Q"), card(0, "S", "K"), card(0, "S", "A"), card(0, "D", "4")],
+    "2",
+  );
+  const flushCols = flush.filter((column) => column.role === "flush");
+  assert.deepEqual(
+    flushCols.map((column) => column.cards[0].rank),
+    ["A", "K", "Q", "J", "T"],
+  );
+  assert.ok(flush.findIndex((column) => column.role === "flush") < flush.findIndex((column) => column.role === "single"));
+
+  const match = fresh("2");
+  match.handLimit = 1;
+  match.hands = [[card(0, "S", "3")], [card(0, "S", "4")], [card(0, "S", "5")], [card(0, "S", "6")]];
+  match.finishOrder = [];
+  match.trick = { currentSeat: 0, lastPlay: null, lastSeat: null, closed: false };
+  commitMove(match, findMove(currentLegal(match), "single", "3"), meta);
+  const firstFinish = match.log.find((event) => event.kind === "finish");
+  assert.deepEqual(firstFinish?.counts, [0, 1, 1, 1]);
+  commitMove(match, findMove(currentLegal(match), "single", "4"), meta);
+  commitMove(match, findMove(currentLegal(match), "single", "5"), meta);
+  assert.equal(match.status, "finished");
+  assert.equal(match.rounds[0].outcome, "头游+三游");
+  assert.equal(match.rounds[0].delta, 2);
+  assert.equal(match.rounds[0].nsBefore, "2");
+  assert.equal(match.rounds[0].nsAfter, "4");
+  assert.equal(match.rounds[0].ewAfter, "2");
+  assert.equal(match.winner, "ns");
+  assert.match(match.log.at(-1)?.zh ?? "", /打满 1 局/);
+  const series = matchStats(match);
+  assert.equal(series.seats[2].partnerCardsLeft, 1);
+  assert.equal(series.teams[0].levelsClimbed, 2);
+  assert.equal(series.hands[0].outcome, "头游+三游");
+
+  const bombs = fresh("2");
+  bombs.hands = [
+    [card(0, "S", "9"), card(1, "S", "9"), card(0, "H", "9"), card(0, "D", "9"), card(0, "S", "3")],
+    [card(0, "S", "4")],
+    [card(0, "S", "5")],
+    [card(0, "S", "6")],
+  ];
+  bombs.finishOrder = [];
+  bombs.trick = { currentSeat: 0, lastPlay: null, lastSeat: null, closed: false };
+  const bombMove = currentLegal(bombs).find((move) => move.kind === "bomb4");
+  assert.ok(bombMove);
+  commitMove(bombs, bombMove, meta);
+  commitMove(bombs, currentLegal(bombs)[0], meta);
+  commitMove(bombs, currentLegal(bombs)[0], meta);
+  commitMove(bombs, currentLegal(bombs)[0], meta);
+  const stats = matchStats(bombs);
+  assert.equal(stats.seats[0].bombs, 1);
+  assert.equal(stats.seats[0].flushes, 0);
+  assert.equal(stats.seats[1].passes, 1);
+  assert.equal(stats.seats[2].passes, 1);
+  const csv = statsToCsv(stats);
+  assert.match(csv, /^type,seat,name/);
+  assert.match(csv, /双下|team,ns/);
+}
+
+testArrangeSeriesAndStats();
 testQuickReason();
 testPresentation();
 testDeck();

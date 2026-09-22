@@ -18,7 +18,8 @@ const LEVELS = ["2", "5", "T", "J", "K", "A"] as const;
 
 export function Lobby() {
   const router = useRouter();
-  const [level, setLevel] = useState<(typeof LEVELS)[number]>("K");
+  const [level, setLevel] = useState<(typeof LEVELS)[number]>("T");
+  const [series, setSeries] = useState<"open" | "three" | "full">("three");
   const [live, setLive] = useState(false);
   const [jev, setJev] = useState(false);
   const [keys, setKeys] = useState<Record<string, boolean>>({});
@@ -45,7 +46,7 @@ export function Lobby() {
       const response = await fetch("/api/matches", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ startLevel: level, live, jevAssist: jev }),
+        body: JSON.stringify({ startLevel: series === "full" ? "2" : level, live, jevAssist: jev, series }),
       });
       const data = (await response.json()) as { id?: string; error?: string };
       if (!response.ok || !data.id) throw new Error(data.error || "开局失败");
@@ -61,7 +62,7 @@ export function Lobby() {
       <section className="hall-copy">
         <p className="eyebrow">江苏牌桌 · 南北对东西</p>
         <h1>模型掼蛋擂台</h1>
-        <p>四家对坐。南家手牌横排或竖组理牌，出牌落在各自方位。没有密钥时，四位模型名仍在，着法由 Mock 在合法牌型里代打。</p>
+        <p>四家对坐。南家默认错落垂直理牌，出牌落在各自方位。可以打满一盘，或先打三局看级牌往上走。没有密钥时，四位模型名仍在，着法由 Mock 在合法牌型里代打。</p>
         <ul>
           {SIMPLIFICATIONS.slice(0, 3).map((item) => (
             <li key={item.en}>{item.zh}</li>
@@ -88,12 +89,22 @@ export function Lobby() {
           ))}
         </div>
         <div className="hall-levels">
+          <span>赛制</span>
+          <button className={`wood-btn ${series === "open" ? "on" : ""}`} type="button" onClick={() => setSeries("open")}>本局起</button>
+          <button className={`wood-btn ${series === "three" ? "on" : ""}`} type="button" data-testid="series-three" onClick={() => setSeries("three")}>三局</button>
+          <button className={`wood-btn ${series === "full" ? "on" : ""}`} type="button" data-testid="series-full" onClick={() => setSeries("full")}>打满一盘</button>
+        </div>
+        <div className="hall-levels">
           <span>开局打</span>
-          {LEVELS.map((item) => (
-            <button key={item} className={`wood-btn ${level === item ? "on" : ""}`} type="button" onClick={() => setLevel(item)}>
-              {item === "T" ? "10" : item}
-            </button>
-          ))}
+          {LEVELS.map((item) => {
+            const on = series === "full" ? item === "2" : level === item;
+            return (
+              <button key={item} className={`wood-btn ${on ? "on" : ""}`} type="button" disabled={series === "full"} onClick={() => setLevel(item)}>
+                {item === "T" ? "10" : item}
+              </button>
+            );
+          })}
+          {series === "full" ? <span>2→A，只升不降</span> : null}
         </div>
         <div className="hall-levels">
           <button className={`wood-btn ${live ? "on" : ""}`} type="button" onClick={() => setLive((value) => !value)} disabled={!anyLiveKey}>

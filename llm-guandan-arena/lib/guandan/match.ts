@@ -2,7 +2,7 @@ import type { QuickBeat } from "../llm/quick-reason";
 import { createDeck, deal, shuffle, subtract } from "./cards";
 import { chooseHeuristic } from "./heuristic";
 import { leadAfterTrick, legalMoves, nextSeatWithCards, type Move } from "./legal";
-import { bumpLevel, completeOrder, roundIsOver, teamPlaces, upgradeDelta } from "./score";
+import { bumpLevel, completeOrder, outcomeLabel, roundIsOver, teamPlaces, upgradeDelta } from "./score";
 import {
   FACE,
   SEAT_WIND,
@@ -47,6 +47,7 @@ export interface LogEvent {
   assist?: AssistNote | null;
   trick?: number;
   reason?: QuickBeat;
+  counts?: number[];
 }
 
 export interface RoundSummary {
@@ -56,8 +57,13 @@ export interface RoundSummary {
   order: number[];
   winner: TeamId;
   delta: number;
+  outcome: string;
   from: FaceRank;
   to: FaceRank;
+  nsBefore: FaceRank;
+  nsAfter: FaceRank;
+  ewBefore: FaceRank;
+  ewAfter: FaceRank;
   matchWon: boolean;
 }
 
@@ -68,6 +74,7 @@ export interface Match {
   seats: [SeatConfig, SeatConfig, SeatConfig, SeatConfig];
   jevAssist: boolean;
   startLevel: FaceRank;
+  handLimit: number | null;
   levels: Record<TeamId, FaceRank>;
   dealer: TeamId;
   level: FaceRank;
@@ -95,6 +102,7 @@ export interface CreateMatchInput {
   seats: [SeatConfig, SeatConfig, SeatConfig, SeatConfig];
   jevAssist: boolean;
   startLevel: FaceRank;
+  handLimit?: number | null;
   seed?: number;
 }
 
@@ -118,6 +126,7 @@ export function createMatch(input: CreateMatchInput): Match {
     seats: input.seats,
     jevAssist: input.jevAssist,
     startLevel: start,
+    handLimit: input.handLimit ?? null,
     levels: { ns: start, ew: start },
     dealer: "ns",
     level: start,
@@ -230,6 +239,7 @@ export function commitMove(match: Match, move: Move, meta: MoveMeta) {
       kind: "finish",
       zh: `${seatName(match, seat)} ${placeName(place)}`,
       en: `${seatNameEn(match, seat)} finishes ${placeNameEn(place)}`,
+      counts: match.hands.map((hand) => hand.length),
     });
     if (roundIsOver(match.finishOrder)) {
       endRound(match, seat);
@@ -295,12 +305,15 @@ function endRound(match: Match, lastSeat: number) {
   const winner = teamOf(order[0]);
   const places = teamPlaces(order, winner);
   const delta = upgradeDelta(places);
+  const nsBefore = match.levels.ns;
+  const ewBefore = match.levels.ew;
   const from = match.levels[winner];
   const bumped = bumpLevel(from, delta);
   const dealtBy = match.dealer;
   match.levels[winner] = bumped.level;
   match.dealer = winner;
   match.nextLeader = order[0];
+  const outcome = outcomeLabel(delta);
   const summary: RoundSummary = {
     round: match.round,
     level: match.level,
@@ -308,8 +321,13 @@ function endRound(match: Match, lastSeat: number) {
     order,
     winner,
     delta,
+    outcome,
     from,
     to: bumped.level,
+    nsBefore,
+    nsAfter: match.levels.ns,
+    ewBefore,
+    ewAfter: match.levels.ew,
     matchWon: bumped.won,
   };
   match.rounds.push(summary);
@@ -321,8 +339,8 @@ function endRound(match: Match, lastSeat: number) {
   pushLog(match, {
     seat: null,
     kind: "round",
-    zh: `本局结束 ${names} · ${team} +${delta}（${rankName(from)} → ${rankName(bumped.level)}）`,
-    en: `Round over: ${namesEn}. ${winner.toUpperCase()} +${delta} (${rankName(from)} → ${rankName(bumped.level)})`,
+    zh: `本局结束 ${names} · ${outcome} · ${team} +${delta}（打${rankName(from)} → 打${rankName(bumped.level)}）`,
+    en: `Round over: ${namesEn}. ${outcome} · ${winner.toUpperCase()} +${delta} (${rankName(from)} → ${rankName(bumped.level)})`,
   });
   if (bumped.won) {
     match.status = "finished";
@@ -332,6 +350,21 @@ function endRound(match: Match, lastSeat: number) {
       kind: "match",
       zh: `${team} 过 A，赢得比赛`,
       en: `${winner.toUpperCase()} passes A and wins the match`,
+    });
+    return;
+  }
+  if (match.handLimit !== null && match.round >= match.handLimit) {
+    const ns = FACE.indexOf(match.levels.ns);
+    const ew = FACE.indexOf(match.levels.ew);
+    const seriesWinner = ns === ew ? winner : ns > ew ? "ns" : "ew";
+    match.status = "finished";
+    match.winner = seriesWinner;
+    const lead = seriesWinner === "ns" ? "南北" : "东西";
+    pushLog(match, {
+      seat: null,
+      kind: "match",
+      zh: `打满 ${match.handLimit} 局 · ${lead} 领先`,
+      en: `Series of ${match.handLimit} hands · ${seriesWinner.toUpperCase()} leads`,
     });
     return;
   }

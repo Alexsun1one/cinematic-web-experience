@@ -24,7 +24,7 @@ export const SIMPLIFICATIONS: { zh: string; en: string }[] = [
     en: "The trick winner leads. If they are out, their partner takes the lead. Tribute is omitted; next round is led by first-out.",
   },
   {
-    zh: "升级只升不降：双上 +3，头游三游 +2，头游末游 +1。升到 A、越过 A，或已在 A 再获胜，即过 A 结束比赛。",
-    en: "Winners upgrade only: both partners top-two +3, first and third +2, first and last +1. Reaching A, passing A, or winning again on A ends the match.",
+    zh: "升级只升不降（常见线上规则）：对方双下 +3，头游+三游 +2，头游+末游 +1。升到 A、越过 A，或已在 A 再获胜，即过 A 结束。打满约定局数时，级牌高的一方领先。",
+    en: "Winners upgrade only, the usual online rule: opponents both trail +3, first and third +2, first and last +1. Reaching A, passing A, or winning again on A ends the match. A fixed-length series is led by the higher level.",
   },
 ];
