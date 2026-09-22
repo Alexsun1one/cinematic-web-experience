@@ -72,7 +72,7 @@ export function CardView({
         <b>{joker ? (card.rank === "BJ" ? "大" : "小") : label}</b>
         <i>{joker ? "王" : suit}</i>
       </span>
-      {wild ? <em className="wild-star">★</em> : levelNatural ? <em className="level-tab">级</em> : null}
+      {wild ? <em className="wild-star">配</em> : levelNatural ? <em className="level-tab">级</em> : null}
       {joker ? (
         <span className="joker-face">{card.rank === "BJ" ? "大王" : "小王"}</span>
       ) : pip ? (

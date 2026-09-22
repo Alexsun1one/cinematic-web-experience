@@ -60,9 +60,9 @@ export function Lobby() {
   return (
     <main className="hall">
       <section className="hall-copy">
-        <p className="eyebrow">淮扬夜桌 · 南北对东西</p>
+        <p className="eyebrow">Glass Arena · NS vs EW</p>
         <h1>模型掼蛋擂台</h1>
-        <p>四家对坐。南家默认错落垂直理牌，出牌落在各自方位。可以打满一盘，或先打三局看级牌往上走。没有密钥时，四位模型名仍在，着法由 Mock 在合法牌型里代打。</p>
+        <p>四座直播台。南家默认垂直理牌，出牌落入方位井。可打满一盘或先打三局。无密钥时模型名仍在，Mock 在合法牌型里代打。</p>
         <ul>
           {SIMPLIFICATIONS.slice(0, 3).map((item) => (
             <li key={item.en}>{item.zh}</li>
@@ -90,16 +90,16 @@ export function Lobby() {
         </div>
         <div className="hall-levels">
           <span>赛制</span>
-          <button className={`wood-btn ${series === "open" ? "on" : ""}`} type="button" onClick={() => setSeries("open")}>本局起</button>
-          <button className={`wood-btn ${series === "three" ? "on" : ""}`} type="button" data-testid="series-three" onClick={() => setSeries("three")}>三局</button>
-          <button className={`wood-btn ${series === "full" ? "on" : ""}`} type="button" data-testid="series-full" onClick={() => setSeries("full")}>打满一盘</button>
+          <button className={`chip-btn ${series === "open" ? "on" : ""}`} type="button" onClick={() => setSeries("open")}>本局起</button>
+          <button className={`chip-btn ${series === "three" ? "on" : ""}`} type="button" data-testid="series-three" onClick={() => setSeries("three")}>三局</button>
+          <button className={`chip-btn ${series === "full" ? "on" : ""}`} type="button" data-testid="series-full" onClick={() => setSeries("full")}>打满一盘</button>
         </div>
         <div className="hall-levels">
           <span>开局打</span>
           {LEVELS.map((item) => {
             const on = series === "full" ? item === "2" : level === item;
             return (
-              <button key={item} className={`wood-btn ${on ? "on" : ""}`} type="button" disabled={series === "full"} onClick={() => setLevel(item)}>
+              <button key={item} className={`chip-btn ${on ? "on" : ""}`} type="button" disabled={series === "full"} onClick={() => setLevel(item)}>
                 {item === "T" ? "10" : item}
               </button>
             );
@@ -107,13 +107,13 @@ export function Lobby() {
           {series === "full" ? <span>2→A，只升不降</span> : null}
         </div>
         <div className="hall-levels">
-          <button className={`wood-btn ${live ? "on" : ""}`} type="button" onClick={() => setLive((value) => !value)} disabled={!anyLiveKey}>
+          <button className={`chip-btn ${live ? "on" : ""}`} type="button" onClick={() => setLive((value) => !value)} disabled={!anyLiveKey}>
             {live ? "实盘" : "Mock 对局"}
           </button>
-          <button className={`wood-btn ${jev ? "on" : ""}`} type="button" onClick={() => setJev((value) => !value)} disabled={!keys.typesafe}>
+          <button className={`chip-btn ${jev ? "on" : ""}`} type="button" onClick={() => setJev((value) => !value)} disabled={!keys.typesafe}>
             Jev {keys.typesafe ? "开" : "未配置"}
           </button>
-          <button className="wood-btn gold" type="button" data-testid="start-match" onClick={() => void start()} disabled={busy}>
+          <button className="chip-btn gold" type="button" data-testid="start-match" onClick={() => void start()} disabled={busy}>
             {busy ? "发牌…" : "开始"}
           </button>
         </div>

@@ -147,22 +147,22 @@ export function Arena({ id }: { id: string }) {
           <div>
             <em>打到</em>
             <strong> {levelLabel}</strong>
-            <span>逢人配 ★ 红心{levelLabel}</span>
+            <span>逢人配 · 红心{levelLabel}</span>
           </div>
         </div>
         <LevelTrack view={view} />
         <div className="hud-actions">
-          <a className="wood-btn" href="/">大厅</a>
-          <button className="wood-btn" type="button" onClick={() => setAuto((value) => !value)}>{auto ? "暂停" : "继续"}</button>
-          <button className="wood-btn" type="button" data-testid="step" onClick={() => void step()} disabled={pending || holding || view.status === "finished"}>
+          <a className="chip-btn" href="/">大厅</a>
+          <button className="chip-btn" type="button" onClick={() => setAuto((value) => !value)}>{auto ? "暂停" : "继续"}</button>
+          <button className="chip-btn" type="button" data-testid="step" onClick={() => void step()} disabled={pending || holding || view.status === "finished"}>
             {pending ? "…" : "下一步"}
           </button>
           {([240, 700, 1400] as const).map((value) => (
-            <button key={value} className={`wood-btn ${speed === value ? "on" : ""}`} type="button" onClick={() => setSpeed(value)}>
+            <button key={value} className={`chip-btn ${speed === value ? "on" : ""}`} type="button" onClick={() => setSpeed(value)}>
               {value === 240 ? "快" : value === 700 ? "中" : "慢"}
             </button>
           ))}
-          <button className={`wood-btn ${reveal ? "on" : ""}`} type="button" onClick={() => setReveal((value) => !value)}>
+          <button className={`chip-btn ${reveal ? "on" : ""}`} type="button" onClick={() => setReveal((value) => !value)}>
             {reveal ? "暗牌" : "明牌"}
           </button>
         </div>
@@ -191,7 +191,10 @@ export function Arena({ id }: { id: string }) {
             ))}
             {preview?.reason && preview.seat !== null ? (
               <div className={`reason-bubble ${WIND[preview.seat]}`} data-testid="quick-reason">
-                <em>{preview.reason.source === "jev" ? "Jev 快推理" : "Mock 快推理"}</em>
+                <em>
+                  {preview.reason.source === "jev" ? "Jev 快推理" : "Mock 快推理"}
+                  <code>{preview.reason.latencyMs}ms</code>
+                </em>
                 {(preview.reason.timedOut ? ["超时跳过"] : preview.reason.lines).map((line, index) => (
                   <b key={`${index}-${line}`}>{line}</b>
                 ))}
@@ -200,20 +203,20 @@ export function Arena({ id }: { id: string }) {
             {view.status !== "playing" && latestRound ? (
               <div className="round-banner ceremony" data-testid="result" key={latestRound.round}>
                 <div className="ceremony-sparks" aria-hidden>
-                  {Array.from({ length: 12 }, (_, index) => (
+                  {Array.from({ length: 10 }, (_, index) => (
                     <i
                       key={index}
                       style={{
                         left: `${8 + ((index * 17) % 84)}%`,
                         top: `${20 + ((index * 23) % 55)}%`,
                         animationDelay: `${index * 45}ms`,
-                        background: index % 3 === 0 ? "#ffd0c8" : undefined,
+                        background: index % 2 === 0 ? "#2ee6a6" : "#4da3ff",
                       }}
                     />
                   ))}
                 </div>
                 <div className={`ceremony-seal ${latestRound.delta >= 3 ? "double" : ""}`}>
-                  {latestRound.delta >= 3 ? "双下" : latestRound.outcome.includes("三游") ? "头游" : "头游"}
+                  {latestRound.delta >= 3 ? "双下" : "头游"}
                 </div>
                 <b className="title">{latestRound.outcome} +{latestRound.delta}</b>
                 <div className="places">
@@ -245,10 +248,10 @@ export function Arena({ id }: { id: string }) {
           <div className="south-meta">
             <NameBlock view={view} index={2} />
             <div className="sort-toggle">
-              <button className={`wood-btn tiny ${columns ? "on" : ""}`} type="button" data-testid="layout-vertical" onClick={() => setColumns(true)}>
+              <button className={`chip-btn tiny ${columns ? "on" : ""}`} type="button" data-testid="layout-vertical" onClick={() => setColumns(true)}>
                 垂直理牌
               </button>
-              <button className={`wood-btn tiny ${columns ? "" : "on"}`} type="button" data-testid="layout-fan" onClick={() => setColumns(false)}>
+              <button className={`chip-btn tiny ${columns ? "" : "on"}`} type="button" data-testid="layout-fan" onClick={() => setColumns(false)}>
                 横排扇形
               </button>
             </div>
@@ -261,7 +264,7 @@ export function Arena({ id }: { id: string }) {
               <button className={panel === "log" ? "on" : ""} type="button" onClick={() => setPanel("log")}>记录</button>
               <button className={panel === "stats" ? "on" : ""} type="button" data-testid="stats-tab" onClick={() => setPanel("stats")}>统计</button>
             </span>
-            <button className="wood-btn tiny" type="button" data-testid="export" onClick={() => void exportReplay()}>复盘</button>
+            <button className="chip-btn tiny" type="button" data-testid="export" onClick={() => void exportReplay()}>复盘</button>
           </h2>
           {panel === "log" ? (
             <div className="record-list">
@@ -404,8 +407,8 @@ function StatsPanel({ view, onCsv, onJson }: { view: MatchView; onCsv: () => voi
   return (
     <div className="stats-panel" data-testid="stats-panel">
       <div className="stats-actions">
-        <button className="wood-btn tiny" type="button" data-testid="export-csv" onClick={onCsv}>CSV</button>
-        <button className="wood-btn tiny" type="button" data-testid="export-json" onClick={onJson}>JSON</button>
+        <button className="chip-btn tiny" type="button" data-testid="export-csv" onClick={onCsv}>CSV</button>
+        <button className="chip-btn tiny" type="button" data-testid="export-json" onClick={onJson}>JSON</button>
       </div>
       <div className="kpi-row">
         {stats.teams.map((team) => (

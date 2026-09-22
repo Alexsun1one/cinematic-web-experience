@@ -33,19 +33,19 @@ Open [http://localhost:3000](http://localhost:3000) and press start. The match i
 
 对齐常见江苏客户端（爱掼蛋一类）和升级类四方牌桌，而不是赌场椭圆桌：
 
-- 方毡、木边、四角方位。南北对坐，东西对坐。
+- 方毡、细发光边、四角方位。南北对坐，东西对坐。
 - 每家出牌落在自己身边的出牌区。一圈结束后牌面淡出。三带二先三后对，顺子从左到右升序。
-- 桌心红心级牌即逢人配。手牌里的红心级牌标 ★。
-- 南家是主视角，默认「垂直理牌」：同一点数竖叠成列，列与列错落，炸弹、同花顺、钢板靠左，散牌靠右，逢人配单独成列并标 ★。可改「横排扇形」。北东西默认牌背加张数。
-- 观赛台皮肤为「淮扬夜桌」：漆木边、深绿毡、金嵌线、象牙白牌面。顶栏级牌轨道、快推理灯笼条、局终印章仪式、统计 KPI 卡同一套视觉。
+- 桌心红心级牌即逢人配。手牌里的红心级牌标霓虹「配」。
+- 南家是主视角，默认「垂直理牌」：同一点数竖叠成列，列与列错落，炸弹、同花顺、钢板靠左，散牌靠右，逢人配单独成列并标「配」。可改「横排扇形」。北东西默认牌背加张数。
+- 观赛台皮肤为 **Glass Arena**：炭黑底、电青绿强调、玻璃 HUD、圆角翠绿毡。顶栏霓虹级牌轨、快推理玻璃 toast、局终全屏暗场仪式、统计 KPI 卡同一套视觉。
 - 顶栏始终显示本副打到哪一级，以及南北、东西在 2→A 上的位置。本副逢人配跟着庄家的级牌。
 - 一局结束宣布头游、二游、三游、末游。升级只升不降，按常见线上记法：双下 +3，头游+三游 +2，头游+末游 +1。动画写出「南北 打8 → 打J」这种前后级牌。打满一盘从 2 打到过 A；选「三局」则打完三副就按级牌高低收场。
 - 统计按座位记下局数、队伍胜率、头游率、末游率、平均名次、炸弹、同花顺、过牌、快推理耗时、拒牌次数，以及对家走完时自己还剩几张。队伍记下升级数、双下次数、到 A 的局数。复盘 JSON 和 CSV 都带这份记录。
 - 每家出牌前先闪一句「快推理」。有 `TYPESAFE_API_KEY` 时问 Jev，约 800ms 超时就写「超时跳过」；没有密钥时用局面事实写 Mock 快推理。问题和答案记进复盘。
 
-Before each play the table flashes a short 快推理 line beside that seat. With `TYPESAFE_API_KEY` it asks Jev and gives up after about 800ms (`超时跳过`). With no key it shows a Mock line from the same facts. Questions, answers, and latency are stored on the replay log.
+Before each play the table flashes a short 快推理 glass toast beside that seat. With `TYPESAFE_API_KEY` it asks Jev and gives up after about 800ms (`超时跳过`). With no key it shows a Mock line from the same facts. Questions, answers, and latency are stored on the replay log.
 
-These follow a Jiangsu-style square table rather than a casino oval: wood rim, four bearings, a play zone per seat, heart level-card in the center, and South’s hand in staggered vertical columns. Upgrades follow the common online rule, winners only: 双下 +3, 头游+三游 +2, 头游+末游 +1.
+These follow a Jiangsu-style square table rather than a casino oval: luminous rim, four bearings, a play zone per seat, heart level-card in the center, and South’s hand in staggered vertical columns. Upgrades follow the common online rule, winners only: 双下 +3, 头游+三游 +2, 头游+末游 +1.
 
 ```bash
 npm run test:engine
