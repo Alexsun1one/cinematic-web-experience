@@ -458,16 +458,21 @@ function endRound(match: Match, lastSeat: number) {
     .map((seat, index) => `${placeNameEn(index + 1)} ${seatNameEn(match, seat)}`)
     .join(", ");
   const team = winner === "ns" ? "南北" : "东西";
-  const strikeNote = attempt.dropped
+  const strikeZh = attempt.dropped
     ? ` · 打A未过已满 ${aceStrikeLimit()} 次，退回打2`
     : from === "A" && !attempt.won
       ? ` · 打A未过，第 ${attempt.fails} 次`
       : "";
+  const strikeEn = attempt.dropped
+    ? ` · failed to pass A ${aceStrikeLimit()} times, back to 2`
+    : from === "A" && !attempt.won
+      ? ` · failed to pass A, attempt ${attempt.fails}`
+      : "";
   pushLog(match, {
     seat: null,
     kind: "round",
-    zh: `本局结束 ${names} · ${outcome} · ${team} +${delta}（打${rankName(from)} → 打${rankName(attempt.level)}）${strikeNote}`,
-    en: `Round over: ${namesEn}. ${outcome} · ${winner.toUpperCase()} +${delta} (${rankName(from)} → ${rankName(attempt.level)})${strikeNote}`,
+    zh: `本局结束 ${names} · ${outcome} · ${team} +${delta}（打${rankName(from)} → 打${rankName(attempt.level)}）${strikeZh}`,
+    en: `Round over: ${namesEn}. ${outcome} · ${winner.toUpperCase()} +${delta} (${rankName(from)} → ${rankName(attempt.level)})${strikeEn}`,
     highlight: attempt.won ? "打A" : delta >= 3 ? "双下" : "升级",
   });
   if (attempt.won) {

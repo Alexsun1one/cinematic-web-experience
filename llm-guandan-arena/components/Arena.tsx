@@ -553,8 +553,9 @@ function LevelTrack({ view }: { view: MatchView }) {
           const ew = view.levels.ew === rank;
           const deal = view.level === rank;
           const index = faces.indexOf(rank);
-          const onPath = from >= 0 && to > from && index > from && index <= to;
-          const climbed = Boolean(settling && latest && ((latest.winner === "ns" && ns) || (latest.winner === "ew" && ew)) && latest.from !== latest.to);
+          const rose = from >= 0 && to > from;
+          const onPath = rose && index > from && index <= to;
+          const climbed = Boolean(settling && latest && rose && ((latest.winner === "ns" && ns) || (latest.winner === "ew" && ew)));
           return (
             <div
               key={rank}
@@ -585,7 +586,9 @@ function StatsPanel({ view, onCsv, onJson }: { view: MatchView; onCsv: () => voi
           <div key={team.team} className={`kpi-card ${team.team}`}>
             <em>{team.name}</em>
             <b>打{chip(team.level)}</b>
-            <small>升{team.levelsClimbed} · 双下 {team.doubleDowns}</small>
+            <small>
+              {team.levelsClimbed < 0 ? `退${-team.levelsClimbed}` : `升${team.levelsClimbed}`} · 双下 {team.doubleDowns}
+            </small>
           </div>
         ))}
       </div>

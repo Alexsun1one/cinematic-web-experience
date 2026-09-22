@@ -239,6 +239,45 @@ function testAcePassFailAndDrop() {
   assert.equal(reset.winner, "ns");
   assert.equal(reset.aceFails.ns, 0);
   assert.equal(reset.levels.ns, "A");
+
+  const gap = fresh("A");
+  playNsLast(gap);
+  assert.equal(gap.aceFails.ns, 1);
+  playEwLast(gap);
+  assert.equal(gap.aceFails.ns, 1);
+  assert.equal(gap.aceFails.ew, 1);
+  assert.equal(gap.levels.ew, "A");
+  playNsLast(gap);
+  assert.equal(gap.aceFails.ns, 2);
+  assert.equal(gap.levels.ns, "A");
+  playNsLast(gap);
+  assert.equal(gap.levels.ns, "2");
+  assert.equal(gap.aceFails.ns, 0);
+  assert.equal(gap.levels.ew, "A");
+  assert.equal(gap.aceFails.ew, 1);
+  const dropLog = gap.log.filter((event) => event.kind === "round").at(-1);
+  assert.match(dropLog?.zh ?? "", /退回打2/);
+  assert.match(dropLog?.en ?? "", /back to 2/);
+}
+
+function playNsLast(match: Match) {
+  replayHand(match, [[card(0, "S", "3")], [card(0, "S", "4")], [card(0, "S", "2"), card(0, "H", "2")], [card(0, "S", "6")]], 0);
+  commitMove(match, findMove(currentLegal(match), "single", "3"), meta);
+  commitMove(match, findMove(currentLegal(match), "single", "4"), meta);
+  commitMove(match, currentLegal(match).find((move) => move.kind === "pass")!, meta);
+  commitMove(match, findMove(currentLegal(match), "single", "6"), meta);
+}
+
+function playEwLast(match: Match) {
+  replayHand(
+    match,
+    [[card(0, "S", "5")], [card(0, "S", "3")], [card(0, "S", "4")], [card(0, "S", "2"), card(0, "H", "2")]],
+    1,
+  );
+  commitMove(match, findMove(currentLegal(match), "single", "3"), meta);
+  commitMove(match, findMove(currentLegal(match), "single", "4"), meta);
+  commitMove(match, currentLegal(match).find((move) => move.kind === "pass")!, meta);
+  commitMove(match, findMove(currentLegal(match), "single", "5"), meta);
 }
 
 function testLeadPassAndJiefeng() {

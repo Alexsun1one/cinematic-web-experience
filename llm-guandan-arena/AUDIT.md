@@ -51,7 +51,7 @@ Date: 2026-09-22. Branch `cursor/llm-guandan-arena-6cfe`.
 - The room driver now catches a thrown tick instead of exiting, so one bad act cannot freeze the table.
 - Sound no longer throws if `AudioContext` cannot be constructed or `localStorage` is blocked.
 - `POST act` says 对局已结束 when the match is over, and 现在不能出牌 during 抗贡 or between hands, instead of 还没开打.
-- Tests now cover split 抗贡, partner-last 单下, empty 还贡, who leads after, illegal ids, 打K 双下 ending on A, the invite goals text, a bad seatToken, and audio calls without a browser.
+- Tests now cover split 抗贡, partner-last 单下, empty 还贡, who leads after, illegal ids, reaching A without ending the match, the invite goals text, a bad seatToken, and audio calls without a browser.
 
 ## Remaining limits
 

@@ -13,7 +13,7 @@
 
 ## Validation Evidence
 
-- `npm run test:engine` passed (过 A with 头游+三游, 头游+末游 stays, third fail drops to 2, pass resets the counter, tenant isolation, quota)
+- `npm run test:engine` passed (过 A with 头游+三游, 头游+末游 stays, third fail drops to 2, a gap hand does not clear the counter, pass resets it, tenant isolation, quota)
 - `npm run build` passed
 - Live server: another tenant's room code 404s; `TENANT_MAX_ROOMS=1` returns 429 `该租户同时进行的房间已达上限`; invite text includes 头游+三游 and 退回打 2
 
