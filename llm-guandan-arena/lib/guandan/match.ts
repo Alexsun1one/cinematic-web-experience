@@ -44,6 +44,7 @@ export interface LogEvent {
   source?: string;
   note?: string;
   assist?: AssistNote | null;
+  trick?: number;
 }
 
 export interface RoundSummary {
@@ -80,6 +81,7 @@ export interface Match {
     lastSeat: number | null;
     closed: boolean;
   };
+  trickSerial: number;
   pile: { seat: number; move: Move } | null;
   log: LogEvent[];
   rounds: RoundSummary[];
@@ -124,6 +126,7 @@ export function createMatch(input: CreateMatchInput): Match {
     hands: [[], [], [], []],
     finishOrder: [],
     trick: { currentSeat: 0, lastPlay: null, lastSeat: null, closed: false },
+    trickSerial: 1,
     pile: null,
     log: [],
     rounds: [],
@@ -139,6 +142,7 @@ export function beginRound(match: Match) {
   match.hands = deal(shuffle(createDeck(), match.seed + match.round * 997));
   match.finishOrder = [];
   match.pile = null;
+  match.trickSerial = 1;
   match.trick = { currentSeat: match.nextLeader, lastPlay: null, lastSeat: null, closed: false };
   match.status = "playing";
   const leader = SEAT_WIND[match.nextLeader];
@@ -168,11 +172,16 @@ export function commitMove(match: Match, move: Move, meta: MoveMeta) {
   const allowed = legal.find((item) => item.id === move.id);
   if (!allowed) throw new Error(`illegal move ${move.id}`);
   const played = allowed;
+  if (played.kind !== "pass" && match.trick.lastPlay === null && match.trick.closed) {
+    match.trickSerial += 1;
+    match.trick.closed = false;
+  }
 
   if (played.kind === "pass") {
     pushLog(match, {
       seat,
       kind: "pass",
+      trick: match.trickSerial,
       zh: `${seatName(match, seat)} 过牌`,
       en: `${seatNameEn(match, seat)} passes`,
       source: meta.source,
@@ -203,6 +212,7 @@ export function commitMove(match: Match, move: Move, meta: MoveMeta) {
     kind: "play",
     zh: `${seatName(match, seat)} · ${played.label}`,
     en: `${seatNameEn(match, seat)} · ${played.label}`,
+    trick: match.trickSerial,
     cards: played.cards,
     bombTier: played.bombTier,
     source: meta.source,

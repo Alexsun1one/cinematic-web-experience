@@ -25,9 +25,21 @@ npm install
 npm run dev
 ```
 
-打开 [http://localhost:3000](http://localhost:3000)，按「开始擂台」。观赛页会自动一步步出牌：牌面飞到桌心、右侧记下每一手、升级条跟着走。可以暂停、单步、变速、明牌/暗牌，并导出 JSON 复盘。
+打开 [http://localhost:3000](http://localhost:3000)，按「开始」。观赛页是一张方桌：北东南西各有出牌区，南家手牌横排重叠（可切换竖组理牌），对手默认牌背。可以暂停、单步、变速，并导出 JSON 复盘。
 
-Open [http://localhost:3000](http://localhost:3000) and start a match. The table auto-plays: cards move to the felt, the log records every action, and the level track updates. Pause, step, change speed, hide hands, or export a JSON replay.
+Open [http://localhost:3000](http://localhost:3000) and press start. The match is a square felt with a play zone on each side. South’s hand is an overlapping fan (or rank columns via 理牌). North, East, and West show card backs until 明牌. Pause, step, change speed, or export a JSON replay from 复盘.
+
+### 牌桌约定 / Table conventions
+
+对齐常见江苏客户端（爱掼蛋一类）和升级类四方牌桌，而不是赌场椭圆桌：
+
+- 方毡、木边、四角方位。南北对坐，东西对坐。
+- 每家出牌落在自己身边的出牌区。一圈结束后牌面淡出。三带二先三后对，顺子从左到右升序。
+- 桌心红心级牌即逢人配。手牌里的红心级牌标 ★。
+- 南家是主视角：横排重叠扇，或「理牌」竖组成列。北东西默认牌背加张数。
+- 升级条是「打到几」。出完显示头游 / 二游 / 三游 / 末游。不要盖在该家出牌区。
+
+These follow a Jiangsu-style square table rather than a casino oval: wood rim, four bearings, a play zone per seat, heart level-card in the center, South as the fanned hand, and rank-column sorting as a second layout.
 
 ```bash
 npm run test:engine

@@ -5,6 +5,7 @@ import { beats, leadAfterTrick, legalMoves, type Move } from "./legal";
 import { beginRound, commitMove, createMatch, currentLegal, stepLocal, type MoveMeta } from "./match";
 import { parseMoveId } from "../llm/parse";
 import { buildPrompt } from "../llm/prompt";
+import { handOrder, presentCards } from "./present";
 import { bumpLevel, upgradeDelta } from "./score";
 import { seatConfigs } from "../roster";
 import { FACE, type Card, type FaceRank, type Rank, type Suit } from "./types";
@@ -280,6 +281,34 @@ function testRosterNames() {
   assert.ok(FACE.length === 13);
 }
 
+function testPresentation() {
+  const straight = presentCards(
+    [card(0, "H", "7"), card(0, "S", "6"), card(0, "S", "3"), card(0, "S", "5"), card(0, "S", "4")],
+    "北 DeepSeek · 顺子 3-4-5-6-7（配）",
+    "7",
+  );
+  assert.deepEqual(
+    straight.map((item) => item.id),
+    ["0S3", "0S4", "0S5", "0S6", "0H7"],
+  );
+  const full = presentCards(
+    [card(0, "S", "9"), card(0, "H", "J"), card(0, "S", "J"), card(0, "D", "J"), card(0, "H", "7")],
+    "三带二 J带9（配）",
+    "7",
+  );
+  assert.deepEqual(
+    full.map((item) => item.rank),
+    ["J", "J", "J", "9", "7"],
+  );
+  const ordered = handOrder(
+    [card(0, "S", "3"), card(0, "J", "BJ"), card(0, "H", "K")],
+    "K",
+  );
+  assert.equal(ordered[0].rank, "BJ");
+  assert.equal(ordered[1].suit, "H");
+}
+
+testPresentation();
 testDeck();
 testRanking();
 testBombsAndFlush();

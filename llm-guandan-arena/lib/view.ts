@@ -1,6 +1,26 @@
 import { sortCards } from "./guandan/cards";
 import { currentLegal, type Match } from "./guandan/match";
+import { presentCards } from "./guandan/present";
 import { SEAT_WIND, SEAT_WIND_EN, teamOf } from "./guandan/types";
+
+function trickZones(match: Match) {
+  const events = match.log.filter(
+    (event) => event.round === match.round && (event.kind === "play" || event.kind === "pass"),
+  );
+  const trick = events.reduce((max, event) => Math.max(max, event.trick ?? 0), 0);
+  return [0, 1, 2, 3].map((seat) => {
+    const event = [...events].reverse().find((item) => (item.trick ?? 0) === trick && item.seat === seat);
+    if (!event || trick === 0) return null;
+    return {
+      id: event.id,
+      seat,
+      kind: event.kind,
+      label: event.zh.split("·").slice(1).join("·").trim() || event.zh,
+      bombTier: event.bombTier ?? 0,
+      cards: event.cards ? presentCards(event.cards, event.zh, match.level) : [],
+    };
+  });
+}
 
 export function toView(match: Match) {
   const legalCount = match.status === "playing" ? currentLegal(match).length : 0;
@@ -43,9 +63,10 @@ export function toView(match: Match) {
           seat: match.pile.seat,
           label: match.pile.move.label,
           bombTier: match.pile.move.bombTier,
-          cards: match.pile.move.cards,
+          cards: presentCards(match.pile.move.cards, match.pile.move.label, match.level),
         }
       : null,
+    zones: trickZones(match),
     legalCount,
     log: match.log,
     rounds: match.rounds,

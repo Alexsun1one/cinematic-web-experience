@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { CardView } from "@/components/CardView";
+import { useEffect, useState } from "react";
+import { BackRow, CardView, HandFan } from "@/components/CardView";
 import { FACE } from "@/lib/guandan/types";
 import type { MatchView } from "@/lib/view";
 
 const PLACES = ["头游", "二游", "三游", "末游"];
+const WIND = ["n", "e", "s", "w"] as const;
 
 export function Arena({ id }: { id: string }) {
   const [view, setView] = useState<MatchView | null>(null);
@@ -13,7 +14,9 @@ export function Arena({ id }: { id: string }) {
   const [auto, setAuto] = useState(true);
   const [speed, setSpeed] = useState(700);
   const [pending, setPending] = useState(false);
-  const [showHands, setShowHands] = useState(true);
+  const [reveal, setReveal] = useState(false);
+  const [columns, setColumns] = useState(false);
+  const [swept, setSwept] = useState(false);
 
   useEffect(() => {
     let gone = false;
@@ -31,9 +34,18 @@ export function Arena({ id }: { id: string }) {
     };
   }, [id]);
 
+  const trickKey = view?.zones.map((zone) => zone?.id ?? 0).join("-") ?? "";
+
+  useEffect(() => {
+    setSwept(false);
+    if (!view?.trick.closed) return;
+    const timer = setTimeout(() => setSwept(true), 680);
+    return () => clearTimeout(timer);
+  }, [view?.trick.closed, trickKey]);
+
   useEffect(() => {
     if (!auto || !view || pending || view.status === "finished") return;
-    const delay = view.status === "between_rounds" ? Math.max(speed, 1500) : speed;
+    const delay = view.status === "between_rounds" ? Math.max(speed, 1600) : speed;
     const timer = setTimeout(() => void step(), delay);
     return () => clearTimeout(timer);
   }, [auto, view, pending, speed]);
@@ -67,154 +79,205 @@ export function Arena({ id }: { id: string }) {
     URL.revokeObjectURL(url);
   }
 
-  const lastAct = useMemo(
-    () => view?.log.filter((event) => event.round === view.round && (event.kind === "play" || event.kind === "pass")).at(-1),
-    [view],
-  );
   if (error && !view) {
     return (
-      <main className="p-8">
+      <main className="room">
         <p>{error}</p>
         <a href="/">返回大厅</a>
       </main>
     );
   }
-  if (!view) return <main className="p-8 quiet">正在摆桌…</main>;
+  if (!view) return <main className="room quiet">摆桌…</main>;
 
   const levelLabel = view.level === "T" ? "10" : view.level;
   const latestRound = view.rounds.at(-1);
+  const hideZones = view.trick.closed && swept;
 
   return (
-    <main className="arena-body" data-testid="table">
-      <section>
-        <div className="controls mb-3">
-          <a className="ghost" href="/">大厅</a>
-          <button className="ghost" type="button" onClick={() => setAuto((value) => !value)}>{auto ? "暂停" : "继续"}</button>
-          <button className="ghost" type="button" data-testid="step" onClick={() => void step()} disabled={pending || view.status === "finished"}>
-            {pending ? "思考中…" : "下一步"}
+    <main className="room" data-testid="table">
+      <header className="hud">
+        <div className="hud-brand">
+          <b>模型掼蛋擂台</b>
+          <span>第 {view.round} 局 · {id.slice(0, 8)}</span>
+        </div>
+        <div className="level-plate" data-testid="level-plate">
+          <em>打</em>
+          <strong>{levelLabel}</strong>
+          <span>逢人配 ★ 红心{levelLabel}</span>
+        </div>
+        <div className="ladders">
+          <Ladder name="南北" team="ns" level={view.levels.ns} other={view.levels.ew} />
+          <Ladder name="东西" team="ew" level={view.levels.ew} other={view.levels.ns} />
+        </div>
+        <div className="hud-actions">
+          <a className="wood-btn" href="/">大厅</a>
+          <button className="wood-btn" type="button" onClick={() => setAuto((value) => !value)}>{auto ? "暂停" : "继续"}</button>
+          <button className="wood-btn" type="button" data-testid="step" onClick={() => void step()} disabled={pending || view.status === "finished"}>
+            {pending ? "…" : "下一步"}
           </button>
-          {[240, 700, 1400].map((value) => (
-            <button key={value} className={`chip ${speed === value ? "on" : ""}`} type="button" onClick={() => setSpeed(value)}>
+          {([240, 700, 1400] as const).map((value) => (
+            <button key={value} className={`wood-btn ${speed === value ? "on" : ""}`} type="button" onClick={() => setSpeed(value)}>
               {value === 240 ? "快" : value === 700 ? "中" : "慢"}
             </button>
           ))}
-          <button className="ghost" type="button" onClick={() => setShowHands((value) => !value)}>{showHands ? "明牌" : "暗牌"}</button>
-          <button className="ghost" type="button" data-testid="export" onClick={() => void exportReplay()}>导出复盘</button>
-          <span className="quiet">第 {view.round} 局 · 打 {levelLabel} · {view.legalCount} 手可选 · {id.slice(0, 8)}</span>
+          <button className={`wood-btn ${reveal ? "on" : ""}`} type="button" onClick={() => setReveal((value) => !value)}>
+            {reveal ? "暗牌" : "明牌"}
+          </button>
+          <button className={`wood-btn ${columns ? "on" : ""}`} type="button" onClick={() => setColumns((value) => !value)}>
+            {columns ? "横排" : "理牌"}
+          </button>
         </div>
-        {error ? <p className="mb-2 text-[var(--danger)]">{error}</p> : null}
-        <div className="table-grid">
-          <Seat view={view} index={0} className="seat-n" showHands={showHands} />
-          <Seat view={view} index={3} className="seat-w" showHands={showHands} />
-          <div className={`felt ${view.pile && view.pile.bombTier > 0 && !view.trick.closed ? "bomb" : ""}`} data-testid="felt">
-            <div className="medallion">
-              级牌
-              <b>♥ {levelLabel}</b>
+      </header>
+      {error ? <p className="banner-error">{error}</p> : null}
+      <section className="board">
+        <SeatPlate view={view} index={0} reveal={reveal} place="north" />
+        <div className="table-row">
+        <SeatPlate view={view} index={3} reveal={reveal} place="west" />
+        <div className="table-rim">
+          <div className={`felt-square ${view.trick.closed && !hideZones ? "clearing" : ""}`} data-testid="felt">
+            <span className="bearing n">北</span>
+            <span className="bearing e">东</span>
+            <span className="bearing s">南</span>
+            <span className="bearing w">西</span>
+            <div className="heart-level">
+              <CardView
+                card={{ id: "level-heart", deck: 0, suit: "H", rank: view.level }}
+                level={view.level}
+                size="play"
+              />
+              <small>红心{levelLabel} · 逢人配</small>
             </div>
-            <div className="felt-stage">
-              <div className="pile-row">
-                {view.pile ? (
-                  <div className={`pile from-${view.pile.seat} ${view.trick.closed ? "dim" : ""}`} key={lastAct?.id ?? view.pile.label}>
-                    {view.pile.cards.map((card) => (
-                      <CardView key={card.id} card={card} level={view.level} size="play" />
-                    ))}
-                  </div>
-                ) : (
-                  <p className="quiet">{lastAct?.kind === "pass" ? "" : "等待领出"}</p>
-                )}
-                {lastAct?.kind === "pass" ? <div className="pass-seal">过</div> : null}
-              </div>
-              <p className="trick-label">
-                {view.pile ? view.pile.label : "本墩尚无出牌"}
-                {view.trick.closed ? " · 墩结束" : ""}
-              </p>
-            </div>
+            {WIND.map((wind, index) => (
+              <PlayZone key={wind} view={view} index={index} wind={wind} hidden={hideZones} />
+            ))}
             {view.status !== "playing" && latestRound ? (
-              <div className="result" data-testid="result">
-                <b>{view.status === "finished" ? (view.winner === "ns" ? "南北过 A" : "东西过 A") : "本局结束"}</b>
-                <p>{latestRound.order.map((seat, index) => `${PLACES[index]} ${view.seats[seat].short}`).join(" · ")}</p>
-                <p className="quiet">
+              <div className="round-banner" data-testid="result">
+                <b>{view.status === "finished" ? (view.winner === "ns" ? "南北过A" : "东西过A") : "本局结算"}</b>
+                <p>{latestRound.order.map((seat, index) => `${PLACES[index]} ${view.seats[seat].short}`).join("  ")}</p>
+                <p>
                   {latestRound.winner === "ns" ? "南北" : "东西"} +{latestRound.delta} · {latestRound.from === "T" ? "10" : latestRound.from} → {latestRound.to === "T" ? "10" : latestRound.to}
                 </p>
               </div>
             ) : null}
           </div>
-          <Seat view={view} index={1} className="seat-e" showHands={showHands} />
-          <Seat view={view} index={2} className="seat-s" showHands={showHands} />
         </div>
-      </section>
-      <aside className="side">
-        <section className="panel">
-          <div className="wind">Scoreboard</div>
-          <LevelTrack label="南北 DeepSeek + MiMo" team="ns" level={view.levels.ns} other={view.levels.ew} />
-          <LevelTrack label="东西 Gemini + GLM" team="ew" level={view.levels.ew} other={view.levels.ns} />
-          <p className="quiet mt-3">庄家 {view.dealer === "ns" ? "南北" : "东西"} · 逢人配为红桃{levelLabel}</p>
+        <SeatPlate view={view} index={1} reveal={reveal} place="east" />
+        </div>
+        <section className="south-hand">
+          <div className="south-meta">
+            <NameBlock view={view} index={2} />
+            <span className="sort-note">{columns ? "竖组理牌 · 同点一列" : "横排理牌 · 从大到小"}</span>
+          </div>
+          <HandFan cards={view.hands[2]} level={view.level} mode={columns ? "columns" : "fan"} />
         </section>
-        <section className="panel" data-testid="play-log">
-          <div className="wind">出牌记录 · {view.log.length}</div>
-          <div className="log">
-            {view.log.slice(-40).map((event) => (
-              <article key={event.id}>
+        <aside className="record" data-testid="play-log">
+          <h2>
+            出牌记录
+            <button className="wood-btn tiny" type="button" data-testid="export" onClick={() => void exportReplay()}>复盘</button>
+          </h2>
+          <div className="record-list">
+            {view.log.slice(-24).map((event) => (
+              <p key={event.id}>
                 <b>{event.zh}</b>
-                <small>{event.en}{event.source ? ` · ${event.source}` : ""}{event.note ? ` · ${event.note}` : ""}</small>
-              </article>
+                <small>{event.source ? event.source : ""}</small>
+              </p>
             ))}
           </div>
-        </section>
-      </aside>
+        </aside>
+      </section>
     </main>
   );
 }
 
-function Seat({
+function PlayZone({
   view,
   index,
-  className,
-  showHands,
+  wind,
+  hidden,
 }: {
   view: MatchView;
   index: number;
-  className: string;
-  showHands: boolean;
+  wind: (typeof WIND)[number];
+  hidden: boolean;
+}) {
+  const zone = view.zones[index];
+  return (
+    <div className={`play-zone ${wind} ${zone && !hidden ? "live" : ""} ${zone && zone.bombTier > 0 ? "bomb" : ""}`}>
+      {zone && !hidden ? (
+        <div key={zone.id} className={`zone-cards from-${wind}`}>
+          {zone.kind === "pass" ? (
+            <div className="pass-stamp">不要</div>
+          ) : (
+            zone.cards.map((card) => <CardView key={card.id} card={card} level={view.level} size="play" />)
+          )}
+          {zone.kind === "play" ? <span className="zone-label">{zone.label}</span> : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function SeatPlate({
+  view,
+  index,
+  reveal,
+  place,
+}: {
+  view: MatchView;
+  index: number;
+  reveal: boolean;
+  place: "north" | "west" | "east";
 }) {
   const seat = view.seats[index];
-  const place = seat.finished >= 0 ? PLACES[seat.finished] : null;
   return (
-    <section className={`seat ${className} ${seat.team} ${seat.active ? "active" : ""}`}>
-      <header>
-        <div>
-          <div className="wind">{seat.windEn} · seat {index}</div>
-          <h2>{seat.name}</h2>
-        </div>
-        <div className="badges">
-          <span className={`badge ${seat.provider === "mock" ? "mock" : "live"}`}>{seat.provider === "mock" ? "Mock" : seat.provider}</span>
-          <span className="badge">{seat.cards} 张</span>
-          {place ? <span className="badge place">{place}</span> : null}
-        </div>
-      </header>
-      {showHands ? (
-        <div className="hand">
-          {view.hands[index].map((card) => (
-            <CardView key={card.id} card={card} level={view.level} />
-          ))}
-        </div>
+    <section className={`seat-plate ${place} ${seat.team} ${seat.active ? "active" : ""}`}>
+      <NameBlock view={view} index={index} />
+      {reveal ? (
+        <HandFan
+          cards={view.hands[index]}
+          level={view.level}
+          mode="fan"
+          size="mini"
+          axis={place === "north" ? "row" : "col"}
+        />
       ) : (
-        <p className="hidden-hand">{seat.cards} 张扣牌</p>
+        <BackRow count={seat.cards} axis={place === "north" ? "row" : "stack"} />
       )}
     </section>
   );
 }
 
-function LevelTrack({ label, team, level, other }: { label: string; team: "ns" | "ew"; level: string; other: string }) {
+function NameBlock({ view, index }: { view: MatchView; index: number }) {
+  const seat = view.seats[index];
+  const place = seat.finished >= 0 ? PLACES[seat.finished] : null;
   return (
-    <div className="mt-3">
-      <div>{label}</div>
-      <div className="track">
+    <header className="nameplate">
+      <span className={`wind-chip ${seat.team}`}>{seat.wind}</span>
+      <div>
+        <strong>{seat.name}</strong>
+        <small>
+          {seat.provider === "mock" ? "Mock" : seat.provider} · {seat.cards}张
+          {seat.active ? " · 出牌" : ""}
+        </small>
+      </div>
+      {place ? <em className="place-ribbon">{place}</em> : null}
+    </header>
+  );
+}
+
+function Ladder({ name, team, level, other }: { name: string; team: "ns" | "ew"; level: string; other: string }) {
+  return (
+    <div className="ladder">
+      <span>{name}</span>
+      <div>
         {FACE.map((rank) => {
           const here = rank === level;
           const shared = here && rank === other;
-          const mark = shared ? "both" : here ? `on-${team}` : "";
-          return <i key={rank} className={mark}>{rank === "T" ? "10" : rank}</i>;
+          return (
+            <i key={rank} className={shared ? "both" : here ? team : ""}>
+              {rank === "T" ? "10" : rank}
+            </i>
+          );
         })}
       </div>
     </div>
