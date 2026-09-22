@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { BackRow, CardView, HandFan } from "@/components/CardView";
 import { RulesButton } from "@/components/RulesDrawer";
 import { bannerFromHighlight, fxForMove } from "@/lib/guandan/highlight";
+import { statsToCsv } from "@/lib/guandan/stats";
 import { FACE } from "@/lib/guandan/types";
 import type { MatchView } from "@/lib/view";
 
