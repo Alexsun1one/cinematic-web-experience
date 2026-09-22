@@ -8,7 +8,15 @@ Watch a finished room at `/replay/[code]`. The 统计 tab downloads the room tel
 
 ## Run on a machine that already has the key
 
-Do not put the key on the command line, in a file in this repo, or in the pull request. The shell must already have `TYPESAFE_API_KEY`. Optional: `TYPESAFE_BASE_URL`, `TYPESAFE_MODEL`, `JEV_MS` (default 3500).
+Do not put the key on the command line, in this repo, or in the pull request. Keep it in a file outside the repo, such as `/path/to/guandan.env`, and load it with `set -a` so every variable is exported. `guandan.env` is gitignored. Optional variables in that file: `TYPESAFE_BASE_URL`, `TYPESAFE_MODEL`, `JEV_MS` (default 3500).
+
+```bash
+set -a
+source /path/to/guandan.env
+set +a
+cd llm-guandan-arena
+npm run marathon
+```
 
 From the repo root, start the server in one shell:
 

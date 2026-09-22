@@ -1,5 +1,5 @@
 import { commitMove, currentLegal, performSeatAction } from "@/lib/guandan/match";
-import { armThink, loadRequestRoom, noteMetric, noteSettlement, notifyAct, peekThink, RoomRevisionError, saveRoom, seatIndexByToken, stateForToken } from "@/lib/room";
+import { armThink, loadRequestRoom, noteMetric, noteSettlement, notifyAct, peekThink, RoomRevisionError, saveRoom, seatIndexByToken, setSeatPhase, stateForToken } from "@/lib/room";
 import { matchStore, readMatch, withMatchLock } from "@/lib/store";
 
 export const runtime = "nodejs";
@@ -48,10 +48,12 @@ export async function POST(request: Request, context: { params: Promise<{ code: 
           thinkMs: peekThink(room, seat),
           text: "贡牌被拒",
         });
+        setSeatPhase(room, seat, { phase: "error", line: "错误/重试", thought: "贡牌被拒" }, live.round);
         await touchRoom(room);
         return json({ error: error instanceof Error ? error.message : "贡牌被拒" }, 400);
       }
-      noteMetric(room, { hand: live.round, seat, kind: "play", moveId, outcome: "success", text: "贡牌" });
+      const gifted = noteMetric(room, { hand: live.round, seat, kind: "play", moveId, outcome: "success", text: "贡牌" });
+      setSeatPhase(room, seat, { phase: "played", line: "已出", thinkMs: gifted.thinkMs, reactionMs: gifted.reactionMs }, live.round);
       armThink(room, live.trick.currentSeat);
       await touchRoom(room);
       await notifyAct(room, seat);
@@ -71,6 +73,7 @@ export async function POST(request: Request, context: { params: Promise<{ code: 
         thinkMs: peekThink(room, seat),
         text: "非法着法",
       });
+      setSeatPhase(room, seat, { phase: "error", line: "错误/重试", thought: "非法着法" }, live.round);
       await touchRoom(room);
       return json({ error: "非法着法，只能出 legal 列表里的 moveId" }, 400);
     }
@@ -81,7 +84,18 @@ export async function POST(request: Request, context: { params: Promise<{ code: 
       note: "guest",
       assist: null,
     });
-    noteMetric(room, { hand: live.round, seat, kind: "play", moveId, outcome: "success", text: move.label });
+    const played = noteMetric(room, { hand: live.round, seat, kind: "play", moveId, outcome: "success", text: move.label });
+    setSeatPhase(
+      room,
+      seat,
+      {
+        phase: move.kind === "pass" ? "passed" : "played",
+        line: move.kind === "pass" ? "过" : `已出 ${move.label}`,
+        thinkMs: played.thinkMs,
+        reactionMs: played.reactionMs,
+      },
+      live.round,
+    );
     noteSettlement(room, live);
     if (live.status === "playing" || live.status === "tribute" || live.status === "return") armThink(room, live.trick.currentSeat);
     await touchRoom(room);

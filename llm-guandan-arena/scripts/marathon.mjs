@@ -115,6 +115,14 @@ async function jevHint(state) {
   }
 }
 
+async function postStatus(code, token, payload) {
+  await api(`/api/room/${code}/telemetry`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ seatToken: token, ...payload }),
+  });
+}
+
 async function postMetric(code, token, payload) {
   await api(`/api/room/${code}/telemetry`, {
     method: "POST",
@@ -229,6 +237,8 @@ async function main() {
         continue;
       }
       const thinkStarted = Date.now();
+      await postStatus(table.code, actor.token, { phase: "thinking", line: "思考中", thought: "看这一手的合法着法。" });
+      await postStatus(table.code, actor.token, { phase: "jev", line: "Jev 快判中", thought: "把合法着法交给 Jev。" });
       const hint = await jevHint(state.body);
       if (!hint.skipped) {
         jevCalls += 1;
@@ -247,6 +257,25 @@ async function main() {
         break;
       }
       const reactionMs = Date.now() - thinkStarted;
+      const costNote = hint.costUsd === null || hint.costUsd === undefined ? "" : ` · $${hint.costUsd}`;
+      await postStatus(table.code, actor.token, {
+        phase: "llm",
+        line: hint.skipped ? "LLM 决策中" : `Jev ${hint.ms}ms${costNote}`,
+        thought: hint.skipped ? "没有 Jev，改用启发式。" : `Jev 用了 ${hint.ms}ms。`,
+        jevMs: hint.skipped ? null : hint.ms,
+        tokens: hint.tokens,
+        costUsd: hint.costUsd,
+        reactionMs,
+      });
+      await postStatus(table.code, actor.token, {
+        phase: "playing",
+        line: "出牌中",
+        thought: `准备 ${move.label}`,
+        reactionMs,
+        jevMs: hint.skipped ? null : hint.ms,
+        costUsd: hint.costUsd,
+        tokens: hint.tokens,
+      });
       await postMetric(table.code, actor.token, {
         kind: "decision",
         outcome: "success",
@@ -262,6 +291,7 @@ async function main() {
         body: JSON.stringify({ seatToken: actor.token, moveId: move.id }),
       });
       if (!acted.response.ok) {
+        await postStatus(table.code, actor.token, { phase: "error", line: "错误/重试", thought: acted.body.error || "出牌失败" });
         failures.push(acted.body.error || "act failed");
         if (acted.response.status !== 409) break;
         continue;

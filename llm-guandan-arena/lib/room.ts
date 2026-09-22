@@ -17,6 +17,7 @@ import {
   type RoomSnapshot,
 } from "./room-store";
 import { persistMatch, readMatch, remember } from "./store";
+import { blankSeatLives, nextSeatLives, normalizeSeatLives, phaseLabel, type SeatLive, type SeatPhase } from "./seat-live";
 import { redactSecrets, type PlayMetric, type ReplayEvent } from "./telemetry";
 import { toView, type MatchView } from "./view";
 
@@ -113,6 +114,7 @@ export interface Room {
   replaySeq: number;
   replay: ReplayEvent[];
   replayRounds: number;
+  seatLive: [SeatLive, SeatLive, SeatLive, SeatLive];
   onAct?: (seat: number) => void;
 }
 
@@ -157,6 +159,7 @@ interface RoomRecord extends Omit<RoomSnapshot, "status"> {
   replaySeq?: number;
   replay?: ReplayEvent[];
   replayRounds?: number;
+  seatLive?: SeatLive[];
 }
 
 function toRecord(room: Room): RoomRecord {
@@ -187,6 +190,7 @@ function toRecord(room: Room): RoomRecord {
     replaySeq: room.replaySeq,
     replay: room.replay,
     replayRounds: room.replayRounds,
+    seatLive: room.seatLive,
   };
 }
 
@@ -206,6 +210,7 @@ function fromRecord(record: RoomRecord): Room {
     replaySeq: record.replaySeq ?? 0,
     replay: record.replay ?? [],
     replayRounds: record.replayRounds ?? 0,
+    seatLive: normalizeSeatLives(record.seatLive),
     spectators: new Map(record.spectators.map((row) => [row.id, { ...row }])),
   };
 }
@@ -237,6 +242,7 @@ function applyRecord(room: Room, record: RoomRecord) {
   room.replaySeq = record.replaySeq ?? room.replaySeq ?? 0;
   room.replay = record.replay ?? room.replay ?? [];
   room.replayRounds = record.replayRounds ?? room.replayRounds ?? 0;
+  room.seatLive = normalizeSeatLives(record.seatLive ?? room.seatLive);
   room.onAct = onAct;
 }
 
@@ -357,6 +363,7 @@ export async function createRoom(input: {
     replaySeq: 1,
     replay: [{ id: 1, at: Date.now(), kind: "room", seat: null, hand: 0, text: "开房", moveId: null }],
     replayRounds: 0,
+    seatLive: blankSeatLives(),
   };
   if (room.autoFillMock) assignMockSeats(room);
   await saveRoom(room);
@@ -610,6 +617,7 @@ function ensureTrace(room: Room) {
   if (!room.metricSeq) room.metricSeq = room.metrics.at(-1)?.id ?? 0;
   if (!room.replaySeq) room.replaySeq = room.replay.at(-1)?.id ?? 0;
   if (!room.replayRounds) room.replayRounds = 0;
+  if (!room.seatLive) room.seatLive = blankSeatLives();
 }
 
 export function armThink(room: Room, seat: number) {
@@ -678,15 +686,50 @@ function consumeThink(room: Room, seat: number): number {
   return Math.max(0, Date.now() - armed);
 }
 
-export function noteReplay(room: Room, input: { kind: ReplayEvent["kind"]; seat: number | null; hand: number; text: string; moveId?: string | null }) {
+export function noteReplay(room: Room, input: Omit<ReplayEvent, "id" | "at" | "moveId"> & { moveId?: string | null }) {
   ensureTrace(room);
   pushReplay(room, {
-    kind: input.kind,
-    seat: input.seat,
-    hand: input.hand,
+    ...input,
     text: redactSecrets(input.text).slice(0, 180),
+    thought: input.thought ? redactSecrets(input.thought).slice(0, 240) : input.thought,
     moveId: input.moveId ? redactSecrets(input.moveId).slice(0, 80) : null,
   });
+}
+
+export function setSeatPhase(room: Room, seat: number, patch: Partial<SeatLive> & { phase: SeatPhase }, hand = 0) {
+  ensureTrace(room);
+  const now = Date.now();
+  const { lives, changed } = nextSeatLives(room.seatLive, seat, patch, now);
+  room.seatLive = lives;
+  if (!changed) return lives[seat];
+  const live = lives[seat];
+  noteReplay(room, {
+    kind: "status",
+    seat,
+    hand,
+    text: `${SEAT_WIND[seat]} ${live.line || phaseLabel(live.phase)}`,
+    moveId: null,
+    thought: live.thought || null,
+    jevMs: live.jevMs,
+    thinkMs: live.thinkMs,
+    reactionMs: live.reactionMs,
+    costUsd: live.costUsd,
+    tokens: live.tokens,
+  });
+  for (let index = 0; index < 4; index += 1) {
+    if (index === seat) continue;
+    if (lives[index].phase === "waiting" && lives[index].since === now) {
+      noteReplay(room, {
+        kind: "status",
+        seat: index,
+        hand,
+        text: `${SEAT_WIND[index]} 等待`,
+        moveId: null,
+        thought: null,
+      });
+    }
+  }
+  return live;
 }
 
 function pushReplay(room: Room, input: Omit<ReplayEvent, "id" | "at">) {
@@ -771,6 +814,7 @@ export async function startRoomMatch(room: Room): Promise<Match> {
   await persistMatch(match);
   room.matchId = match.id;
   room.status = "playing";
+  setSeatPhase(room, match.trick.currentSeat, { phase: "thinking", line: "思考中" }, match.round);
   await saveRoom(room);
   return match;
 }
@@ -807,6 +851,8 @@ export function toRoomView(
   aceLimit: number;
   metrics: PlayMetric[];
   replay: ReplayEvent[];
+  seatLive: [SeatLive, SeatLive, SeatLive, SeatLive];
+  statusLog: ReplayEvent[];
   phase: ReturnType<typeof tableProcedure>["phase"];
   leaderSeat: number | null;
   currentTurn: number | null;
@@ -854,6 +900,8 @@ export function toRoomView(
     aceLimit: aceStrikeLimit(),
     metrics: (room.metrics ?? []).slice(-40),
     replay: (room.replay ?? []).slice(-80),
+    seatLive: normalizeSeatLives(room.seatLive),
+    statusLog: (room.replay ?? []).filter((event) => event.kind === "status").slice(-24),
     phase: procedure.phase,
     leaderSeat: procedure.leaderSeat,
     currentTurn: procedure.currentTurn,

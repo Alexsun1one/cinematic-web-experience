@@ -1872,6 +1872,38 @@ button:disabled { opacity: 0.4; cursor: wait; }
   font-weight: 650;
 }
 .telemetry-hud b { color: var(--accent); letter-spacing: 0.08em; }
+.phase-chip {
+  margin-left: auto;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  background: rgba(46, 230, 166, 0.12);
+  font-variant-numeric: tabular-nums;
+}
+.phase-chip.phase-error, .phase-chip.phase-timeout { color: #ffb4a8; background: rgba(255, 120, 96, 0.14); }
+.phase-chip.phase-thinking, .phase-chip.phase-jev, .phase-chip.phase-llm, .phase-chip.phase-playing {
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+.status-board {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--stroke);
+}
+.status-board header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.status-board header b { letter-spacing: 0.08em; color: var(--accent); }
+.status-metrics { margin: 0; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.status-board ol { list-style: none; margin: 0; padding: 0; max-height: 220px; overflow: auto; }
+.status-board li { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; padding: 5px 0; border-top: 1px solid var(--stroke); font-size: 12px; color: var(--text); }
+.status-board li span { color: var(--text); }
+.status-board time, .status-board small { color: var(--muted); font-variant-numeric: tabular-nums; }
+.thought-stream { margin: 0; width: 100%; color: var(--muted); font-size: 12px; line-height: 1.45; opacity: 0.86; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .telemetry-spark { width: 120px; height: 28px; }
 .telemetry-spark polyline { fill: none; stroke: var(--accent); stroke-width: 1.6; }
 .replay-stage { align-items: stretch; }

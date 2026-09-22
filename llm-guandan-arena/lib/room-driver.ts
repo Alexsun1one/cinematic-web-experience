@@ -2,7 +2,7 @@ import { chooseHeuristic } from "./guandan/heuristic";
 import { beginRound, commitMove, currentLegal, finishResist, logReason, stepLocal, type Match } from "./guandan/match";
 import { mockQuickReason } from "./llm/quick-reason";
 import { TURN_BUDGET_MS } from "./invite";
-import { armThink, getRoom, markTimeout, noteMetric, noteSettlement, RoomRevisionError, saveRoom, type Room } from "./room";
+import { armThink, getRoom, markTimeout, noteMetric, noteSettlement, RoomRevisionError, saveRoom, setSeatPhase, type Room } from "./room";
 import { normalizeTenant } from "./room-store";
 import { matchStore, readMatch, withMatchLock } from "./store";
 
@@ -55,6 +55,7 @@ async function tick(tenantId: string, code: string): Promise<boolean> {
     const seat = match.trick.currentSeat;
     const agent = room.seats[seat];
     armThink(room, seat);
+    setSeatPhase(room, seat, { phase: "thinking", line: "思考中" }, match.round);
     if (agent?.drive === "self") {
       const acted = await waitForAct(room, seat, TURN_BUDGET_MS);
       const live = matchStore().get(room.matchId);
@@ -66,7 +67,8 @@ async function tick(tenantId: string, code: string): Promise<boolean> {
       await withMatchLock(live.id, async () => {
         if ((live.status !== "tribute" && live.status !== "return") || live.trick.currentSeat !== seat) return;
         stepLocal(live);
-        noteMetric(room, { hand: live.round, seat, kind: "timeout", outcome: "timeout", text: "进贡超时" });
+        const timed = noteMetric(room, { hand: live.round, seat, kind: "timeout", outcome: "timeout", text: "进贡超时" });
+        setSeatPhase(room, seat, { phase: "timeout", line: "超时 Mock", thinkMs: timed.thinkMs, reactionMs: timed.reactionMs }, live.round);
         noteSettlement(room, live);
         await markTimeout(room, seat);
       });
@@ -75,7 +77,8 @@ async function tick(tenantId: string, code: string): Promise<boolean> {
         if (match.status !== "tribute" && match.status !== "return") return;
         if (match.trick.currentSeat !== seat) return;
         stepLocal(match);
-        noteMetric(room, { hand: match.round, seat, kind: "play", outcome: "success", text: "进贡" });
+        const gifted = noteMetric(room, { hand: match.round, seat, kind: "play", outcome: "success", text: "进贡" });
+        setSeatPhase(room, seat, { phase: "played", line: "已出", thinkMs: gifted.thinkMs, reactionMs: gifted.reactionMs }, match.round);
         noteSettlement(room, match);
       });
       await saveQuiet(room);
@@ -87,6 +90,7 @@ async function tick(tenantId: string, code: string): Promise<boolean> {
   const seat = match.trick.currentSeat;
   const agent = room.seats[seat];
   armThink(room, seat);
+  setSeatPhase(room, seat, { phase: "thinking", line: "思考中" }, match.round);
   if (agent?.drive === "self") {
     const acted = await waitForAct(room, seat, TURN_BUDGET_MS);
     const live = matchStore().get(room.matchId);
@@ -98,7 +102,8 @@ async function tick(tenantId: string, code: string): Promise<boolean> {
     await withMatchLock(live.id, async () => {
       if (live.status !== "playing" || live.trick.currentSeat !== seat) return;
       playFallback(live, "超时代打");
-      noteMetric(room, { hand: live.round, seat, kind: "timeout", outcome: "timeout", text: "超时代打" });
+      const timed = noteMetric(room, { hand: live.round, seat, kind: "timeout", outcome: "timeout", text: "超时代打" });
+      setSeatPhase(room, seat, { phase: "timeout", line: "超时 Mock", thinkMs: timed.thinkMs, reactionMs: timed.reactionMs }, live.round);
       noteSettlement(room, live);
       await markTimeout(room, seat);
     });
@@ -119,9 +124,23 @@ async function tick(tenantId: string, code: string): Promise<boolean> {
         note: "mock",
         assist: null,
       });
-      noteMetric(room, { hand: match.round, seat, kind: "play", moveId: move.id, outcome: "success", text: move.label });
+      const played = noteMetric(room, { hand: match.round, seat, kind: "play", moveId: move.id, outcome: "success", text: move.label });
+      setSeatPhase(
+        room,
+        seat,
+        {
+          phase: move.kind === "pass" ? "passed" : "played",
+          line: move.kind === "pass" ? "过" : `已出 ${move.label}`,
+          thinkMs: played.thinkMs,
+          reactionMs: played.reactionMs,
+        },
+        match.round,
+      );
       noteSettlement(room, match);
-      if (match.status === "playing") armThink(room, match.trick.currentSeat);
+      if (match.status === "playing") {
+        armThink(room, match.trick.currentSeat);
+        setSeatPhase(room, match.trick.currentSeat, { phase: "thinking", line: "思考中" }, match.round);
+      }
     });
     await saveQuiet(room);
   }

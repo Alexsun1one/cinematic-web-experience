@@ -22,6 +22,7 @@ export function ReplayScrubber({ code }: { code: string }) {
   const [error, setError] = useState("");
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [thoughtOpen, setThoughtOpen] = useState(false);
 
   useEffect(() => {
     let gone = false;
@@ -80,6 +81,12 @@ export function ReplayScrubber({ code }: { code: string }) {
           <em>{cursor ? new Date(cursor.at).toLocaleTimeString() : "—"}</em>
           <b>{cursor?.text ?? "还没有事件"}</b>
           <small>{cursor ? `第 ${cursor.hand} 局 · ${cursor.kind}` : ""}</small>
+          {cursor?.thought ? (
+            <button className="chip-btn tiny" type="button" data-testid="replay-thought" onClick={() => setThoughtOpen((value) => !value)}>
+              {thoughtOpen ? "收起思考" : "展开思考"}
+            </button>
+          ) : null}
+          {thoughtOpen && cursor?.thought ? <p className="thought-stream" data-testid="replay-thought-body">{cursor.thought}</p> : null}
         </div>
         <label className="replay-scrub">
           <input

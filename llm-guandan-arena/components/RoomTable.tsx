@@ -7,6 +7,8 @@ import { RoomRail } from "@/components/RoomRail";
 import { RulesButton } from "@/components/RulesDrawer";
 import { TenantBar } from "@/components/TenantBar";
 import { readLockedTenant, rememberHosted, tenantHeaders } from "@/lib/tenant-client";
+import type { SeatLive } from "@/lib/seat-live";
+import type { PlayMetric, ReplayEvent } from "@/lib/telemetry";
 import type { MatchView } from "@/lib/view";
 
 type RoomSeries = "open" | "three" | "full";
@@ -48,7 +50,9 @@ interface RoomView {
   updatedAt: number;
   turnBudgetMs?: number;
   aceLimit?: number;
-  metrics?: import("@/lib/telemetry").PlayMetric[];
+  metrics?: PlayMetric[];
+  seatLive?: SeatLive[];
+  statusLog?: ReplayEvent[];
 }
 
 const SERIES_LABEL: Record<RoomSeries, string> = {
@@ -307,6 +311,8 @@ export function RoomTable({ code }: { code: string }) {
           externalView={view.match}
           turnBudgetMs={view.turnBudgetMs}
           metrics={view.metrics ?? []}
+          seatLive={view.seatLive}
+          statusLog={view.statusLog ?? []}
         seatStatuses={view.seats.map((seat) => ({ status: seat.status || "playing", statusLabel: seat.statusLabel || "出牌中" }))}
           chat={view.chat}
           onChat={(text) => void api(`/api/rooms/${upper}/chat`, { text, name: view.isHost ? "房主" : spectatorName })}

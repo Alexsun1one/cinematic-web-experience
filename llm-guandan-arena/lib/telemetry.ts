@@ -21,11 +21,17 @@ export interface PlayMetric {
 export interface ReplayEvent {
   id: number;
   at: number;
-  kind: "room" | "claim" | "play" | "settle" | "timeout" | "jev" | "fail";
+  kind: "room" | "claim" | "play" | "settle" | "timeout" | "jev" | "fail" | "status";
   seat: number | null;
   hand: number;
   text: string;
   moveId: string | null;
+  thought?: string | null;
+  jevMs?: number | null;
+  thinkMs?: number | null;
+  reactionMs?: number | null;
+  costUsd?: number | null;
+  tokens?: number | null;
 }
 
 const SECRET = /bearer\s+[a-z0-9._\-]{8,}|sk-[a-z0-9_\-]{8,}|typesafe_api_key\s*[=:]\s*\S+|api[_-]?key\s*[=:]\s*\S+/gi;

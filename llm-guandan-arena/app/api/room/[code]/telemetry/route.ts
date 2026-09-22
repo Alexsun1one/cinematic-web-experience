@@ -1,4 +1,5 @@
-import { loadRequestRoom, noteMetric, RoomRevisionError, saveRoom, seatIndexByToken, stateForToken } from "@/lib/room";
+import { loadRequestRoom, noteMetric, RoomRevisionError, saveRoom, seatIndexByToken, setSeatPhase, stateForToken } from "@/lib/room";
+import { isSeatPhase } from "@/lib/seat-live";
 import { metricsToCsv } from "@/lib/telemetry";
 import { readMatch } from "@/lib/store";
 
@@ -37,6 +38,9 @@ export async function POST(request: Request, context: { params: Promise<{ code: 
     thinkMs?: number;
     tokens?: number;
     costUsd?: number;
+    phase?: string;
+    line?: string;
+    thought?: string;
     tenantId?: unknown;
   };
   const room = await loadRequestRoom(request, code, body);
@@ -46,6 +50,24 @@ export async function POST(request: Request, context: { params: Promise<{ code: 
   const seat = seatIndexByToken(room, body.seatToken);
   if (seat < 0) return json({ error: "seatToken 无效" }, 404);
   const match = await readMatch(room.matchId);
+  if (isSeatPhase(body.phase)) {
+    setSeatPhase(
+      room,
+      seat,
+      {
+        phase: body.phase,
+        line: body.line,
+        thought: body.thought,
+        jevMs: typeof body.jevMs === "number" ? body.jevMs : undefined,
+        thinkMs: typeof body.thinkMs === "number" ? body.thinkMs : undefined,
+        reactionMs: typeof body.reactionMs === "number" ? body.reactionMs : undefined,
+        tokens: typeof body.tokens === "number" ? body.tokens : undefined,
+        costUsd: typeof body.costUsd === "number" ? body.costUsd : undefined,
+      },
+      match?.round ?? 0,
+    );
+  }
+  if (body.kind) {
   const kind = body.kind === "jev" || body.kind === "decision" || body.kind === "play" ? body.kind : "decision";
   const outcome = body.outcome === "fail" || body.outcome === "timeout" || body.outcome === "success" ? body.outcome : "success";
   noteMetric(room, {
@@ -61,6 +83,7 @@ export async function POST(request: Request, context: { params: Promise<{ code: 
     costUsd: typeof body.costUsd === "number" ? body.costUsd : null,
     text: kind === "jev" ? "Jev" : "决策",
   });
+  }
   try {
     await saveRoom(room);
   } catch (error) {

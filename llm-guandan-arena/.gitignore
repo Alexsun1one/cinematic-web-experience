@@ -4,5 +4,6 @@ out
 .vercel
 .env
 .env.local
+guandan.env
 *.log
 tsconfig.tsbuildinfo

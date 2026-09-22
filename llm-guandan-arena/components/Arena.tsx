@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AceStrip } from "@/components/AceStrip";
+import { StatusBoard } from "@/components/StatusBoard";
 import { TelemetryHud, TelemetryTable } from "@/components/TelemetryHud";
 import { BackRow, CardView, HandFan } from "@/components/CardView";
 import { RulesButton } from "@/components/RulesDrawer";
@@ -9,7 +10,8 @@ import { bannerFromHighlight, fxForMove, loudestCue } from "@/lib/guandan/highli
 import { armAudio, playTableCue, readMuted, writeMuted } from "@/lib/table-audio";
 import { statsToCsv } from "@/lib/guandan/stats";
 import { FACE } from "@/lib/guandan/types";
-import type { PlayMetric } from "@/lib/telemetry";
+import { blankSeatLives, chipText, type SeatLive } from "@/lib/seat-live";
+import type { PlayMetric, ReplayEvent } from "@/lib/telemetry";
 import type { MatchView } from "@/lib/view";
 
 type LogEvent = MatchView["log"][number];
@@ -28,6 +30,8 @@ export function Arena({
   turnBudgetMs = 8000,
   seatStatuses = [],
   metrics = [],
+  seatLive = blankSeatLives(),
+  statusLog = [],
 }: {
   id: string;
   role?: "host" | "spectator";
@@ -39,8 +43,15 @@ export function Arena({
   turnBudgetMs?: number;
   seatStatuses?: { status: string; statusLabel: string }[];
   metrics?: PlayMetric[];
+  seatLive?: SeatLive[];
+  statusLog?: ReplayEvent[];
 }) {
   const [view, setView] = useState<MatchView | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 200);
+    return () => window.clearInterval(timer);
+  }, []);
   const [error, setError] = useState("");
   const serverDriven = Boolean(roomCode);
   const [auto, setAuto] = useState(role === "host" && !roomCode);
@@ -305,9 +316,9 @@ export function Arena({
         aceLimit={view.aceLimit ?? 3}
       />
       <section className="board">
-        <SeatPlate view={view} index={0} reveal={reveal} place="north" statusLabel={seatStatuses[0]?.statusLabel} fire={fireSeat === 0} />
+        <SeatPlate view={view} index={0} reveal={reveal} place="north" statusLabel={seatStatuses[0]?.statusLabel} live={seatLive[0]} now={now} fire={fireSeat === 0} />
         <div className="table-row">
-        <SeatPlate view={view} index={3} reveal={reveal} place="west" statusLabel={seatStatuses[3]?.statusLabel} fire={fireSeat === 3} />
+        <SeatPlate view={view} index={3} reveal={reveal} place="west" statusLabel={seatStatuses[3]?.statusLabel} live={seatLive[3]} now={now} fire={fireSeat === 3} />
         <div className="table-rim">
           <div className={`felt-square ${view.trick.closed && !hideZones ? "clearing" : ""}`} data-testid="felt">
             <span className="bearing n">北</span>
@@ -344,11 +355,11 @@ export function Arena({
             ) : null}
           </div>
         </div>
-        <SeatPlate view={view} index={1} reveal={reveal} place="east" statusLabel={seatStatuses[1]?.statusLabel} fire={fireSeat === 1} />
+        <SeatPlate view={view} index={1} reveal={reveal} place="east" statusLabel={seatStatuses[1]?.statusLabel} live={seatLive[1]} now={now} fire={fireSeat === 1} />
         </div>
         <section className="south-hand">
           <div className="south-meta">
-            <NameBlock view={view} index={2} statusLabel={seatStatuses[2]?.statusLabel} fire={fireSeat === 2} />
+            <NameBlock view={view} index={2} statusLabel={seatStatuses[2]?.statusLabel} live={seatLive[2]} now={now} fire={fireSeat === 2} />
             <div className="sort-toggle">
               <button className={`chip-btn tiny ${columns ? "on" : ""}`} type="button" data-testid="layout-vertical" onClick={() => setColumns(true)}>
                 垂直理牌
@@ -364,6 +375,7 @@ export function Arena({
           <HandFan cards={view.hands[2]} level={view.level} mode={columns ? "columns" : "fan"} popStructures={columns && popStructures} />
         </section>
         <aside className="record" data-testid="play-log">
+          <StatusBoard seats={seatLive} events={statusLog} metrics={metrics} now={now} />
           <h2>
             <span className="record-tabs">
               <button className={panel === "log" ? "on" : ""} type="button" onClick={() => setPanel("log")}>记录</button>
@@ -501,6 +513,8 @@ function SeatPlate({
   reveal,
   place,
   statusLabel,
+  live,
+  now,
   fire,
 }: {
   view: MatchView;
@@ -508,12 +522,14 @@ function SeatPlate({
   reveal: boolean;
   place: "north" | "west" | "east";
   statusLabel?: string;
+  live?: SeatLive;
+  now: number;
   fire?: boolean;
 }) {
   const seat = view.seats[index];
   return (
     <section className={`seat-plate ${place} ${seat.team} ${seat.active ? "active" : ""}`}>
-      <NameBlock view={view} index={index} statusLabel={statusLabel} fire={fire} />
+      <NameBlock view={view} index={index} statusLabel={statusLabel} live={live} now={now} fire={fire} />
       {reveal ? (
         <HandFan
           cards={view.hands[index]}
@@ -529,7 +545,7 @@ function SeatPlate({
   );
 }
 
-function NameBlock({ view, index, statusLabel, fire }: { view: MatchView; index: number; statusLabel?: string; fire?: boolean }) {
+function NameBlock({ view, index, statusLabel, live, now, fire }: { view: MatchView; index: number; statusLabel?: string; live?: SeatLive; now: number; fire?: boolean }) {
   const seat = view.seats[index];
   const place = seat.finished >= 0 ? PLACES[seat.finished] : null;
   const face = (seat.short || seat.name || seat.wind).slice(0, 1);
@@ -548,6 +564,11 @@ function NameBlock({ view, index, statusLabel, fire }: { view: MatchView; index:
           {statusLabel || (seat.provider === "mock" ? "Mock" : seat.provider)}
           {seat.active ? " · 出牌" : ""}
         </small>
+        {live ? (
+          <em className={`phase-chip phase-${live.phase}`} data-testid={`seat-chip-${index}`}>
+            {chipText(live, now)}
+          </em>
+        ) : null}
       </div>
       <b className="count-chip">{seat.cards}</b>
       {place ? <em className="place-ribbon">{place}</em> : null}

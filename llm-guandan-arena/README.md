@@ -45,7 +45,7 @@ npm --prefix llm-guandan-arena run operator
 
 默认 `HANDS=1` `SERIES=three` `START_LEVEL=T` `OPERATOR_SEAT=2` `PORT=3456`。打完三局：`HANDS=3 SERIES=three npm --prefix llm-guandan-arena run operator`。`npm run watch`（在 `llm-guandan-arena` 里）只开房并打印 curl，座位空着。已经有 token 时：`ROOM_CODE=CODE SEAT_TOKEN=TOKEN npm --prefix llm-guandan-arena run operator`。
 
-四席马拉松（Jev 只读环境里的 `TYPESAFE_API_KEY`，命令行不要带密钥）见 `MARATHON.md`。服务器起来之后，在 `llm-guandan-arena` 里执行 `npm run marathon`。默认 50 局；两小时用 `DURATION_MIN=120 npm run marathon`。
+四席马拉松（Jev 只读环境里的 `TYPESAFE_API_KEY`，命令行不要带密钥）见 `MARATHON.md`。在已经写好密钥的机器上：`set -a; source /path/to/guandan.env; set +a`，然后在 `llm-guandan-arena` 里执行 `npm run marathon`。不要把 `guandan.env` 放进仓库。默认 50 局；两小时用 `DURATION_MIN=120 npm run marathon`。
 
 操作席循环（不要把密钥发给服务器）。先在 `llm-guandan-arena` 里 `npm run dev` 或 `npm run start`，端口 3456：
 
