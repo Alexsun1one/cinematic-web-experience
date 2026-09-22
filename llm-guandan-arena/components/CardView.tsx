@@ -138,26 +138,30 @@ export function HandFan({
   if (mode === "columns") {
     const live = new Set(cards.map((card) => card.id));
     const columns = arrangeColumns([...cards, ...leaving], level);
-    const squeeze = columns.length > 14 ? Math.min(18, (columns.length - 14) * 2) : 0;
+    const squeeze = columns.length > 12 ? Math.min(14, (columns.length - 12) * 1.5) : 0;
     return (
       <div className="rank-columns" data-testid="vertical-hand">
-        {columns.map((column, columnIndex) => (
-          <div
-            className={`rank-col role-${column.role}`}
-            key={column.key}
-            data-role={column.role}
-            style={{
-              transform: `translateY(-${column.lift + (columnIndex % 2 === 0 ? 0 : 5)}px)`,
-              marginLeft: columnIndex === 0 ? 0 : -squeeze,
-            }}
-          >
-            {column.cards.map((card, index) => (
-              <div key={card.id} className={`rank-col-card ${live.has(card.id) ? "" : "depart"}`} style={{ zIndex: index + 1 }}>
-                <CardView card={card} level={level} />
-              </div>
-            ))}
-          </div>
-        ))}
+        {columns.map((column, columnIndex) => {
+          const stagger = column.lift + (columnIndex % 2 === 0 ? 0 : 8) + (columnIndex % 3 === 0 ? 3 : 0);
+          return (
+            <div
+              className={`rank-col role-${column.role}`}
+              key={column.key}
+              data-role={column.role}
+              style={{
+                transform: `translateY(-${stagger}px)`,
+                marginLeft: columnIndex === 0 ? 0 : -squeeze,
+                zIndex: columns.length - columnIndex,
+              }}
+            >
+              {column.cards.map((card, index) => (
+                <div key={card.id} className={`rank-col-card ${live.has(card.id) ? "" : "depart"}`} style={{ zIndex: index + 1 }}>
+                  <CardView card={card} level={level} />
+                </div>
+              ))}
+            </div>
+          );
+        })}
       </div>
     );
   }

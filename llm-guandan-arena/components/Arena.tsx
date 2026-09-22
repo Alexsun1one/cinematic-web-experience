@@ -137,9 +137,12 @@ export function Arena({ id }: { id: string }) {
           <span>第 {view.round} 局{seriesNote} · {id.slice(0, 8)}</span>
         </div>
         <div className="level-plate" data-testid="level-plate">
-          <em>打到</em>
-          <strong>{levelLabel}</strong>
-          <span>逢人配 ★ 红心{levelLabel}</span>
+          <span className="gem">{levelLabel}</span>
+          <div>
+            <em>打到</em>
+            <strong> {levelLabel}</strong>
+            <span>逢人配 ★ 红心{levelLabel}</span>
+          </div>
         </div>
         <LevelTrack view={view} />
         <div className="hud-actions">
@@ -190,7 +193,23 @@ export function Arena({ id }: { id: string }) {
             ) : null}
             {view.status !== "playing" && latestRound ? (
               <div className="round-banner ceremony" data-testid="result" key={latestRound.round}>
-                <b>{latestRound.outcome} +{latestRound.delta}</b>
+                <div className="ceremony-sparks" aria-hidden>
+                  {Array.from({ length: 12 }, (_, index) => (
+                    <i
+                      key={index}
+                      style={{
+                        left: `${8 + ((index * 17) % 84)}%`,
+                        top: `${20 + ((index * 23) % 55)}%`,
+                        animationDelay: `${index * 45}ms`,
+                        background: index % 3 === 0 ? "#ffd0c8" : undefined,
+                      }}
+                    />
+                  ))}
+                </div>
+                <div className={`ceremony-seal ${latestRound.delta >= 3 ? "double" : ""}`}>
+                  {latestRound.delta >= 3 ? "双下" : latestRound.outcome.includes("三游") ? "头游" : "头游"}
+                </div>
+                <b className="title">{latestRound.outcome} +{latestRound.delta}</b>
                 <div className="places">
                   {latestRound.order.map((seat, index) => (
                     <span key={seat}>
@@ -281,7 +300,7 @@ function PlayZone({
   return (
     <div className={`play-zone ${wind} ${zone && !hidden ? "live" : ""} ${zone && zone.bombTier > 0 ? "bomb" : ""}`}>
       {zone && !hidden ? (
-        <div key={zone.id} className={`zone-cards from-${wind}`}>
+        <div key={zone.id} className={`zone-cards well from-${wind}`}>
           {zone.kind === "pass" ? (
             <div className="pass-stamp">不要</div>
           ) : (
@@ -333,16 +352,18 @@ function NameBlock({ view, index }: { view: MatchView; index: number }) {
       <div>
         <strong>{seat.name}</strong>
         <small>
-          {seat.provider === "mock" ? "Mock" : seat.provider} · {seat.cards}张
+          {seat.provider === "mock" ? "Mock" : seat.provider}
           {seat.active ? " · 出牌" : ""}
         </small>
       </div>
+      <b className="count-chip">{seat.cards}张</b>
       {place ? <em className="place-ribbon">{place}</em> : null}
     </header>
   );
 }
 
 function LevelTrack({ view }: { view: MatchView }) {
+  const latest = view.rounds.at(-1);
   return (
     <div className="level-track" data-testid="level-track">
       <div className="track-rail">
@@ -350,8 +371,17 @@ function LevelTrack({ view }: { view: MatchView }) {
           const ns = view.levels.ns === rank;
           const ew = view.levels.ew === rank;
           const deal = view.level === rank;
+          const climbed = Boolean(
+            latest &&
+              view.status !== "playing" &&
+              ((latest.winner === "ns" && latest.nsAfter === rank && latest.nsBefore !== rank) ||
+                (latest.winner === "ew" && latest.ewAfter === rank && latest.ewBefore !== rank)),
+          );
           return (
-            <div key={rank} className={`track-stop ${deal ? "deal" : ""} ${ns ? "has-ns" : ""} ${ew ? "has-ew" : ""}`}>
+            <div
+              key={rank}
+              className={`track-stop ${deal ? "deal" : ""} ${ns ? "has-ns" : ""} ${ew ? "has-ew" : ""} ${climbed ? "climbed" : ""}`}
+            >
               <i className={`mark ns ${ns ? "on" : ""}`}>{ns ? "南" : ""}</i>
               <b>{chip(rank)}</b>
               <i className={`mark ew ${ew ? "on" : ""}`}>{ew ? "东" : ""}</i>
@@ -371,50 +401,83 @@ function StatsPanel({ view, onCsv, onJson }: { view: MatchView; onCsv: () => voi
         <button className="wood-btn tiny" type="button" data-testid="export-csv" onClick={onCsv}>CSV</button>
         <button className="wood-btn tiny" type="button" data-testid="export-json" onClick={onJson}>JSON</button>
       </div>
+      <div className="kpi-row">
+        {stats.teams.map((team) => (
+          <div key={team.team} className={`kpi-card ${team.team}`}>
+            <em>{team.name}</em>
+            <b>打{chip(team.level)}</b>
+            <small>升{team.levelsClimbed} · 双下 {team.doubleDowns}</small>
+          </div>
+        ))}
+      </div>
       {stats.teams.map((team) => (
         <section key={team.team} className={`team-stat ${team.team}`}>
           <header>
-            <b>{team.name}</b>
-            <span>打{chip(team.level)} · 升{team.levelsClimbed} · 双下 {team.doubleDowns}</span>
+            <b>{team.name}进度</b>
             <span>{team.timeToA === null ? "未到A" : `${team.timeToA} 局到A`}</span>
           </header>
           <Sparkline values={team.timeline} team={team.team} />
         </section>
       ))}
-      <table>
-        <thead>
-          <tr>
-            <th>座位</th>
-            <th>胜率</th>
-            <th>头游</th>
-            <th>末游</th>
-            <th>名次</th>
-            <th>炸</th>
-            <th>同花</th>
-            <th>过</th>
-            <th>思考</th>
-            <th>拒</th>
-            <th>余牌</th>
-          </tr>
-        </thead>
-        <tbody>
-          {stats.seats.map((seat) => (
-            <tr key={seat.seat}>
-              <td>{view.seats[seat.seat].wind}</td>
-              <td>{Math.round(seat.teamWinRate * 100)}%</td>
-              <td>{Math.round(seat.firstRate * 100)}%</td>
-              <td>{Math.round(seat.lastRate * 100)}%</td>
-              <td>{seat.avgFinish ?? "—"}</td>
-              <td>{seat.bombs}</td>
-              <td>{seat.flushes}</td>
-              <td>{seat.passes}</td>
-              <td>{seat.avgThinkMs === null ? "—" : `${seat.avgThinkMs}`}</td>
-              <td>{seat.retries}</td>
-              <td>{seat.partnerCardsLeft ?? "—"}</td>
+      <div className="seat-kpis">
+        {stats.seats.map((seat) => (
+          <article key={seat.seat} className="seat-kpi">
+            <header>
+              <b>{view.seats[seat.seat].wind} {view.seats[seat.seat].short}</b>
+              <span>胜率 {Math.round(seat.teamWinRate * 100)}%</span>
+            </header>
+            <div className="bar" title="队伍胜率"><i style={{ width: `${Math.round(seat.teamWinRate * 100)}%` }} /></div>
+            <div className="bar first" title="头游率"><i style={{ width: `${Math.round(seat.firstRate * 100)}%` }} /></div>
+            <div className="bar last" title="末游率"><i style={{ width: `${Math.round(seat.lastRate * 100)}%` }} /></div>
+            <div className="meta">
+              <span>头游 {Math.round(seat.firstRate * 100)}%</span>
+              <span>末游 {Math.round(seat.lastRate * 100)}%</span>
+              <span>名次 {seat.avgFinish ?? "—"}</span>
+              <span>炸 {seat.bombs}</span>
+              <span>同花 {seat.flushes}</span>
+              <span>过 {seat.passes}</span>
+              <span>思考 {seat.avgThinkMs === null ? "—" : `${seat.avgThinkMs}ms`}</span>
+            </div>
+          </article>
+        ))}
+      </div>
+      <details className="stats-details">
+        <summary>明细表</summary>
+        <table>
+          <thead>
+            <tr>
+              <th>座位</th>
+              <th>胜率</th>
+              <th>头游</th>
+              <th>末游</th>
+              <th>名次</th>
+              <th>炸</th>
+              <th>同花</th>
+              <th>过</th>
+              <th>思考</th>
+              <th>拒</th>
+              <th>余牌</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {stats.seats.map((seat) => (
+              <tr key={seat.seat}>
+                <td>{view.seats[seat.seat].wind}</td>
+                <td>{Math.round(seat.teamWinRate * 100)}%</td>
+                <td>{Math.round(seat.firstRate * 100)}%</td>
+                <td>{Math.round(seat.lastRate * 100)}%</td>
+                <td>{seat.avgFinish ?? "—"}</td>
+                <td>{seat.bombs}</td>
+                <td>{seat.flushes}</td>
+                <td>{seat.passes}</td>
+                <td>{seat.avgThinkMs === null ? "—" : `${seat.avgThinkMs}`}</td>
+                <td>{seat.retries}</td>
+                <td>{seat.partnerCardsLeft ?? "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </details>
       <ol className="hand-log">
         {stats.hands.map((hand) => (
           <li key={hand.round}>

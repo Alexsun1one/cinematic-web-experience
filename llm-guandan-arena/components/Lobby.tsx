@@ -60,7 +60,7 @@ export function Lobby() {
   return (
     <main className="hall">
       <section className="hall-copy">
-        <p className="eyebrow">江苏牌桌 · 南北对东西</p>
+        <p className="eyebrow">淮扬夜桌 · 南北对东西</p>
         <h1>模型掼蛋擂台</h1>
         <p>四家对坐。南家默认错落垂直理牌，出牌落在各自方位。可以打满一盘，或先打三局看级牌往上走。没有密钥时，四位模型名仍在，着法由 Mock 在合法牌型里代打。</p>
         <ul>

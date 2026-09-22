@@ -12,14 +12,14 @@ export interface HandColumn {
 }
 
 const LIFT: Record<ColumnRole, number> = {
-  wild: 16,
-  jokerBomb: 20,
-  bomb: 18,
-  flush: 14,
-  plate: 12,
-  tube: 8,
-  triple: 6,
-  pair: 2,
+  wild: 28,
+  jokerBomb: 34,
+  bomb: 30,
+  flush: 24,
+  plate: 20,
+  tube: 14,
+  triple: 10,
+  pair: 4,
   single: 0,
 };
 
