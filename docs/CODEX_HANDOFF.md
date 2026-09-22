@@ -2,14 +2,16 @@
 
 ## Current Goal
 
-Ship `llm-guandan-arena/` as a Jiangsu-style spectator table, and show a short 快推理 beat beside the seat about to play. Jev runs when `TYPESAFE_API_KEY` is set (800ms timeout). Otherwise the beat is Mock, from the same engine facts.
+`llm-guandan-arena/` is a Jiangsu-style spectator table. South’s hand defaults to staggered vertical 理牌. The HUD shows the 2→A track, the end of a hand announces the upgrade, and the 统计 tab exports the series. A short 快推理 beat still plays before each seat.
 
 The cinematic-web-experience skill in the repo root is unchanged.
 
 ## Changed Files
 
-- `llm-guandan-arena/` — Next.js App Router app (lobby `/`, live table `/match/[id]`, step and replay routes).
+- `llm-guandan-arena/` — lobby series (本局起 / 三局 / 打满一盘), vertical columns, level track, ceremony, stats.
 - `docs/CODEX_HANDOFF.md` — this note.
+
+Upgrade rule already in the engine, now named in the ceremony: winners only, 双下 +3, 头游+三游 +2, 头游+末游 +1. A fixed series ends on the higher level if A is not passed.
 
 Seat display names, even in Mock:
 
@@ -18,15 +20,13 @@ Seat display names, even in Mock:
 - Seat 2 South: MiMo 2.6 Flash (`MIMO_API_KEY` + `MIMO_BASE_URL`)
 - Seat 3 West: GLM 5.3 Flash (`ZHIPU_API_KEY`)
 
-Optional Jev assist: `TYPESAFE_API_KEY` → `POST {TYPESAFE_BASE_URL}/v1/systemone` with a Noul and a Choice. Illegal model moves are rejected once, then the Mock heuristic plays.
+Optional Jev assist: `TYPESAFE_API_KEY` → `POST {TYPESAFE_BASE_URL}/v1/systemone`. The spectator beat times out at 800ms. Illegal model moves are rejected once, then the Mock heuristic plays.
 
 ## Validation Evidence
 
-- `npm run test:engine` passed (deck, bombs, wild straights, 接风, scripted 双上, full Mock matches from A, one round from 2, prompt hides other hands).
-- `npm run build` passed (Next.js 15.5.25).
-- `npm run dev` on port 3456: create match + six steps with zero keys. Log showed DeepSeek / Gemini / MiMo / GLM playing legal combos.
-- Browser: square 620×620 felt, 北东南西, center 红心级牌, per-seat play zones (三连对 on all four sides), South overlapping fan of 27 cards, West/North red backs with counts, 理牌 columns, 明牌 vertical overlap. Lobby start, pause, step, and 复盘 export.
-- `npm run test:engine` passed after the layout rewrite.
+- `npm run test:engine` passed, including column order (bomb and 同花顺 left of singles, 逢人配 first), 头游+三游 on a 1-hand series, finish counts, bomb and pass stats, CSV header.
+- `npm run build` passed after the layout and stats work.
+- Browser, zero keys: south hand is staggered rank columns (taller structures on the left) with 27 cards; felt stays square; HUD reads 打到 10 with the 2→A rail; end of hand shows 头游+末游 +1 and 东西 打10 → 打J; 统计 lists 头游率, 双下, and the hand log.
 
 ## Blockers
 
