@@ -63,6 +63,7 @@ button:disabled { opacity: 0.4; cursor: wait; }
 /* ——— HUD ——— */
 .hud {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   padding: 8px 12px;
@@ -1860,6 +1861,28 @@ button:disabled { opacity: 0.4; cursor: wait; }
 }
 .rail-dot.is-active { background: var(--accent); }
 .rail-item.is-current .rail-dot { border-color: #04281c; background: #04281c; }
+.telemetry-hud {
+  flex: 1 0 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 28px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 650;
+}
+.telemetry-hud b { color: var(--accent); letter-spacing: 0.08em; }
+.telemetry-spark { width: 120px; height: 28px; }
+.telemetry-spark polyline { fill: none; stroke: var(--accent); stroke-width: 1.6; }
+.replay-stage { align-items: stretch; }
+.replay-now { display: flex; flex-direction: column; gap: 4px; }
+.replay-now b { font-size: 22px; letter-spacing: -0.03em; }
+.replay-now em, .replay-now small { color: var(--muted); font-style: normal; }
+.replay-scrub input { width: 100%; }
+.replay-log { margin: 0; padding: 0; list-style: none; max-height: 280px; overflow: auto; }
+.replay-log li { display: flex; gap: 8px; padding: 6px 0; border-top: 1px solid var(--stroke); font-size: 13px; }
+.replay-log li.on { color: var(--accent); }
+.replay-log time { color: var(--muted); font-variant-numeric: tabular-nums; }
 .ace-strip { justify-content: center; flex-wrap: wrap; }
 .ace-strip strong { font-size: 14px; letter-spacing: 0.01em; }
 .ace-teams { display: flex; gap: 4px; }

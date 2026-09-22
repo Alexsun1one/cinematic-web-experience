@@ -48,6 +48,7 @@ interface RoomView {
   updatedAt: number;
   turnBudgetMs?: number;
   aceLimit?: number;
+  metrics?: import("@/lib/telemetry").PlayMetric[];
 }
 
 const SERIES_LABEL: Record<RoomSeries, string> = {
@@ -305,7 +306,8 @@ export function RoomTable({ code }: { code: string }) {
           spectatorCount={view.spectatorCount}
           externalView={view.match}
           turnBudgetMs={view.turnBudgetMs}
-          seatStatuses={view.seats.map((seat) => ({ status: seat.status || "playing", statusLabel: seat.statusLabel || "出牌中" }))}
+          metrics={view.metrics ?? []}
+        seatStatuses={view.seats.map((seat) => ({ status: seat.status || "playing", statusLabel: seat.statusLabel || "出牌中" }))}
           chat={view.chat}
           onChat={(text) => void api(`/api/rooms/${upper}/chat`, { text, name: view.isHost ? "房主" : spectatorName })}
         />
@@ -327,6 +329,7 @@ export function RoomTable({ code }: { code: string }) {
             {copied ? "已复制" : "复制围观链接"}
           </button>
           <RulesButton />
+          <a className="chip-btn" href={`/replay/${view.code}`} data-testid="open-replay">复盘</a>
           <a className="chip-btn" href="/">大厅</a>
         </div>
         <p className="room-path">/room/{view.code}</p>

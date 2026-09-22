@@ -2,7 +2,7 @@ import { chooseHeuristic } from "./guandan/heuristic";
 import { beginRound, commitMove, currentLegal, finishResist, logReason, stepLocal, type Match } from "./guandan/match";
 import { mockQuickReason } from "./llm/quick-reason";
 import { TURN_BUDGET_MS } from "./invite";
-import { getRoom, markTimeout, RoomRevisionError, saveRoom, type Room } from "./room";
+import { armThink, getRoom, markTimeout, noteMetric, noteSettlement, RoomRevisionError, saveRoom, type Room } from "./room";
 import { normalizeTenant } from "./room-store";
 import { matchStore, readMatch, withMatchLock } from "./store";
 
@@ -54,6 +54,7 @@ async function tick(tenantId: string, code: string): Promise<boolean> {
   if (match.status === "tribute" || match.status === "return") {
     const seat = match.trick.currentSeat;
     const agent = room.seats[seat];
+    armThink(room, seat);
     if (agent?.drive === "self") {
       const acted = await waitForAct(room, seat, TURN_BUDGET_MS);
       const live = matchStore().get(room.matchId);
@@ -65,6 +66,8 @@ async function tick(tenantId: string, code: string): Promise<boolean> {
       await withMatchLock(live.id, async () => {
         if ((live.status !== "tribute" && live.status !== "return") || live.trick.currentSeat !== seat) return;
         stepLocal(live);
+        noteMetric(room, { hand: live.round, seat, kind: "timeout", outcome: "timeout", text: "进贡超时" });
+        noteSettlement(room, live);
         await markTimeout(room, seat);
       });
     } else {
@@ -72,7 +75,10 @@ async function tick(tenantId: string, code: string): Promise<boolean> {
         if (match.status !== "tribute" && match.status !== "return") return;
         if (match.trick.currentSeat !== seat) return;
         stepLocal(match);
+        noteMetric(room, { hand: match.round, seat, kind: "play", outcome: "success", text: "进贡" });
+        noteSettlement(room, match);
       });
+      await saveQuiet(room);
     }
     await sleep(1100);
     return true;
@@ -80,6 +86,7 @@ async function tick(tenantId: string, code: string): Promise<boolean> {
 
   const seat = match.trick.currentSeat;
   const agent = room.seats[seat];
+  armThink(room, seat);
   if (agent?.drive === "self") {
     const acted = await waitForAct(room, seat, TURN_BUDGET_MS);
     const live = matchStore().get(room.matchId);
@@ -91,6 +98,8 @@ async function tick(tenantId: string, code: string): Promise<boolean> {
     await withMatchLock(live.id, async () => {
       if (live.status !== "playing" || live.trick.currentSeat !== seat) return;
       playFallback(live, "超时代打");
+      noteMetric(room, { hand: live.round, seat, kind: "timeout", outcome: "timeout", text: "超时代打" });
+      noteSettlement(room, live);
       await markTimeout(room, seat);
     });
   } else {
@@ -110,10 +119,22 @@ async function tick(tenantId: string, code: string): Promise<boolean> {
         note: "mock",
         assist: null,
       });
+      noteMetric(room, { hand: match.round, seat, kind: "play", moveId: move.id, outcome: "success", text: move.label });
+      noteSettlement(room, match);
+      if (match.status === "playing") armThink(room, match.trick.currentSeat);
     });
+    await saveQuiet(room);
   }
   await sleep(320);
   return true;
+}
+
+async function saveQuiet(room: Room) {
+  try {
+    await saveRoom(room);
+  } catch (error) {
+    if (!(error instanceof RoomRevisionError)) throw error;
+  }
 }
 
 async function saveFinished(room: Room) {

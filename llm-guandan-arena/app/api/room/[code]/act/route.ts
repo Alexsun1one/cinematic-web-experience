@@ -1,5 +1,5 @@
 import { commitMove, currentLegal, performSeatAction } from "@/lib/guandan/match";
-import { loadRequestRoom, notifyAct, seatIndexByToken, stateForToken } from "@/lib/room";
+import { armThink, loadRequestRoom, noteMetric, noteSettlement, notifyAct, peekThink, RoomRevisionError, saveRoom, seatIndexByToken, stateForToken } from "@/lib/room";
 import { matchStore, readMatch, withMatchLock } from "@/lib/store";
 
 export const runtime = "nodejs";
@@ -15,11 +15,12 @@ export async function POST(request: Request, context: { params: Promise<{ code: 
     seatToken?: string;
     moveId?: string;
     apiKey?: string;
+    authorization?: string;
     tenantId?: unknown;
   };
   const room = await loadRequestRoom(request, code, body);
   if (!room) return json({ error: "房间不存在" }, 404);
-  if (body.apiKey) return json({ error: "不要把密钥发给服务器" }, 400);
+    if (body.apiKey || "authorization" in body) return json({ error: "不要把密钥发给服务器" }, 400);
   const seatToken = body.seatToken;
   const moveId = body.moveId;
   if (!seatToken || !moveId) return json({ error: "需要 seatToken 和 moveId" }, 400);
@@ -38,8 +39,21 @@ export async function POST(request: Request, context: { params: Promise<{ code: 
       try {
         performSeatAction(live, seat, moveId);
       } catch (error) {
+        noteMetric(room, {
+          hand: live.round,
+          seat,
+          kind: "play",
+          moveId,
+          outcome: "fail",
+          thinkMs: peekThink(room, seat),
+          text: "贡牌被拒",
+        });
+        await touchRoom(room);
         return json({ error: error instanceof Error ? error.message : "贡牌被拒" }, 400);
       }
+      noteMetric(room, { hand: live.round, seat, kind: "play", moveId, outcome: "success", text: "贡牌" });
+      armThink(room, live.trick.currentSeat);
+      await touchRoom(room);
       await notifyAct(room, seat);
       return json(await stateForToken(room, seatToken));
     }
@@ -47,7 +61,19 @@ export async function POST(request: Request, context: { params: Promise<{ code: 
       return json({ error: "还没轮到你" }, 409);
     }
     const move = currentLegal(live).find((item) => item.id === moveId);
-    if (!move) return json({ error: "非法着法，只能出 legal 列表里的 moveId" }, 400);
+    if (!move) {
+      noteMetric(room, {
+        hand: live.round,
+        seat,
+        kind: "play",
+        moveId,
+        outcome: "fail",
+        thinkMs: peekThink(room, seat),
+        text: "非法着法",
+      });
+      await touchRoom(room);
+      return json({ error: "非法着法，只能出 legal 列表里的 moveId" }, 400);
+    }
     commitMove(live, move, {
       source: "llm",
       provider: "guest",
@@ -55,7 +81,19 @@ export async function POST(request: Request, context: { params: Promise<{ code: 
       note: "guest",
       assist: null,
     });
+    noteMetric(room, { hand: live.round, seat, kind: "play", moveId, outcome: "success", text: move.label });
+    noteSettlement(room, live);
+    if (live.status === "playing" || live.status === "tribute" || live.status === "return") armThink(room, live.trick.currentSeat);
+    await touchRoom(room);
     await notifyAct(room, seat);
     return json(await stateForToken(room, seatToken));
   });
+}
+
+async function touchRoom(room: Parameters<typeof saveRoom>[0]) {
+  try {
+    await saveRoom(room);
+  } catch (error) {
+    if (!(error instanceof RoomRevisionError)) throw error;
+  }
 }

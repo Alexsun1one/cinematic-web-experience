@@ -17,6 +17,7 @@ import {
   type RoomSnapshot,
 } from "./room-store";
 import { persistMatch, readMatch, remember } from "./store";
+import { redactSecrets, type PlayMetric, type ReplayEvent } from "./telemetry";
 import { toView, type MatchView } from "./view";
 
 export type RoomSeries = "open" | "three" | "full";
@@ -105,6 +106,13 @@ export interface Room {
   invites: SeatInvite[];
   /** Seat whose last action was a server timeout fallback. */
   lastTimeoutSeat: number | null;
+  /** When each seat's current turn was armed. 0 means not waiting. */
+  thinkArmedAt: [number, number, number, number];
+  metricSeq: number;
+  metrics: PlayMetric[];
+  replaySeq: number;
+  replay: ReplayEvent[];
+  replayRounds: number;
   onAct?: (seat: number) => void;
 }
 
@@ -143,6 +151,12 @@ interface RoomRecord extends Omit<RoomSnapshot, "status"> {
   lastTimeoutSeat: number | null;
   timeoutStreak?: [number, number, number, number];
   expiresAt?: number;
+  thinkArmedAt?: [number, number, number, number];
+  metricSeq?: number;
+  metrics?: PlayMetric[];
+  replaySeq?: number;
+  replay?: ReplayEvent[];
+  replayRounds?: number;
 }
 
 function toRecord(room: Room): RoomRecord {
@@ -167,6 +181,12 @@ function toRecord(room: Room): RoomRecord {
     lastTimeoutSeat: room.lastTimeoutSeat,
     timeoutStreak: room.timeoutStreak,
     expiresAt: room.expiresAt,
+    thinkArmedAt: room.thinkArmedAt,
+    metricSeq: room.metricSeq,
+    metrics: room.metrics,
+    replaySeq: room.replaySeq,
+    replay: room.replay,
+    replayRounds: room.replayRounds,
   };
 }
 
@@ -180,6 +200,12 @@ function fromRecord(record: RoomRecord): Room {
     ...record,
     rev: record.rev ?? 0,
     timeoutStreak: normalizeStreak(record.timeoutStreak),
+    thinkArmedAt: record.thinkArmedAt ?? [0, 0, 0, 0],
+    metricSeq: record.metricSeq ?? 0,
+    metrics: record.metrics ?? [],
+    replaySeq: record.replaySeq ?? 0,
+    replay: record.replay ?? [],
+    replayRounds: record.replayRounds ?? 0,
     spectators: new Map(record.spectators.map((row) => [row.id, { ...row }])),
   };
 }
@@ -205,6 +231,12 @@ function applyRecord(room: Room, record: RoomRecord) {
   room.lastTimeoutSeat = record.lastTimeoutSeat;
   room.timeoutStreak = normalizeStreak(record.timeoutStreak);
   room.expiresAt = record.expiresAt;
+  room.thinkArmedAt = record.thinkArmedAt ?? room.thinkArmedAt ?? [0, 0, 0, 0];
+  room.metricSeq = record.metricSeq ?? room.metricSeq ?? 0;
+  room.metrics = record.metrics ?? room.metrics ?? [];
+  room.replaySeq = record.replaySeq ?? room.replaySeq ?? 0;
+  room.replay = record.replay ?? room.replay ?? [];
+  room.replayRounds = record.replayRounds ?? room.replayRounds ?? 0;
   room.onAct = onAct;
 }
 
@@ -319,6 +351,12 @@ export async function createRoom(input: {
     invites: [],
     lastTimeoutSeat: null,
     timeoutStreak: [0, 0, 0, 0],
+    thinkArmedAt: [0, 0, 0, 0],
+    metricSeq: 0,
+    metrics: [],
+    replaySeq: 1,
+    replay: [{ id: 1, at: Date.now(), kind: "room", seat: null, hand: 0, text: "开房", moveId: null }],
+    replayRounds: 0,
   };
   if (room.autoFillMock) assignMockSeats(room);
   await saveRoom(room);
@@ -545,6 +583,7 @@ export async function claimByToken(room: Room, token: string, name?: string) {
     seatToken: token,
     custom: null,
   };
+  noteReplay(room, { kind: "claim", seat: invite.seat, hand: 0, text: `${label} 入座 ${SEAT_WIND[invite.seat]}` });
   await saveRoom(room);
   return invite.seat;
 }
@@ -562,6 +601,111 @@ export async function notifyAct(room: Room, seat: number) {
   room.timeoutStreak = streak;
   if (hadTimeout || hadStreak) await saveRoom(room);
   room.onAct?.(seat);
+}
+
+function ensureTrace(room: Room) {
+  if (!room.thinkArmedAt) room.thinkArmedAt = [0, 0, 0, 0];
+  if (!room.metrics) room.metrics = [];
+  if (!room.replay) room.replay = [];
+  if (!room.metricSeq) room.metricSeq = room.metrics.at(-1)?.id ?? 0;
+  if (!room.replaySeq) room.replaySeq = room.replay.at(-1)?.id ?? 0;
+  if (!room.replayRounds) room.replayRounds = 0;
+}
+
+export function armThink(room: Room, seat: number) {
+  ensureTrace(room);
+  if (!room.thinkArmedAt[seat]) room.thinkArmedAt[seat] = Date.now();
+}
+
+export function peekThink(room: Room, seat: number): number {
+  ensureTrace(room);
+  const armed = room.thinkArmedAt[seat] || Date.now();
+  return Math.max(0, Date.now() - armed);
+}
+
+export function noteMetric(
+  room: Room,
+  input: {
+    matchId?: string | null;
+    hand: number;
+    seat: number | null;
+    kind: PlayMetric["kind"];
+    moveId?: string | null;
+    outcome: PlayMetric["outcome"];
+    thinkMs?: number | null;
+    jevMs?: number | null;
+    reactionMs?: number | null;
+    tokens?: number | null;
+    costUsd?: number | null;
+    text?: string;
+  },
+) {
+  ensureTrace(room);
+  const thinkMs = input.thinkMs !== undefined ? input.thinkMs : input.seat !== null && input.outcome !== "fail" ? consumeThink(room, input.seat) : null;
+  room.metricSeq += 1;
+  const metric: PlayMetric = {
+    id: room.metricSeq,
+    at: Date.now(),
+    room: room.code,
+    matchId: input.matchId ?? room.matchId,
+    hand: input.hand,
+    seat: input.seat,
+    kind: input.kind,
+    moveId: input.moveId ? redactSecrets(input.moveId).slice(0, 80) : null,
+    outcome: input.outcome,
+    thinkMs,
+    jevMs: input.jevMs ?? null,
+    reactionMs: input.reactionMs ?? thinkMs,
+    tokens: input.tokens ?? null,
+    costUsd: input.costUsd ?? null,
+  };
+  room.metrics.push(metric);
+  if (room.metrics.length > 500) room.metrics.splice(0, room.metrics.length - 500);
+  const label = input.text || `${input.kind} ${input.outcome}`;
+  pushReplay(room, {
+    kind: input.outcome === "timeout" ? "timeout" : input.kind === "jev" ? "jev" : input.outcome === "fail" ? "fail" : "play",
+    seat: input.seat,
+    hand: input.hand,
+    text: redactSecrets(label).slice(0, 180),
+    moveId: metric.moveId,
+  });
+  return metric;
+}
+
+function consumeThink(room: Room, seat: number): number {
+  const armed = room.thinkArmedAt[seat] || Date.now();
+  room.thinkArmedAt[seat] = 0;
+  return Math.max(0, Date.now() - armed);
+}
+
+export function noteReplay(room: Room, input: { kind: ReplayEvent["kind"]; seat: number | null; hand: number; text: string; moveId?: string | null }) {
+  ensureTrace(room);
+  pushReplay(room, {
+    kind: input.kind,
+    seat: input.seat,
+    hand: input.hand,
+    text: redactSecrets(input.text).slice(0, 180),
+    moveId: input.moveId ? redactSecrets(input.moveId).slice(0, 80) : null,
+  });
+}
+
+function pushReplay(room: Room, input: Omit<ReplayEvent, "id" | "at">) {
+  room.replaySeq += 1;
+  room.replay.push({ id: room.replaySeq, at: Date.now(), ...input });
+  if (room.replay.length > 800) room.replay.splice(0, room.replay.length - 800);
+}
+
+export function noteSettlement(room: Room, match: Match) {
+  ensureTrace(room);
+  if (match.rounds.length <= room.replayRounds) return;
+  const round = match.rounds[match.rounds.length - 1];
+  room.replayRounds = match.rounds.length;
+  noteReplay(room, {
+    kind: "settle",
+    seat: null,
+    hand: round.round,
+    text: `第${round.round}局 ${round.outcome} +${round.delta} 南北 ${round.nsBefore}→${round.nsAfter} 东西 ${round.ewBefore}→${round.ewAfter} 打A失败 南北${match.aceFails?.ns ?? 0} 东西${match.aceFails?.ew ?? 0}`,
+  });
 }
 
 export async function markTimeout(room: Room, seat: number) {
@@ -661,6 +805,8 @@ export function toRoomView(
   updatedAt: number;
   turnBudgetMs: number;
   aceLimit: number;
+  metrics: PlayMetric[];
+  replay: ReplayEvent[];
   phase: ReturnType<typeof tableProcedure>["phase"];
   leaderSeat: number | null;
   currentTurn: number | null;
@@ -706,6 +852,8 @@ export function toRoomView(
     updatedAt: room.updatedAt,
     turnBudgetMs: TURN_BUDGET_MS,
     aceLimit: aceStrikeLimit(),
+    metrics: (room.metrics ?? []).slice(-40),
+    replay: (room.replay ?? []).slice(-80),
     phase: procedure.phase,
     leaderSeat: procedure.leaderSeat,
     currentTurn: procedure.currentTurn,

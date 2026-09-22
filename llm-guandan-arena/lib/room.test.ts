@@ -12,6 +12,7 @@ import {
   kickAfterTimeouts,
   makeRoomCode,
   markTimeout,
+  noteMetric,
   notifyAct,
   seatsReady,
   openOperatorTable,
@@ -501,6 +502,24 @@ function testLobbyFiltersAndAceStrip() {
   assert.equal(shouldFlashAceDrop("A", "A"), false);
 }
 
+async function testTelemetryRedactsSecrets() {
+  const { room } = await createRoom({ autoFillMock: false, tenantId: "telemetry" });
+  noteMetric(room, {
+    hand: 1,
+    seat: 0,
+    kind: "play",
+    outcome: "success",
+    thinkMs: 15,
+    text: "Bearer sk-secret-token-value",
+  });
+  const blob = JSON.stringify(toRoomView(room, { isHost: false }));
+  assert.equal(blob.includes("sk-secret"), false);
+  assert.match(blob, /\[redacted\]/);
+  assert.equal(blob.includes("seatToken"), false);
+  assert.equal(room.metrics[0]?.thinkMs, 15);
+  assert.equal(room.replay.some((event) => event.kind === "room"), true);
+}
+
 async function testInviteSeatAndAceView() {
   const { room } = await createRoom({ autoFillMock: false, tenantId: "ia-seat" });
   const issued = await issueInvite(room, "http://localhost:3456", 2);
@@ -551,6 +570,7 @@ async function main() {
   await testQaRooms();
   await testStoreTtlAndRace();
   testLobbyFiltersAndAceStrip();
+  await testTelemetryRedactsSecrets();
   await testInviteSeatAndAceView();
   await testTenantQuota();
   console.log("room tests passed");

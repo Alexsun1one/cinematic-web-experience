@@ -2,12 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AceStrip } from "@/components/AceStrip";
+import { TelemetryHud, TelemetryTable } from "@/components/TelemetryHud";
 import { BackRow, CardView, HandFan } from "@/components/CardView";
 import { RulesButton } from "@/components/RulesDrawer";
 import { bannerFromHighlight, fxForMove, loudestCue } from "@/lib/guandan/highlight";
 import { armAudio, playTableCue, readMuted, writeMuted } from "@/lib/table-audio";
 import { statsToCsv } from "@/lib/guandan/stats";
 import { FACE } from "@/lib/guandan/types";
+import type { PlayMetric } from "@/lib/telemetry";
 import type { MatchView } from "@/lib/view";
 
 type LogEvent = MatchView["log"][number];
@@ -25,6 +27,7 @@ export function Arena({
   onChat,
   turnBudgetMs = 8000,
   seatStatuses = [],
+  metrics = [],
 }: {
   id: string;
   role?: "host" | "spectator";
@@ -35,6 +38,7 @@ export function Arena({
   onChat?: (text: string) => void;
   turnBudgetMs?: number;
   seatStatuses?: { status: string; statusLabel: string }[];
+  metrics?: PlayMetric[];
 }) {
   const [view, setView] = useState<MatchView | null>(null);
   const [error, setError] = useState("");
@@ -252,6 +256,7 @@ export function Arena({
         <LevelTrack view={view} />
         <div className="hud-actions">
           <a className="chip-btn" href={roomCode ? `/room/${roomCode}` : "/"}>{roomCode ? "房间" : "大厅"}</a>
+          {roomCode ? <a className="chip-btn" href={`/replay/${roomCode}`} data-testid="open-replay">复盘</a> : null}
           <RulesButton />
           {serverDriven ? (
             <span className="turn-ring" data-testid="turn-budget" key={view.trick.currentSeat} style={{ ["--turn-ms" as string]: `${turnBudgetMs}ms` }}>
@@ -291,6 +296,7 @@ export function Arena({
             {muted ? "静音" : "声音"}
           </button>
         </div>
+        <TelemetryHud metrics={metrics} />
       </header>
       {error ? <p className="banner-error">{error}</p> : null}
       <AceStrip
@@ -380,7 +386,12 @@ export function Arena({
               ))}
             </div>
           ) : panel === "stats" ? (
-            <StatsPanel view={view} onCsv={() => download(`guandan-${id.slice(0, 8)}-stats.csv`, statsToCsv(view.stats), "text/csv")} onJson={() => download(`guandan-${id.slice(0, 8)}-stats.json`, JSON.stringify(view.stats, null, 2), "application/json")} />
+            <StatsPanel
+              view={view}
+              metrics={metrics}
+              onCsv={() => download(`guandan-${id.slice(0, 8)}-stats.csv`, statsToCsv(view.stats), "text/csv")}
+              onJson={() => download(`guandan-${id.slice(0, 8)}-stats.json`, JSON.stringify(view.stats, null, 2), "application/json")}
+            />
           ) : (
             <div className="room-chat in-arena" data-testid="arena-chat">
               <div className="room-chat-list">
@@ -579,7 +590,7 @@ function LevelTrack({ view }: { view: MatchView }) {
   );
 }
 
-function StatsPanel({ view, onCsv, onJson }: { view: MatchView; onCsv: () => void; onJson: () => void }) {
+function StatsPanel({ view, metrics, onCsv, onJson }: { view: MatchView; metrics: PlayMetric[]; onCsv: () => void; onJson: () => void }) {
   const stats = view.stats;
   return (
     <div className="stats-panel" data-testid="stats-panel">
@@ -666,6 +677,7 @@ function StatsPanel({ view, onCsv, onJson }: { view: MatchView; onCsv: () => voi
           </tbody>
         </table>
       </details>
+      <TelemetryTable metrics={metrics} />
       <ol className="hand-log">
         {stats.hands.map((hand) => (
           <li key={hand.round}>
