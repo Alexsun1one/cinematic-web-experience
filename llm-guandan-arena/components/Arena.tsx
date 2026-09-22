@@ -65,6 +65,7 @@ export function Arena({
         const data = (await response.json()) as MatchView & { error?: string };
         if (!response.ok) throw new Error(data.error || "找不到这局牌");
         if (!gone) {
+          if (new URLSearchParams(window.location.search).get("still") === "1") setAuto(false);
           setView(data);
           if (data.status !== "playing") setAuto(false);
         }
@@ -194,7 +195,10 @@ export function Arena({
           <a className="chip-btn" href={roomCode ? `/room/${roomCode}` : "/"}>{roomCode ? "房间" : "大厅"}</a>
           <RulesButton />
           {serverDriven ? (
-            <span className="chip-btn timeout-chip" data-testid="turn-budget">回合 {Math.round(turnBudgetMs / 1000)}s · 超时 Mock</span>
+            <span className="turn-ring" data-testid="turn-budget" key={view.trick.currentSeat} style={{ ["--turn-ms" as string]: `${turnBudgetMs}ms` }}>
+              <i />
+              <b>{Math.round(turnBudgetMs / 1000)}s</b>
+            </span>
           ) : null}
           {!spectator && !serverDriven ? (
             <>
@@ -239,14 +243,10 @@ export function Arena({
               <PlayZone key={wind} view={view} index={index} wind={wind} hidden={hideZones} />
             ))}
             {preview?.reason && preview.seat !== null ? (
-              <div className={`reason-bubble ${WIND[preview.seat]}`} data-testid="quick-reason">
-                <em>
-                  {preview.reason.source === "jev" ? "Jev 快推理" : "Mock 快推理"}
-                  <code>{preview.reason.latencyMs}ms</code>
-                </em>
-                {(preview.reason.timedOut ? ["超时跳过"] : preview.reason.lines).map((line, index) => (
-                  <b key={`${index}-${line}`}>{line}</b>
-                ))}
+              <div className={`reason-chip ${WIND[preview.seat]}`} data-testid="quick-reason">
+                <em>{preview.reason.source === "jev" ? "Jev" : "快推理"}</em>
+                <b>{preview.reason.timedOut ? "超时跳过" : preview.reason.lines[0] || "…"}</b>
+                <code>{preview.reason.latencyMs}ms</code>
               </div>
             ) : null}
             {view.status !== "playing" && latestRound ? (
@@ -259,7 +259,7 @@ export function Arena({
                         left: `${8 + ((index * 17) % 84)}%`,
                         top: `${20 + ((index * 23) % 55)}%`,
                         animationDelay: `${index * 45}ms`,
-                        background: index % 2 === 0 ? "#2ee6a6" : "#4da3ff",
+                        background: "#2ee6a6",
                       }}
                     />
                   ))}
@@ -388,7 +388,7 @@ function PlayZone({
   return (
     <div className={`play-zone ${wind} ${zone && !hidden ? "live" : ""} ${zone && zone.bombTier > 0 ? "bomb" : ""}`}>
       {zone && !hidden ? (
-        <div key={zone.id} className={`zone-cards well from-${wind}`}>
+        <div key={zone.id} className={`zone-cards well ${zone.bombTier > 0 ? "slam" : `from-${wind}`}`}>
           {zone.kind === "pass" ? (
             <div className="pass-stamp">不要</div>
           ) : (
