@@ -84,6 +84,10 @@ function testGuestInvite() {
   assert.match(issued.block, /接风/);
   assert.match(issued.block, /phase 会是 tribute、return 或 resist/);
   assert.match(issued.block, /guest-agent-player/);
+  assert.match(issued.block, /胜利目标/);
+  assert.match(issued.block, /双下/);
+  assert.match(issued.block, /逢人配/);
+  assert.match(issued.block, /\{"moveId":"\.\.\."\}/);
   assert.match(issued.block, /legalMoves/);
 
   const match = startRoomMatch(room);

@@ -4,7 +4,8 @@
  * Decisioning stays here: own Jev, own LLM.
  * The arena server only lists legal moves and advances on timeout.
  * Read state.phase, leaderSeat, currentTurn, mustBeat.
- * tribute / return: POST the first you.legal id. resist: wait, 头游 leads.
+ * System prompt: prompts/guandan-agent-system.md
+ * tribute / return: POST the engine-ordered you.legal id. resist: wait, 头游 leads.
  *
  * ROOM_URL=http://localhost:3456/room/CODE
  * SEAT_TOKEN=...
@@ -13,6 +14,12 @@
  * LLM_BASE_URL=https://api.openai.com/v1
  * LLM_MODEL=gpt-4.1-mini
  */
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { priorityPick } from "./priority-pick.mjs";
+
+const SYSTEM = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../prompts/guandan-agent-system.md"), "utf8");
 const JEV_MS = 800;
 const LLM_MS = 6000;
 
@@ -97,7 +104,7 @@ async function llmPick(state, hint, llmKey) {
       messages: [
         {
           role: "system",
-          content: "You play Guandan. Reply JSON only: {\"moveId\":\"...\"}. moveId must be one of the legal ids.",
+          content: SYSTEM,
         },
         {
           role: "user",
@@ -116,7 +123,8 @@ async function llmPick(state, hint, llmKey) {
   const match = text.match(/"moveId"\s*:\s*"([^"]+)"/);
   const id = match?.[1];
   if (id && legal.some((move) => move.id === id)) return id;
-  return hint && legal.some((move) => move.id === hint) ? hint : legal[0]?.id;
+  if (hint && legal.some((move) => move.id === hint)) return hint;
+  return priorityPick(state)?.id || legal[0]?.id;
 }
 
 async function main() {
@@ -146,8 +154,12 @@ async function main() {
       await new Promise((resolve) => setTimeout(resolve, 400));
       continue;
     }
+    if (state.phase === "resist") {
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      continue;
+    }
     if (state.phase === "tribute" || state.phase === "return") {
-      const tributeId = legalOf(state)[0]?.id;
+      const tributeId = priorityPick(state)?.id;
       if (!tributeId) continue;
       await fetch(`${origin}/api/room/${code}/act`, {
         method: "POST",

@@ -558,6 +558,40 @@ function testHighlights() {
   assert.equal(cueForLog({ moveKind: "single" }), null);
 }
 
+function bareMove(over: Partial<Move> & Pick<Move, "id" | "kind">): Move {
+  return {
+    cards: [],
+    label: over.kind,
+    rankKey: 1,
+    bombTier: 0,
+    finishes: false,
+    ...over,
+  };
+}
+
+function testPriorities() {
+  const pass = bareMove({ id: "pass", kind: "pass", rankKey: 0 });
+  const single = bareMove({ id: "s", kind: "single", rankKey: 3, cards: [card(0, "S", "4")] });
+  const bomb = bareMove({
+    id: "b",
+    kind: "bomb4",
+    rankKey: 8,
+    bombTier: 1,
+    cards: [card(0, "S", "9"), card(1, "S", "9"), card(0, "H", "9"), card(0, "D", "9")],
+  });
+  assert.equal(chooseHeuristic([bomb, pass, single], 0, 2).id, "pass");
+  assert.equal(chooseHeuristic([bomb, single], 0, null).kind, "single");
+  assert.equal(chooseHeuristic([bomb, pass], 0, 1).id, "pass");
+  assert.equal(chooseHeuristic([bomb, pass], 0, 1, { counts: [20, 3, 20, 20] }).id, "b");
+  const finish = bareMove({ id: "f", kind: "single", rankKey: 9, finishes: true, cards: [card(0, "S", "A")] });
+  const keep = bareMove({ id: "k", kind: "pair", rankKey: 2, cards: [card(0, "S", "3"), card(1, "S", "3")] });
+  assert.equal(chooseHeuristic([finish, keep, pass], 0, null, { counts: [12, 10, 3, 10] }).id, "k");
+  const wild = bareMove({ id: "w", kind: "single", rankKey: 1, cards: [card(0, "H", "5")] });
+  const plain = bareMove({ id: "p", kind: "single", rankKey: 6, cards: [card(0, "S", "9")] });
+  assert.equal(chooseHeuristic([wild, plain], 0, null, { level: "5" }).id, "p");
+}
+
+testPriorities();
 testHighlights();
 testTribute();
 testQuickReason();

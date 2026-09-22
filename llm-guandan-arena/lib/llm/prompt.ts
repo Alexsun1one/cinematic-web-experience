@@ -1,3 +1,4 @@
+import { guandanAgentSystem } from "../agent-goals";
 import { cardToken, sortCards } from "../guandan/cards";
 import type { AssistNote } from "../guandan/match";
 import type { Move } from "../guandan/legal";
@@ -28,6 +29,7 @@ export function buildPrompt(
     .map((card) => cardToken(card, ctx.level))
     .join(" ");
   const lines = [
+    guandanAgentSystem(),
     "You are playing Guandan (掼蛋). Reply with JSON only: {\"moveId\":\"m0\",\"note\":\"short reason\"}.",
     `You are seat ${ctx.seat} (${SEAT_WIND_EN[ctx.seat]}, ${ctx.seatName}), team ${teamOf(ctx.seat)}.`,
     `Partner is seat ${partner}. Cooperate: pass when your partner is winning the trick unless you can empty your hand.`,

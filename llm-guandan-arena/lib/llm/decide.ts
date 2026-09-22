@@ -15,7 +15,10 @@ export interface Decision {
 export async function decide(match: Match, moves: Move[]): Promise<Decision> {
   const seat = match.trick.currentSeat;
   const config = match.seats[seat];
-  const heuristic = chooseHeuristic(moves, seat, match.trick.lastSeat);
+  const heuristic = chooseHeuristic(moves, seat, match.trick.lastSeat, {
+    counts: match.hands.map((hand) => hand.length),
+    level: match.level,
+  });
   if (config.provider === "mock") {
     return {
       move: heuristic,

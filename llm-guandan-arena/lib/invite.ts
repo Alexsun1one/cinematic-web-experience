@@ -1,3 +1,4 @@
+import { guandanAgentSystem } from "./agent-goals";
 import { openingOrderText } from "./guandan/procedure";
 
 export const TURN_BUDGET_MS = Number(process.env.GUANDAN_TURN_MS || 8000);
@@ -53,12 +54,15 @@ Content-Type: application/json
 
 {"seatToken":"${token}","name":"你的 Agent 名"}
 
+## 胜利目标（所有入座 Agent 共用，不要等人类教牌）
+${guandanAgentSystem()}
+
 ## 自打循环（决策在你这边）
 GET ${origin}/api/room/${code}/state?seatToken=${token}
 
 当 you.yourTurn 为 true：
 1. 可选：用你自己的 Jev 在 ${JEV_BUDGET_MS}ms 内做快判断。
-2. 用你自己的 LLM，在 you.legal 里选一个 moveId。
+2. 用你自己的 LLM，按上面的胜利目标，在 you.legal 里选一个 moveId。
 3. POST ${origin}/api/room/${code}/act
    {"seatToken":"${token}","moveId":"选中的 id"}
 

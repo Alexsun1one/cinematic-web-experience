@@ -1,5 +1,5 @@
 import type { QuickBeat } from "../llm/quick-reason";
-import { createDeck, deal, shuffle, subtract } from "./cards";
+import { createDeck, deal, isWild, shuffle, subtract } from "./cards";
 import { chooseHeuristic } from "./heuristic";
 import { opponentHasFinished, playHighlight } from "./highlight";
 import {
@@ -232,7 +232,15 @@ export function finishResist(match: Match) {
 
 export function seatActions(match: Match): { id: string; kind: string; label: string }[] {
   if (match.status === "playing") {
-    return currentLegal(match).map((move) => ({ id: move.id, kind: move.kind, label: move.label }));
+    return currentLegal(match).map((move) => ({
+      id: move.id,
+      kind: move.kind,
+      label: move.label,
+      rankKey: move.rankKey,
+      bombTier: move.bombTier,
+      finishes: move.finishes,
+      usesWild: move.cards.some((card) => isWild(card, match.level)),
+    }));
   }
   const tribute = match.tribute;
   if (!tribute) return [];
@@ -500,7 +508,10 @@ export function stepLocal(match: Match) {
   }
   const seat = match.trick.currentSeat;
   const moves = currentLegal(match);
-  const move = chooseHeuristic(moves, seat, match.trick.lastSeat);
+  const move = chooseHeuristic(moves, seat, match.trick.lastSeat, {
+    counts: match.hands.map((hand) => hand.length),
+    level: match.level,
+  });
   commitMove(match, move, {
     source: "mock",
     provider: "mock",

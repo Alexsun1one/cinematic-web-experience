@@ -14,13 +14,20 @@
  *   ROOM_CODE=              play this room instead of creating one
  *   SEAT_TOKEN=             token from POST /api/rooms operator.seatToken
  *   GUANDAN_TURN_MS=8000    server timeout; bots use the heuristic immediately
+ *   LLM_API_KEY=            optional. 知识 then asks an LLM with prompts/guandan-agent-system.md
+ *   LLM_BASE_URL= LLM_MODEL=
  *
  * Three-hand series from the repo root:
  *   HANDS=3 SERIES=three npm --prefix llm-guandan-arena run operator
  */
+import { readFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { priorityPick } from "./priority-pick.mjs";
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const SYSTEM = readFileSync(path.join(ROOT, "prompts/guandan-agent-system.md"), "utf8");
 
 const PORT = Number(process.env.PORT || 3456);
 const ORIGIN = `http://127.0.0.1:${PORT}`;
@@ -28,7 +35,7 @@ const SERIES = process.env.SERIES === "open" || process.env.SERIES === "full" ||
 const HANDS = Math.max(1, Number(process.env.HANDS || 1));
 const START_LEVEL = process.env.START_LEVEL || "T";
 const OPERATOR_SEAT = Number(process.env.OPERATOR_SEAT || 2);
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const LLM_KEY = process.env.LLM_API_KEY || process.env.OPENAI_API_KEY || "";
 
 async function reachable() {
   try {
@@ -60,18 +67,44 @@ async function waitForServer() {
   throw new Error(`dev server did not answer ${ORIGIN}/api/rooms`);
 }
 
-function pick(state) {
+async function llmMove(state) {
+  if (!LLM_KEY || state.phase === "tribute" || state.phase === "return" || state.phase === "resist") return null;
   const legal = state.you?.legal || [];
-  if (legal.length === 0) return null;
-  const tribute = legal.find((move) => move.kind === "tribute" || move.kind === "return");
-  if (tribute) return tribute;
-  const order = ["single", "pair", "triple", "fullhouse", "straight", "tube", "plate"];
-  const pass = legal.find((move) => move.kind === "pass");
-  for (const kind of order) {
-    const hit = legal.find((move) => move.kind === kind);
-    if (hit) return hit;
+  const base = (process.env.LLM_BASE_URL || process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/+$/, "");
+  const model = process.env.LLM_MODEL || process.env.OPENAI_MODEL || "gpt-4.1-mini";
+  try {
+    const response = await fetch(`${base}/chat/completions`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${LLM_KEY}`, "content-type": "application/json" },
+      body: JSON.stringify({
+        model,
+        temperature: 0.2,
+        max_tokens: 80,
+        messages: [
+          { role: "system", content: SYSTEM },
+          {
+            role: "user",
+            content: JSON.stringify({
+              phase: state.phase,
+              seat: state.you?.seat,
+              mustBeat: state.mustBeat,
+              hand: state.you?.hand,
+              counts: (state.match?.seats || []).map((item) => item.cards),
+              legal,
+            }),
+          },
+        ],
+      }),
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!response.ok) return null;
+    const body = await response.json();
+    const text = body.choices?.[0]?.message?.content ?? "";
+    const id = text.match(/"moveId"\s*:\s*"([^"]+)"/)?.[1];
+    return legal.find((move) => move.id === id) || null;
+  } catch {
+    return null;
   }
-  return pass || legal.find((move) => move.kind !== "pass") || legal[0];
 }
 
 async function readState(code, token) {
@@ -138,7 +171,7 @@ async function main() {
       await new Promise((resolve) => setTimeout(resolve, 150));
       continue;
     }
-    const move = pick(state);
+    const move = (await llmMove(state)) || priorityPick(state);
     if (!move) throw new Error("your turn but legal list is empty");
     const acted = await fetch(`${ORIGIN}/api/room/${code}/act`, {
       method: "POST",

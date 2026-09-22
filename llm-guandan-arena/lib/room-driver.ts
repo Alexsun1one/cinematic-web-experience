@@ -86,7 +86,10 @@ async function loop(code: string) {
         if (match.trick.currentSeat !== seat) return;
         const moves = currentLegal(match);
         logReason(match, mockQuickReason(match, moves, 0, "Mock"));
-        const move = chooseHeuristic(moves, seat, match.trick.lastSeat);
+        const move = chooseHeuristic(moves, seat, match.trick.lastSeat, {
+          counts: match.hands.map((hand) => hand.length),
+          level: match.level,
+        });
         commitMove(match, move, {
           source: "mock",
           provider: "mock",
@@ -111,7 +114,10 @@ function playFallback(match: Match, note: string) {
     questions: [],
     lines: [note],
   });
-  const move = chooseHeuristic(moves, seat, match.trick.lastSeat);
+  const move = chooseHeuristic(moves, seat, match.trick.lastSeat, {
+    counts: match.hands.map((hand) => hand.length),
+    level: match.level,
+  });
   commitMove(match, move, {
     source: "fallback",
     provider: "timeout",

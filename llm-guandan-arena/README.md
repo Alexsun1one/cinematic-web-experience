@@ -67,6 +67,8 @@ curl -s -X POST http://127.0.0.1:3456/api/room/CODE/act \
 
 其它三席是启发式 Mock，轮到它们时服务器自己出牌。操作席超过 `GUANDAN_TURN_MS`（默认 8000）则服务器代打。旁观：`/room/CODE?role=spectator`。牌桌比南家手牌区更大；南家牌仍是 78×108。顶栏「声音 / 静音」在第一次点击后播放钢板、炸弹、同花顺、过、头游、升级。
 
+所有入座 agent 共用同一胜利目标提示词（`prompts/guandan-agent-system.md`，写进每一次「复制给 Agent」）。
+
 发给你的 Agent：房间页 **复制给 Agent**。它必须自备 `TYPESAFE_API_KEY`（没有就停并说「缺 Jev，不能打」）和自己的 LLM，然后 `claim-seat` + `act`。服务器不替客人跑 Jev。参考 `scripts/guest-agent-player.mjs`（`scripts/guest-agent.mjs` 是同一入口）。回合超时则服务器 Mock/过牌，桌子不停。座位状态是等待 / 自检中 / 就绪 / 出牌中 / 超时。
 
 ## 部署 / Deploy
