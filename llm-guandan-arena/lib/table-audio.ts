@@ -9,12 +9,21 @@ let armed = false;
 
 export function readMuted(): boolean {
   if (typeof window === "undefined") return false;
-  return window.localStorage.getItem(STORAGE_KEY) === "1";
+  try {
+    return window.localStorage.getItem(STORAGE_KEY) === "1";
+  } catch {
+    return muted;
+  }
 }
 
 export function writeMuted(next: boolean) {
   muted = next;
-  if (typeof window !== "undefined") window.localStorage.setItem(STORAGE_KEY, next ? "1" : "0");
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(STORAGE_KEY, next ? "1" : "0");
+  } catch {
+    /* private mode */
+  }
 }
 
 export function isMuted() {
@@ -31,6 +40,14 @@ export function armAudio() {
 
 export function playTableCue(cue: TableCue) {
   if (muted || !armed) return;
+  try {
+    playCue(cue);
+  } catch {
+    /* AudioContext missing or blocked */
+  }
+}
+
+function playCue(cue: TableCue) {
   const audio = context();
   if (!audio || audio.state !== "running") return;
   const now = audio.currentTime;
@@ -61,7 +78,13 @@ function context(): AudioContext | null {
   if (typeof window === "undefined") return null;
   const Ctor = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
   if (!Ctor) return null;
-  if (!ctx) ctx = new Ctor();
+  if (!ctx) {
+    try {
+      ctx = new Ctor();
+    } catch {
+      return null;
+    }
+  }
   return ctx;
 }
 

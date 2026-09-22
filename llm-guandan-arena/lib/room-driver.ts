@@ -16,91 +16,102 @@ export function ensureRoomDriver(code: string) {
 
 async function loop(code: string) {
   while (true) {
-    const room = getRoom(code);
-    if (!room?.matchId) return;
-    const match = matchStore().get(room.matchId);
-    if (!match) return;
-    if (match.status === "finished") {
-      room.status = "finished";
-      return;
+    try {
+      const progressed = await tick(code);
+      if (!progressed) return;
+    } catch (error) {
+      console.error(`room ${code} driver`, error instanceof Error ? error.message : error);
+      await sleep(400);
     }
-    if (match.status === "between_rounds") {
-      await sleep(3200);
-      await withMatchLock(match.id, async () => {
-        if (match.status === "between_rounds") beginRound(match);
-      });
-      continue;
-    }
-    if (match.status === "resist") {
-      await sleep(900);
-      await withMatchLock(match.id, async () => {
-        if (match.status === "resist") finishResist(match);
-      });
-      continue;
-    }
-    if (match.status === "tribute" || match.status === "return") {
-      const seat = match.trick.currentSeat;
-      const agent = room.seats[seat];
-      if (agent?.drive === "self") {
-        const acted = await waitForAct(room, seat, TURN_BUDGET_MS);
-        const live = matchStore().get(room.matchId);
-        if (!live || (live.status !== "tribute" && live.status !== "return")) continue;
-        if (acted || live.trick.currentSeat !== seat) {
-          await sleep(280);
-          continue;
-        }
-        await withMatchLock(live.id, async () => {
-          if ((live.status !== "tribute" && live.status !== "return") || live.trick.currentSeat !== seat) return;
-          stepLocal(live);
-          markTimeout(room, seat);
-        });
-      } else {
-        await withMatchLock(match.id, async () => {
-          if (match.status !== "tribute" && match.status !== "return") return;
-          if (match.trick.currentSeat !== seat) return;
-          stepLocal(match);
-        });
-      }
-      await sleep(1100);
-      continue;
-    }
+  }
+}
 
+async function tick(code: string): Promise<boolean> {
+  const room = getRoom(code);
+  if (!room?.matchId) return false;
+  const match = matchStore().get(room.matchId);
+  if (!match) return false;
+  if (match.status === "finished") {
+    room.status = "finished";
+    return false;
+  }
+  if (match.status === "between_rounds") {
+    await sleep(3200);
+    await withMatchLock(match.id, async () => {
+      if (match.status === "between_rounds") beginRound(match);
+    });
+    return true;
+  }
+  if (match.status === "resist") {
+    await sleep(900);
+    await withMatchLock(match.id, async () => {
+      if (match.status === "resist") finishResist(match);
+    });
+    return true;
+  }
+  if (match.status === "tribute" || match.status === "return") {
     const seat = match.trick.currentSeat;
     const agent = room.seats[seat];
     if (agent?.drive === "self") {
       const acted = await waitForAct(room, seat, TURN_BUDGET_MS);
       const live = matchStore().get(room.matchId);
-      if (!live || live.status !== "playing") continue;
+      if (!live || (live.status !== "tribute" && live.status !== "return")) return true;
       if (acted || live.trick.currentSeat !== seat) {
         await sleep(280);
-        continue;
+        return true;
       }
       await withMatchLock(live.id, async () => {
-        if (live.status !== "playing" || live.trick.currentSeat !== seat) return;
-        playFallback(live, "超时代打");
+        if ((live.status !== "tribute" && live.status !== "return") || live.trick.currentSeat !== seat) return;
+        stepLocal(live);
         markTimeout(room, seat);
       });
     } else {
       await withMatchLock(match.id, async () => {
-        if (match.status !== "playing") return;
+        if (match.status !== "tribute" && match.status !== "return") return;
         if (match.trick.currentSeat !== seat) return;
-        const moves = currentLegal(match);
-        logReason(match, mockQuickReason(match, moves, 0, "Mock"));
-        const move = chooseHeuristic(moves, seat, match.trick.lastSeat, {
-          counts: match.hands.map((hand) => hand.length),
-          level: match.level,
-        });
-        commitMove(match, move, {
-          source: "mock",
-          provider: "mock",
-          retries: 0,
-          note: "mock",
-          assist: null,
-        });
+        stepLocal(match);
       });
     }
-    await sleep(320);
+    await sleep(1100);
+    return true;
   }
+
+  const seat = match.trick.currentSeat;
+  const agent = room.seats[seat];
+  if (agent?.drive === "self") {
+    const acted = await waitForAct(room, seat, TURN_BUDGET_MS);
+    const live = matchStore().get(room.matchId);
+    if (!live || live.status !== "playing") return true;
+    if (acted || live.trick.currentSeat !== seat) {
+      await sleep(280);
+      return true;
+    }
+    await withMatchLock(live.id, async () => {
+      if (live.status !== "playing" || live.trick.currentSeat !== seat) return;
+      playFallback(live, "超时代打");
+      markTimeout(room, seat);
+    });
+  } else {
+    await withMatchLock(match.id, async () => {
+      if (match.status !== "playing") return;
+      if (match.trick.currentSeat !== seat) return;
+      const moves = currentLegal(match);
+      logReason(match, mockQuickReason(match, moves, 0, "Mock"));
+      const move = chooseHeuristic(moves, seat, match.trick.lastSeat, {
+        counts: match.hands.map((hand) => hand.length),
+        level: match.level,
+      });
+      commitMove(match, move, {
+        source: "mock",
+        provider: "mock",
+        retries: 0,
+        note: "mock",
+        assist: null,
+      });
+    });
+  }
+  await sleep(320);
+  return true;
 }
 
 function playFallback(match: Match, note: string) {

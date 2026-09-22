@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { armAudio, playTableCue, readMuted } from "./table-audio";
 import { commitMove, currentLegal, stepLocal } from "./guandan/match";
 import { tableProcedure } from "./guandan/procedure";
 import {
@@ -74,6 +75,7 @@ function testGuestInvite() {
   assert.throws(() => claimByToken(room, issued.token, "Again"));
   const secretView = JSON.stringify(toRoomView(room, { isHost: false }));
   assert.equal(secretView.includes(issued.token), false);
+  assert.equal(stateForToken(room, "not-a-token").you, null);
   const waiting = stateForToken(room, issued.token);
   assert.equal(waiting.you?.seat, seat);
   assert.equal(waiting.phase, null);
@@ -84,6 +86,7 @@ function testGuestInvite() {
   assert.match(issued.block, /接风/);
   assert.match(issued.block, /phase 会是 tribute、return 或 resist/);
   assert.match(issued.block, /guest-agent-player/);
+  assert.match(issued.block, /不要等人类教牌/);
   assert.match(issued.block, /胜利目标/);
   assert.match(issued.block, /双下/);
   assert.match(issued.block, /逢人配/);
@@ -183,6 +186,11 @@ function testOperatorTable() {
   });
   assert.equal(stateForToken(opened.room, opened.seatToken).you?.yourTurn, false);
 }
+
+assert.equal(readMuted(), false);
+armAudio();
+playTableCue("bomb");
+playTableCue("plate");
 
 testCodes();
 testMockRoomFlow();

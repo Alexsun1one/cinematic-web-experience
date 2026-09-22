@@ -129,6 +129,12 @@ function testScoring() {
   assert.deepEqual(bumpLevel("Q", 2), { level: "A", won: true });
   assert.deepEqual(bumpLevel("A", 1), { level: "A", won: true });
   assert.deepEqual(bumpLevel("2", 1), { level: "3", won: false });
+  assert.deepEqual(bumpLevel("K", 1), { level: "A", won: true });
+  assert.deepEqual(bumpLevel("J", 3), { level: "A", won: true });
+  assert.deepEqual(bumpLevel("Q", 1), { level: "K", won: false });
+  assert.equal(outcomeLabel(3), "双下");
+  assert.equal(outcomeLabel(2), "头游+三游");
+  assert.equal(outcomeLabel(1), "头游+末游");
 }
 
 function testScriptedRound() {
@@ -591,6 +597,105 @@ function testPriorities() {
   assert.equal(chooseHeuristic([wild, plain], 0, null, { level: "5" }).id, "p");
 }
 
+function testAuditEdges() {
+  const illegal = fresh("2");
+  const legal = currentLegal(illegal);
+  assert.deepEqual(seatActions(illegal).map((item) => item.id), legal.map((item) => item.id));
+  assert.throws(() => commitMove(illegal, { ...legal[0], id: "not-legal" }, meta));
+  assert.throws(() => commitMove(illegal, { ...legal[0], id: "pass", kind: "pass" }, meta));
+
+  const split: Card[][] = [[], [], [], []];
+  split[3] = [card(0, "S", "BJ"), card(0, "S", "9")];
+  split[1] = [card(1, "S", "BJ"), card(0, "S", "8")];
+  assert.equal(bothBigJokers(split, [3, 1]), true);
+  assert.equal(bothBigJokers(split, [3]), false);
+  const splitResist = fresh("2");
+  splitResist.hands = [
+    [card(0, "S", "3")],
+    [card(1, "S", "BJ"), card(0, "S", "8")],
+    [card(0, "S", "4")],
+    [card(0, "S", "BJ"), card(0, "S", "9")],
+  ];
+  enterTribute(splitResist, [0, 2, 1, 3]);
+  assert.equal(splitResist.status, "resist");
+  finishResist(splitResist);
+  assert.equal(splitResist.trick.currentSeat, 0);
+  assert.equal(splitResist.hands[3].some((item) => item.id === "0SBJ"), true);
+
+  const resisted = fresh("5");
+  resisted.level = "5";
+  resisted.hands = [
+    [card(0, "S", "3")],
+    [card(0, "S", "4")],
+    [card(0, "S", "BJ"), card(1, "S", "BJ")],
+    [card(0, "S", "6")],
+  ];
+  enterTribute(resisted, [0, 1, 3, 2]);
+  assert.equal(resisted.status, "resist");
+  finishResist(resisted);
+  assert.equal(resisted.status, "playing");
+  assert.equal(resisted.trick.currentSeat, 0);
+  assert.equal(resisted.hands.reduce((sum, hand) => sum + hand.length, 0), 5);
+
+  const emptyBack = fresh("5");
+  emptyBack.level = "5";
+  emptyBack.hands = [
+    [card(0, "H", "5"), card(0, "S", "BJ")],
+    [card(0, "S", "4")],
+    [card(0, "S", "6")],
+    [card(0, "S", "A")],
+  ];
+  enterTribute(emptyBack, [0, 1, 2, 3]);
+  assert.equal(emptyBack.tribute?.mode, "single");
+  performSeatAction(emptyBack, 3, seatActions(emptyBack)[0].id);
+  assert.equal(emptyBack.status, "return");
+  const back = seatActions(emptyBack);
+  assert.ok(back.length >= 1);
+  assert.ok(back.every((item) => item.id.startsWith("r:")));
+  performSeatAction(emptyBack, 0, back[0].id);
+  assert.equal(emptyBack.status, "playing");
+  assert.equal(emptyBack.trick.currentSeat, 0);
+  assert.throws(() => performSeatAction(emptyBack, 0, "r:missing"));
+
+  const partnerLast = fresh("2");
+  partnerLast.level = "2";
+  partnerLast.hands = [
+    [card(0, "S", "7")],
+    [card(0, "S", "8")],
+    [card(0, "S", "A"), card(0, "H", "2")],
+    [card(0, "S", "9")],
+  ];
+  enterTribute(partnerLast, [0, 1, 3, 2]);
+  assert.equal(partnerLast.tribute?.mode, "single");
+  assert.equal(partnerLast.trick.currentSeat, 2);
+  performSeatAction(partnerLast, 2, seatActions(partnerLast)[0].id);
+  assert.equal(partnerLast.hands[0].some((item) => item.rank === "A"), true);
+  performSeatAction(partnerLast, 0, seatActions(partnerLast)[0].id);
+  assert.equal(partnerLast.status, "playing");
+  assert.equal(partnerLast.trick.currentSeat, 0);
+  assert.equal(partnerLast.hands.reduce((sum, hand) => sum + hand.length, 0), 5);
+
+  const ace = fresh("K");
+  ace.hands = [
+    [card(0, "S", "3")],
+    [card(0, "S", "4"), card(0, "H", "8")],
+    [card(0, "S", "5")],
+    [card(0, "S", "6"), card(0, "H", "9")],
+  ];
+  ace.finishOrder = [];
+  ace.trick = { currentSeat: 0, lastPlay: null, lastSeat: null, closed: false };
+  ace.status = "playing";
+  commitMove(ace, findMove(currentLegal(ace), "single", "3"), meta);
+  commitMove(ace, findMove(currentLegal(ace), "single", "4"), meta);
+  commitMove(ace, findMove(currentLegal(ace), "single", "5"), meta);
+  assert.equal(ace.status, "finished");
+  assert.equal(ace.winner, "ns");
+  assert.equal(ace.rounds[0].delta, 3);
+  assert.equal(ace.rounds[0].from, "K");
+  assert.equal(ace.rounds[0].to, "A");
+}
+
+testAuditEdges();
 testPriorities();
 testHighlights();
 testTribute();

@@ -21,7 +21,9 @@ export async function POST(request: Request, context: { params: Promise<{ code: 
   const seat = seatIndexByToken(room, seatToken);
   if (seat < 0) return json({ error: "seatToken 无效" }, 404);
   const match = room.matchId ? matchStore().get(room.matchId) : undefined;
-  if (!match || match.status === "finished" || match.status === "between_rounds") return json({ error: "还没开打" }, 409);
+  if (!match) return json({ error: "还没开打" }, 409);
+  if (match.status === "finished") return json({ error: "对局已结束" }, 409);
+  if (match.status === "between_rounds" || match.status === "resist") return json({ error: "现在不能出牌" }, 409);
   return withMatchLock(match.id, async () => {
     if (match.status === "tribute" || match.status === "return") {
       if (match.trick.currentSeat !== seat) return json({ error: "还没轮到你" }, 409);

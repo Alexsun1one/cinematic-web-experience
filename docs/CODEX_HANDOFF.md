@@ -2,37 +2,27 @@
 
 ## Current Goal
 
-Every seated agent, including 知识, shares one Guandan goals prompt. The heuristic follows the same priorities.
-
-## How to run
-
-From the repo root:
-
-```bash
-npm --prefix llm-guandan-arena run operator
-```
-
-`LLM_API_KEY` makes 知识 ask an LLM with `prompts/guandan-agent-system.md`. Without it, the priority picker plays.
+Audit of `llm-guandan-arena` is written in `llm-guandan-arena/AUDIT.md`. Engine, invite, two-hand operator play, felt, and mute passed.
 
 ## Changed Files
 
-- `llm-guandan-arena/prompts/guandan-agent-system.md`
-- `llm-guandan-arena/lib/agent-goals.ts` — invite and solo LLM prompt
-- `llm-guandan-arena/lib/invite.ts`
-- `llm-guandan-arena/lib/guandan/heuristic.ts`
-- `llm-guandan-arena/scripts/priority-pick.mjs`
-- `llm-guandan-arena/scripts/operator-smoke-play.mjs`
-- `llm-guandan-arena/scripts/guest-agent-player.mjs`
-- `llm-guandan-arena/README.md`
+- `llm-guandan-arena/AUDIT.md`
+- `llm-guandan-arena/lib/room-driver.ts` — a thrown tick does not stop the table
+- `llm-guandan-arena/lib/table-audio.ts` — missing audio or storage does not throw
+- `llm-guandan-arena/app/api/room/[code]/act/route.ts` — clearer reject messages
+- `llm-guandan-arena/lib/guandan/engine.test.ts`, `lib/room.test.ts` — edge cases
 
 ## Validation Evidence
 
-- `npm run test:engine` passed, including priority cases and the invite text
+- `npm run test:engine` passed
 - `npm run build` passed
+- `HANDS=2 npm --prefix llm-guandan-arena run operator` — room `WW4C6J`, exit 0, two scored hands
+- Live act of a bad moveId returned 400. Public room JSON did not contain the seatToken
+- Felt 560×560, south card 84×117, mute toggled to 静音, invite preview included the goals
 
 ## Blockers
 
-None. Rooms stay in memory.
+None.
 
 ## Next Step
 
