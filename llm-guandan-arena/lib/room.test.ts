@@ -19,6 +19,8 @@ import {
   stateForToken,
   toRoomView,
 } from "./room";
+import { aceStripLabel, shouldFlashAceDrop } from "./ace-strip";
+import { roomMatchesFilter } from "./room-list";
 import {
   matchKey,
   matchLockKey,
@@ -475,6 +477,47 @@ async function testStoreTtlAndRace() {
   assert.equal(await store.get("other-ttl", "RACE1"), null);
 }
 
+function testLobbyFiltersAndAceStrip() {
+  const open = { code: "AAAAAA", status: "lobby", emptySeats: 2 };
+  const full = { code: "BBBBBB", status: "lobby", emptySeats: 0 };
+  const live = { code: "CCCCCC", status: "playing", emptySeats: 0 };
+  const done = { code: "DDDDDD", status: "finished", emptySeats: 0 };
+  const hosted = new Set(["BBBBBB"]);
+  assert.equal(roomMatchesFilter(open, "open", hosted), true);
+  assert.equal(roomMatchesFilter(full, "open", hosted), false);
+  assert.equal(roomMatchesFilter(live, "watching", hosted), true);
+  assert.equal(roomMatchesFilter(open, "watching", hosted), false);
+  assert.equal(roomMatchesFilter(full, "mine", hosted), true);
+  assert.equal(roomMatchesFilter(open, "mine", hosted), false);
+  assert.equal(roomMatchesFilter(full, "full", hosted), true);
+  assert.equal(roomMatchesFilter(live, "full", hosted), true);
+  assert.equal(roomMatchesFilter(done, "full", hosted), false);
+  assert.equal(roomMatchesFilter(open, "full", hosted), false);
+  assert.equal(aceStripLabel(2, 3), "目标 A · 本方已试 2/3 · 三不过 → 回 2");
+  assert.equal(aceStripLabel(0, 3), "目标 A · 本方已试 0/3 · 三不过 → 回 2");
+  assert.equal(aceStripLabel(4, 0), "目标 A · 本方已试 4 · 一直停在 A");
+  assert.equal(shouldFlashAceDrop("A", "2"), true);
+  assert.equal(shouldFlashAceDrop("K", "A"), false);
+  assert.equal(shouldFlashAceDrop("A", "A"), false);
+}
+
+async function testInviteSeatAndAceView() {
+  const { room } = await createRoom({ autoFillMock: false, tenantId: "ia-seat" });
+  const issued = await issueInvite(room, "http://localhost:3456", 2);
+  assert.equal(issued.seat, 2);
+  const again = await issueInvite(room, "http://localhost:3456", 2);
+  assert.equal(again.token, issued.token);
+  await claimByToken(room, issued.token, "Guest");
+  await assert.rejects(() => issueInvite(room, "http://localhost:3456", 2), /该席已有人/);
+  await fillMockSeats(room);
+  const match = await startRoomMatch(room);
+  const view = toRoomView(room, { isHost: true, match });
+  assert.equal(view.aceLimit, 3);
+  assert.equal(view.match?.aceFails.ns, 0);
+  assert.equal(view.match?.aceFails.ew, 0);
+  assert.equal(view.match?.aceLimit, 3);
+}
+
 async function testTenantQuota() {
   const previous = process.env.TENANT_MAX_ROOMS;
   process.env.TENANT_MAX_ROOMS = "1";
@@ -507,6 +550,8 @@ async function main() {
   await testRoomRevisionAndPrune();
   await testQaRooms();
   await testStoreTtlAndRace();
+  testLobbyFiltersAndAceStrip();
+  await testInviteSeatAndAceView();
   await testTenantQuota();
   console.log("room tests passed");
 }

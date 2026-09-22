@@ -1,4 +1,5 @@
 import { createMatch, parseStartLevel, seatActions, type Match } from "./guandan/match";
+import { aceStrikeLimit } from "./guandan/score";
 import type { FaceRank, ProviderId, SeatConfig, VendorId } from "./guandan/types";
 import { SEAT_WIND, teamOf } from "./guandan/types";
 import { tableProcedure } from "./guandan/procedure";
@@ -495,10 +496,17 @@ export async function postChat(room: Room, name: string, text: string, role: "ho
   await saveRoom(room);
 }
 
-export async function issueInvite(room: Room, origin: string) {
+export async function issueInvite(room: Room, origin: string, seatIndex?: number) {
   if (room.status !== "lobby") throw new Error("已经开打，不能再发入座邀请");
-  const empty = room.seats.findIndex((seat) => !seat);
-  const seat = empty >= 0 ? empty : 0;
+  let seat: number;
+  if (seatIndex !== undefined) {
+    if (!Number.isInteger(seatIndex) || seatIndex < 0 || seatIndex > 3) throw new Error("座位无效");
+    if (room.seats[seatIndex]) throw new Error("该席已有人");
+    seat = seatIndex;
+  } else {
+    const empty = room.seats.findIndex((item) => !item);
+    seat = empty >= 0 ? empty : 0;
+  }
   let invite = room.invites.find((item) => item.seat === seat && !item.used);
   if (!invite) {
     invite = { token: crypto.randomUUID(), seat, used: false };
@@ -652,6 +660,7 @@ export function toRoomView(
   keys: ReturnType<typeof keyStatus>;
   updatedAt: number;
   turnBudgetMs: number;
+  aceLimit: number;
   phase: ReturnType<typeof tableProcedure>["phase"];
   leaderSeat: number | null;
   currentTurn: number | null;
@@ -696,6 +705,7 @@ export function toRoomView(
     keys: keyStatus(),
     updatedAt: room.updatedAt,
     turnBudgetMs: TURN_BUDGET_MS,
+    aceLimit: aceStrikeLimit(),
     phase: procedure.phase,
     leaderSeat: procedure.leaderSeat,
     currentTurn: procedure.currentTurn,

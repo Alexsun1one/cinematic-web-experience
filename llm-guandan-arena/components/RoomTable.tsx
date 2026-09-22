@@ -1,8 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { AceStrip } from "@/components/AceStrip";
 import { Arena } from "@/components/Arena";
+import { RoomRail } from "@/components/RoomRail";
 import { RulesButton } from "@/components/RulesDrawer";
+import { TenantBar } from "@/components/TenantBar";
+import { readLockedTenant, rememberHosted, tenantHeaders } from "@/lib/tenant-client";
 import type { MatchView } from "@/lib/view";
 
 type RoomSeries = "open" | "three" | "full";
@@ -43,6 +47,7 @@ interface RoomView {
   keys: Record<string, boolean>;
   updatedAt: number;
   turnBudgetMs?: number;
+  aceLimit?: number;
 }
 
 const SERIES_LABEL: Record<RoomSeries, string> = {
@@ -71,13 +76,17 @@ export function RoomTable({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
   const [invite, setInvite] = useState("");
   const [inviteSeat, setInviteSeat] = useState("");
+  const [tenant, setTenant] = useState("default");
+  const [claimAt, setClaimAt] = useState<number | null>(null);
+  const [claimToken, setClaimToken] = useState("");
+  const [claimName, setClaimName] = useState("Guest Agent");
 
   const headers = useMemo(() => {
-    const next: Record<string, string> = { "content-type": "application/json" };
+    const next = tenantHeaders({ "content-type": "application/json" });
     if (hostSecret) next["x-room-host"] = hostSecret;
     if (spectatorId) next["x-spectator-id"] = spectatorId;
     return next;
-  }, [hostSecret, spectatorId]);
+  }, [hostSecret, spectatorId, tenant]);
 
   const apply = useCallback((data: RoomView & { error?: string; hostSecret?: string; spectatorId?: string; spectatorName?: string }) => {
     if (data.error) throw new Error(data.error);
@@ -91,6 +100,10 @@ export function RoomTable({ code }: { code: string }) {
       localStorage.setItem(spectatorKey(upper), JSON.stringify({ id: data.spectatorId, name: data.spectatorName || "观众" }));
       if (data.spectatorName) setSpectatorName(data.spectatorName);
     }
+  }, [upper]);
+
+  useEffect(() => {
+    setTenant(readLockedTenant() || "default");
   }, [upper]);
 
   useEffect(() => {
@@ -130,8 +143,8 @@ export function RoomTable({ code }: { code: string }) {
         if (savedHost) {
           const response = await fetch(`/api/rooms/${upper}/join`, {
             method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ hostSecret: savedHost }),
+            headers: tenantHeaders({ "content-type": "application/json" }),
+            body: JSON.stringify({ hostSecret: savedHost, tenantId: readLockedTenant() || "default" }),
           });
           const data = await response.json();
           if (!gone && response.ok) {
@@ -142,8 +155,8 @@ export function RoomTable({ code }: { code: string }) {
         }
         const response = await fetch(`/api/rooms/${upper}/join`, {
           method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ name: spectatorName }),
+          headers: tenantHeaders({ "content-type": "application/json" }),
+          body: JSON.stringify({ name: spectatorName, tenantId: readLockedTenant() || "default" }),
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || "加入失败");
@@ -160,9 +173,10 @@ export function RoomTable({ code }: { code: string }) {
   }, [upper, apply]);
 
   useEffect(() => {
+    if (view?.isHost) rememberHosted(tenant, upper);
     if (!view?.isHost || !hostSecret || view.status !== "lobby") return;
     let gone = false;
-    void fetch(`/api/rooms/${upper}/invite`, { headers: { "x-room-host": hostSecret } })
+    void fetch(`/api/rooms/${upper}/invite`, { headers: tenantHeaders({ "x-room-host": hostSecret }) })
       .then(async (response) => {
         const data = (await response.json()) as { block?: string; wind?: string; error?: string };
         if (!response.ok || !data.block) return;
@@ -175,18 +189,18 @@ export function RoomTable({ code }: { code: string }) {
     return () => {
       gone = true;
     };
-  }, [view?.isHost, view?.status, view?.updatedAt, hostSecret, upper]);
+  }, [view?.isHost, view?.status, view?.updatedAt, hostSecret, upper, tenant]);
 
   useEffect(() => {
     if (!view) return;
-    const streamHeaders: Record<string, string> = {};
+    const streamHeaders = tenantHeaders();
     if (hostSecret) streamHeaders["x-room-host"] = hostSecret;
     if (spectatorId) streamHeaders["x-spectator-id"] = spectatorId;
     const source = EventSourcePoly(upper, streamHeaders, (payload) => {
       setView(payload);
     });
     return () => source.close();
-  }, [view?.code, hostSecret, spectatorId, upper]);
+  }, [view?.code, hostSecret, spectatorId, upper, tenant]);
 
   async function api(path: string, body: Record<string, unknown> = {}) {
     setBusy(true);
@@ -195,13 +209,59 @@ export function RoomTable({ code }: { code: string }) {
       const response = await fetch(path, {
         method: "POST",
         headers,
-        body: JSON.stringify({ ...body, hostSecret }),
+        body: JSON.stringify({ ...body, hostSecret, tenantId: tenant }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "操作失败");
       apply(data);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "操作失败");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function claimSeat(seat: number) {
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/room/${upper}/claim-seat`, {
+        method: "POST",
+        headers: tenantHeaders({ "content-type": "application/json" }),
+        body: JSON.stringify({ seatToken: claimToken, name: claimName, tenantId: tenant }),
+      });
+      const data = (await response.json()) as { error?: string; you?: { seat?: number } };
+      if (!response.ok) throw new Error(data.error || "入座失败");
+      if (data.you?.seat !== undefined && data.you.seat !== seat) {
+        setError(`这个 token 坐的是 ${data.you.seat} 席`);
+      }
+      setClaimAt(null);
+      const fresh = await fetch(`/api/rooms/${upper}`, { headers });
+      if (fresh.ok) setView((await fresh.json()) as RoomView);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "入座失败");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function copySeatInvite(seat: number) {
+    if (!hostSecret) return;
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/rooms/${upper}/invite?seat=${seat}`, {
+        headers: tenantHeaders({ "x-room-host": hostSecret }),
+      });
+      const data = (await response.json()) as { block?: string; wind?: string; error?: string };
+      if (!response.ok || !data.block) throw new Error(data.error || "无法生成邀请");
+      setInvite(data.block);
+      setInviteSeat(data.wind ?? "");
+      await navigator.clipboard.writeText(data.block);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "无法生成邀请");
     } finally {
       setBusy(false);
     }
@@ -229,24 +289,34 @@ export function RoomTable({ code }: { code: string }) {
   if (!view) return <main className="room quiet">进房…</main>;
 
   const role = view.isHost ? "host" : "spectator";
+  const full = view.seats.every((seat) => !seat.empty);
+  const aceLevels = view.match?.levels ?? { ns: view.startLevel, ew: view.startLevel };
+  const aceFails = view.match?.aceFails ?? { ns: 0, ew: 0 };
+  const aceLimit = view.match?.aceLimit ?? view.aceLimit ?? 3;
+
   if ((view.status === "playing" || view.status === "finished") && view.matchId) {
     return (
-      <Arena
-        id={view.matchId}
-        role={role}
-        roomCode={view.code}
-        spectatorCount={view.spectatorCount}
-        externalView={view.match}
-        turnBudgetMs={view.turnBudgetMs}
-        seatStatuses={view.seats.map((seat) => ({ status: seat.status || "playing", statusLabel: seat.statusLabel || "出牌中" }))}
-        chat={view.chat}
-        onChat={(text) => void api(`/api/rooms/${upper}/chat`, { text, name: view.isHost ? "房主" : spectatorName })}
-      />
+      <div className="room-stack">
+        <RoomRail tenant={tenant} currentCode={view.code} />
+        <Arena
+          id={view.matchId}
+          role={role}
+          roomCode={view.code}
+          spectatorCount={view.spectatorCount}
+          externalView={view.match}
+          turnBudgetMs={view.turnBudgetMs}
+          seatStatuses={view.seats.map((seat) => ({ status: seat.status || "playing", statusLabel: seat.statusLabel || "出牌中" }))}
+          chat={view.chat}
+          onChat={(text) => void api(`/api/rooms/${upper}/chat`, { text, name: view.isHost ? "房主" : spectatorName })}
+        />
+      </div>
     );
   }
 
   return (
-    <main className="hall room-hall" data-testid="room-lobby">
+    <main className="hall room-hall hall-ia" data-testid="room-lobby">
+      <TenantBar locked={tenant} onLocked={() => undefined} readOnly />
+      <RoomRail tenant={tenant} currentCode={view.code} />
       <section className="hall-copy">
         <p className="eyebrow">Room · {SERIES_LABEL[view.series]}</p>
         <h1>房间 {view.code}</h1>
@@ -267,6 +337,8 @@ export function RoomTable({ code }: { code: string }) {
       </section>
 
       <section className="hall-table room-panel">
+        <AceStrip levels={aceLevels} aceFails={aceFails} aceLimit={aceLimit} />
+        {full ? <p className="spectate-only" data-testid="spectate-only">已满 · 围观</p> : null}
         {view.isHost && view.status === "lobby" ? (
           <div className="invite-card" data-testid="agent-invite">
             <p className="invite-kicker">发给你的 Agent → 它自检 Jev → 合格再入座自打</p>
@@ -288,53 +360,76 @@ export function RoomTable({ code }: { code: string }) {
             <pre data-testid="invite-preview">{invite || "…"}</pre>
           </div>
         ) : null}
-        <div className="name-grid room-seats">
-          {view.seats.map((seat) => (
-            <article key={seat.index} className={`hall-seat room-seat ${seat.team} ${seat.ready ? "ready" : ""}`} data-testid={`room-seat-${seat.index}`}>
-              <header>
-                <em>{seat.wind}</em>
-                <b className={`ready-dot status-${seat.status || "waiting"}`} data-testid={`seat-status-${seat.index}`}>{seat.statusLabel || (seat.ready ? "就绪" : "等待")}</b>
-              </header>
-              {seat.empty ? (
-                <>
-                  <strong>空位</strong>
-                  <small>{seat.status === "checking" ? "Agent 正在自检 Jev" : "留给复制给 Agent 的自驾席"}</small>
-                </>
-              ) : (
-                <>
-                  <strong>{seat.name}</strong>
-                  <small>
-                    <span className="provider-badge">{seat.badge}</span>
-                    {seat.model}
-                  </small>
-                  {view.isHost ? (
-                    <button className="chip-btn tiny" type="button" disabled={busy} onClick={() => void api(`/api/rooms/${upper}/seat`, { seat: seat.index, clear: true })}>
-                      清空
+        <div className="name-grid room-seats" data-testid="seat-map">
+          {view.seats.map((seat) => {
+            const hostSeat = view.isHost && seat.index === 0;
+            return (
+              <article
+                key={seat.index}
+                className={`hall-seat room-seat ${seat.team} ${seat.ready ? "ready" : ""} ${hostSeat ? "is-host-seat" : ""}`}
+                data-testid={hostSeat ? "host-seat" : `room-seat-${seat.index}`}
+              >
+                <header>
+                  <em>{seat.wind}{hostSeat ? " · 房主" : ""}</em>
+                  <b className={`ready-dot status-${seat.status || "waiting"}`} data-testid={`seat-status-${seat.index}`}>{seat.statusLabel || (seat.ready ? "就绪" : "等待")}</b>
+                </header>
+                {seat.empty ? (
+                  <>
+                    <strong>空位</strong>
+                    <small>{seat.status === "checking" ? "Agent 正在自检 Jev" : "入座"}</small>
+                    {view.isHost ? (
+                      <button className="chip-btn tiny" type="button" data-testid={`claim-seat-${seat.index}`} disabled={busy} onClick={() => void copySeatInvite(seat.index)}>
+                        入座
+                      </button>
+                    ) : (
+                      <button className="chip-btn tiny" type="button" data-testid={`claim-seat-${seat.index}`} onClick={() => setClaimAt(seat.index)}>
+                        入座
+                      </button>
+                    )}
+                    {!view.isHost && claimAt === seat.index ? (
+                      <form
+                        className="seat-claim"
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          void claimSeat(seat.index);
+                        }}
+                      >
+                        <input value={claimToken} onChange={(event) => setClaimToken(event.target.value)} placeholder="seatToken" aria-label="seatToken" />
+                        <input value={claimName} onChange={(event) => setClaimName(event.target.value)} placeholder="名字" aria-label="名字" />
+                        <button className="chip-btn tiny" type="submit" disabled={busy || !claimToken}>入座</button>
+                      </form>
+                    ) : null}
+                  </>
+                ) : (
+                  <>
+                    <strong>{seat.name}</strong>
+                    <small>
+                      <span className="provider-badge">{seat.badge}</span>
+                      {seat.model}
+                    </small>
+                  </>
+                )}
+                {hostSeat ? (
+                  <div className="host-actions" data-testid="host-actions">
+                    <button className="chip-btn tiny" type="button" data-testid="fill-mock" disabled={busy} onClick={() => void api(`/api/rooms/${upper}/fill-mock`)}>
+                      空位填 Mock
                     </button>
-                  ) : null}
-                </>
-              )}
-            </article>
-          ))}
+                    <button className="chip-btn tiny" type="button" data-testid="room-start" disabled={busy || !view.ready} onClick={() => void api(`/api/rooms/${upper}/start`)}>
+                      {busy ? "发牌…" : view.ready ? "可开打" : "席未齐"}
+                    </button>
+                    {!seat.empty ? (
+                      <button className="chip-btn tiny" type="button" disabled={busy} onClick={() => void api(`/api/rooms/${upper}/seat`, { seat: seat.index, clear: true })}>
+                        清空本席
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
+              </article>
+            );
+          })}
         </div>
 
-        <div className="hall-levels">
-          {view.isHost ? (
-            <details className="advanced-seats">
-              <summary>高级 · 本地 Mock</summary>
-              <div className="hall-levels">
-                <button className="chip-btn" type="button" data-testid="fill-mock" disabled={busy} onClick={() => void api(`/api/rooms/${upper}/fill-mock`)}>
-                  空位填 Mock
-                </button>
-                <button className="chip-btn" type="button" data-testid="room-start" disabled={busy || !view.ready} onClick={() => void api(`/api/rooms/${upper}/start`)}>
-                  {busy ? "发牌…" : view.ready ? "可开打" : "席未齐"}
-                </button>
-              </div>
-            </details>
-          ) : (
-            <span className="muted">你是观众 · 等待 Agent 入座开打</span>
-          )}
-        </div>
+        {!view.isHost ? <p className="muted">你是观众。空位入座，满座只围观。</p> : null}
 
         <div className="room-chat" data-testid="room-chat">
           <h3>围观聊天</h3>

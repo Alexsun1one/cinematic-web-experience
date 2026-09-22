@@ -1401,6 +1401,22 @@ button:disabled { opacity: 0.4; cursor: wait; }
   align-items: center;
   justify-content: center;
 }
+.hall-ia {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: stretch;
+  max-width: 1080px;
+  margin: 0 auto;
+  height: auto;
+  overflow: auto;
+}
+.hall-body {
+  display: grid;
+  grid-template-columns: minmax(260px, 420px) minmax(320px, 1fr);
+  gap: 28px;
+  align-items: start;
+}
 .hall-copy h1 {
   margin: 8px 0 14px;
   font-size: 44px;
@@ -1788,13 +1804,112 @@ button:disabled { opacity: 0.4; cursor: wait; }
   to { opacity: 1; transform: none; }
 }
 
+.tenant-bar, .room-rail, .ace-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(22px) saturate(1.35);
+}
+.tenant-bar { flex-wrap: wrap; }
+.tenant-bar strong {
+  font-family: var(--mono);
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+.tenant-bar em, .tenant-lock em { color: var(--muted); font-style: normal; font-size: 12px; }
+.tenant-lock { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tenant-lock input, .seat-claim input {
+  border-radius: 10px;
+  border: 1px solid var(--stroke-strong);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--text);
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 13px;
+}
+.room-rail { gap: 6px; overflow-x: auto; }
+.rail-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--stroke);
+  background: transparent;
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.rail-item.is-current {
+  background: var(--accent);
+  color: #04281c;
+  border-color: transparent;
+}
+.rail-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  border: 1.5px solid var(--accent);
+  background: transparent;
+}
+.rail-dot.is-active { background: var(--accent); }
+.rail-item.is-current .rail-dot { border-color: #04281c; background: #04281c; }
+.ace-strip { justify-content: center; flex-wrap: wrap; }
+.ace-strip strong { font-size: 14px; letter-spacing: 0.01em; }
+.ace-teams { display: flex; gap: 4px; }
+.ace-teams button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+}
+.ace-teams button.on { color: var(--accent); }
+.ace-strip.flash { animation: ace-flash 1.2s ease; }
+@keyframes ace-flash {
+  0%, 100% { box-shadow: none; }
+  35% { box-shadow: 0 0 28px var(--accent-glow); background: rgba(46, 230, 166, 0.28); }
+}
+.room-list { list-style: none; margin: 0; padding: 0; width: 100%; display: flex; flex-direction: column; gap: 8px; }
+.room-list a {
+  display: grid;
+  grid-template-columns: 92px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--stroke);
+}
+.room-list b { font-family: var(--mono); color: var(--accent); letter-spacing: 0.08em; }
+.room-list span, .room-list em { font-style: normal; color: var(--muted); font-size: 12px; }
+.room-filters { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.room-list-card, .create-card { width: 100%; }
+.spectate-only {
+  margin: 0;
+  color: var(--accent);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.is-host-seat { border-color: rgba(46, 230, 166, 0.45); }
+.host-actions, .seat-claim { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.room-stack { min-height: 100dvh; display: flex; flex-direction: column; gap: 8px; padding: 12px 16px 0; }
+.room-stack .room { height: auto; flex: 1; min-height: 0; padding-top: 0; }
+
 @media (prefers-reduced-motion: reduce) {
   .zone-cards, .felt-square.clearing .zone-cards, .record-list p:last-child,
   .rank-col-card.depart, .ceremony-seal, .round-banner b.title, .reason-chip, .reason-bubble,
   .seat-plate.active .seat-avatar, .poker.wild .wild-star, .ceremony .climb,
   .ceremony-sparks i, .pass-stamp, .place-ribbon, .turn-ring i,
   .fx, .fx-title, .hl-banner, .podium-step, .track-stop.climb-path, .track-stop.climbed,
-  .seat-fire i, .room.fx-shake, .room.hl-royal::before { animation: none; }
+  .seat-fire i, .room.fx-shake, .room.hl-royal::before, .ace-strip.flash { animation: none; }
   .podium-step, .hl-banner, .fx-plate, .fx-bomb, .fx-flush, .fx-streak, .fx-royal, .fx-title {
     opacity: 1;
     transform: none;
@@ -1804,7 +1919,7 @@ button:disabled { opacity: 0.4; cursor: wait; }
 }
 @media (max-width: 1100px) {
   .room { height: auto; overflow: auto; }
-  .hall, .board { grid-template-columns: 1fr; }
+  .hall, .board, .hall-body { grid-template-columns: 1fr; }
   .seat-plate.north, .table-row, .south-hand, .record {
     grid-column: 1;
     grid-row: auto;

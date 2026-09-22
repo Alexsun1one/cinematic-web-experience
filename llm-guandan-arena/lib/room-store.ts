@@ -1,6 +1,7 @@
 import { getRedis, usesRedis } from "./redis-client";
+import { DEFAULT_TENANT, normalizeTenant } from "./tenant-id";
 
-export const DEFAULT_TENANT = "default";
+export { DEFAULT_TENANT, normalizeTenant };
 
 /** Plain room row. Callers may store extra JSON fields; the store keeps the object it is given. */
 export interface RoomSnapshot {
@@ -23,15 +24,6 @@ export interface RoomStore {
   delete(tenantId: string, code: string): Promise<void>;
   list(tenantId: string): Promise<RoomSnapshot[]>;
   countOpen(tenantId: string): Promise<number>;
-}
-
-export function normalizeTenant(raw: string | null | undefined): string {
-  const cleaned = (raw ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9_-]/g, "")
-    .slice(0, 64);
-  return cleaned || DEFAULT_TENANT;
 }
 
 export function tenantFromRequest(request: Request, body?: { tenantId?: unknown } | null): string {

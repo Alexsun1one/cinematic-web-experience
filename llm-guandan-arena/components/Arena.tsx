@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { AceStrip } from "@/components/AceStrip";
 import { BackRow, CardView, HandFan } from "@/components/CardView";
 import { RulesButton } from "@/components/RulesDrawer";
 import { bannerFromHighlight, fxForMove, loudestCue } from "@/lib/guandan/highlight";
@@ -292,6 +293,11 @@ export function Arena({
         </div>
       </header>
       {error ? <p className="banner-error">{error}</p> : null}
+      <AceStrip
+        levels={view.levels}
+        aceFails={view.aceFails ?? { ns: 0, ew: 0 }}
+        aceLimit={view.aceLimit ?? 3}
+      />
       <section className="board">
         <SeatPlate view={view} index={0} reveal={reveal} place="north" statusLabel={seatStatuses[0]?.statusLabel} fire={fireSeat === 0} />
         <div className="table-row">

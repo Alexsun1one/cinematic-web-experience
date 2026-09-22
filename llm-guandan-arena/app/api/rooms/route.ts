@@ -14,13 +14,16 @@ export async function GET(request: Request) {
   const rooms = await listRooms(tenantId);
   return json({
     tenantId,
-    rooms: rooms.slice(0, 12).map((room) => ({
+    rooms: rooms.slice(0, 24).map((room) => ({
       code: room.code,
       status: room.status,
       series: room.series,
+      startLevel: room.startLevel,
       spectatorCount: room.spectators.size,
       matchId: room.matchId,
       createdAt: room.createdAt,
+      emptySeats: room.seats.filter((seat) => !seat).length,
+      seated: room.seats.filter(Boolean).length,
     })),
   });
 }

@@ -1,6 +1,7 @@
 import { sortCards } from "./guandan/cards";
 import { currentLegal, type Match } from "./guandan/match";
 import { presentCards } from "./guandan/present";
+import { aceStrikeLimit } from "./guandan/score";
 import { matchStats } from "./guandan/stats";
 import { SEAT_WIND, SEAT_WIND_EN, teamOf } from "./guandan/types";
 
@@ -35,6 +36,8 @@ export function toView(match: Match) {
     startLevel: match.startLevel,
     handLimit: match.handLimit,
     levels: match.levels,
+    aceFails: match.aceFails ?? { ns: 0, ew: 0 },
+    aceLimit: aceStrikeLimit(),
     dealer: match.dealer,
     level: match.level,
     round: match.round,

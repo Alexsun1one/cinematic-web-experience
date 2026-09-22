@@ -13,8 +13,10 @@ export async function GET(request: Request, context: { params: Promise<{ code: s
   if (!room) return json({ error: "房间不存在" }, 404);
   if (!isHost(room, request.headers.get("x-room-host"))) return json({ error: "仅房主可复制邀请" }, 403);
   const origin = new URL(request.url).origin;
+  const rawSeat = new URL(request.url).searchParams.get("seat");
+  const seat = rawSeat === null ? undefined : Number(rawSeat);
   try {
-    return json(await issueInvite(room, origin));
+    return json(await issueInvite(room, origin, seat));
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : "无法生成邀请" }, 400);
   }

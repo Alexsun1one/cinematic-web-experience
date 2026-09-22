@@ -1,6 +1,24 @@
 # Cycle
 
-Branch `cursor/llm-guandan-arena-6cfe`. Peer QA checklist, then `test:engine`, `build`, and `HANDS=2`.
+Branch `cursor/llm-guandan-arena-6cfe`.
+
+## Information architecture
+
+Same teal glass skin. Three layers, no new theme.
+
+| Piece | Result |
+| --- | --- |
+| Lobby by intent | **Pass.** Top is the tenant. The list stays empty until 锁定. 更换 clears the list. Default filter is 可入座. 围观中 / 我开的 / 已满 are separate. A room from tenant `other-ui` did not appear on the `default` list. Entering a room opens the seat map: empty seats say 入座, a full room says 已满 · 围观, and 填 Mock / 开打 sit only on 北 · 房主. |
+| 打A strip | **Pass.** Fixed above the seat map and above the table: `目标 A · 本方已试 n/3 · 三不过 → 回 2`. `n` and the limit come from `match.aceFails` and `aceStrikeLimit()`. A fresh live match reported `{ns:0,ew:0}` and limit 3, and the strip showed `0/3`. Dropping from A to 2 flashes the strip once. Limit `0` says 一直停在 A. |
+| Room rail | **Pass.** 大厅 stays on the rail. Rooms show a waiting or active dot. The current room is solid. Opening `WHGAS4` then `VPX9CH` left the locked tenant as `default`. |
+
+Deferred: tenant admin shell, replay timeline, seat FX polish, in-table chat, A-history charts.
+
+`npm run test:engine` passed. `npm run build` passed. Redis is still the shared store when `REDIS_URL` is set. This environment did not run a live Redis.
+
+## Peer QA checklist
+
+Peer QA checklist, then `test:engine`, `build`, and `HANDS=2`.
 
 ## Checklist
 

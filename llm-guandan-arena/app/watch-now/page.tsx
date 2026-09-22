@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { readLockedTenant, rememberHosted, tenantHeaders } from "@/lib/tenant-client";
 
 export default function WatchNowPage() {
   const router = useRouter();
@@ -11,18 +12,20 @@ export default function WatchNowPage() {
     let gone = false;
     async function run() {
       try {
+        const tenant = readLockedTenant() || "default";
         const created = await fetch("/api/rooms", {
           method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ series: "three", startLevel: "T", seatsOpen: true, autoFillMock: true }),
+          headers: tenantHeaders({ "content-type": "application/json" }),
+          body: JSON.stringify({ series: "three", startLevel: "T", seatsOpen: true, autoFillMock: true, tenantId: tenant }),
         });
         const room = (await created.json()) as { code?: string; hostSecret?: string; error?: string };
         if (!created.ok || !room.code || !room.hostSecret) throw new Error(room.error || "开房失败");
         localStorage.setItem(`guandan-room-host:${room.code}`, room.hostSecret);
+        rememberHosted(tenant, room.code);
         const started = await fetch(`/api/rooms/${room.code}/start`, {
           method: "POST",
-          headers: { "content-type": "application/json", "x-room-host": room.hostSecret },
-          body: JSON.stringify({ hostSecret: room.hostSecret }),
+          headers: tenantHeaders({ "content-type": "application/json", "x-room-host": room.hostSecret }),
+          body: JSON.stringify({ hostSecret: room.hostSecret, tenantId: tenant }),
         });
         const live = (await started.json()) as { error?: string; status?: string };
         if (!started.ok || live.status !== "playing") throw new Error(live.error || "开打失败");
