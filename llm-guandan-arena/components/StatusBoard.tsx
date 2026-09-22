@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { chipText, type SeatLive } from "@/lib/seat-live";
+import { chipText, thoughtIsOpen, type SeatLive } from "@/lib/seat-live";
 import type { PlayMetric, ReplayEvent } from "@/lib/telemetry";
 
 export function StatusBoard({
@@ -17,6 +17,7 @@ export function StatusBoard({
 }) {
   const [showThought, setShowThought] = useState(false);
   const [openId, setOpenId] = useState<number | null>(null);
+  const thoughtsCollapsed = !showThought && openId === null;
   const lastPlay = [...metrics].reverse().find((row) => row.kind === "play" || row.kind === "timeout");
   const lastJevMetric = [...metrics].reverse().find((row) => row.jevMs !== null);
   const lastDecision = [...metrics].reverse().find((row) => row.kind === "decision");
@@ -26,10 +27,21 @@ export function StatusBoard({
   const rows = [...events].reverse();
 
   return (
-    <section className="status-board" data-testid="status-board">
+    <section className="status-board" data-testid="status-board" data-thoughts={thoughtsCollapsed ? "collapsed" : "open"}>
       <header>
         <b>状态板</b>
-        <button className={`chip-btn tiny ${showThought ? "on" : ""}`} type="button" data-testid="show-thought" onClick={() => setShowThought((value) => !value)}>
+        <button
+          className={`chip-btn tiny ${showThought ? "on" : ""}`}
+          type="button"
+          data-testid="show-thought"
+          aria-pressed={showThought}
+          onClick={() => {
+            setShowThought((value) => {
+              if (value) setOpenId(null);
+              return !value;
+            });
+          }}
+        >
           显示思考
         </button>
       </header>
@@ -40,7 +52,7 @@ export function StatusBoard({
       <ol data-testid="status-timeline">
         {rows.length === 0 ? <li className="muted">等待出牌</li> : null}
         {rows.map((event) => {
-          const open = showThought || openId === event.id;
+          const open = thoughtIsOpen(showThought, openId, event.id);
           return (
             <li key={event.id} data-testid="status-event">
               <time>{new Date(event.at).toLocaleTimeString()}</time>
@@ -52,11 +64,11 @@ export function StatusBoard({
                 {event.costUsd !== null && event.costUsd !== undefined ? `$${event.costUsd}` : ""}
               </small>
               {event.thought ? (
-                <button className="chip-btn tiny" type="button" data-testid="expand-thought" onClick={() => setOpenId((value) => (value === event.id ? null : event.id))}>
+                <button className="chip-btn tiny" type="button" data-testid="expand-thought" aria-expanded={open} onClick={() => setOpenId((value) => (value === event.id ? null : event.id))}>
                   {open && !showThought ? "收起思考" : "展开思考"}
                 </button>
               ) : null}
-              {open && event.thought ? <ThoughtStream text={event.thought} live={showThought} /> : null}
+              {open && event.thought ? <ThoughtStream text={event.thought} live={showThought && openId !== event.id} /> : null}
             </li>
           );
         })}

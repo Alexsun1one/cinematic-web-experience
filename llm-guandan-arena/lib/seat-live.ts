@@ -75,6 +75,11 @@ export function isSeatPhase(value: unknown): value is SeatPhase {
   return value === "idle" || value === "waiting" || value === "thinking" || value === "jev" || value === "llm" || value === "playing" || value === "played" || value === "passed" || value === "timeout" || value === "error";
 }
 
+/** Full thought is hidden until a row is expanded or the spectator toggle is on. */
+export function thoughtIsOpen(showAll: boolean, openId: number | null, eventId: number): boolean {
+  return showAll || openId === eventId;
+}
+
 /** Short chip. Busy phases append elapsed milliseconds. */
 export function chipText(live: SeatLive, now: number): string {
   const label = live.line || phaseLabel(live.phase);

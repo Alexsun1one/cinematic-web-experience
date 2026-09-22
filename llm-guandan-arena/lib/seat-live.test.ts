@@ -1,11 +1,15 @@
 import assert from "node:assert/strict";
-import { chipText, emptySeatLive, nextSeatLives, phaseLabel } from "./seat-live";
+import { chipText, emptySeatLive, nextSeatLives, phaseLabel, thoughtIsOpen } from "./seat-live";
 
 const now = 5_000;
 const idle = emptySeatLive(1_000);
 assert.equal(phaseLabel("thinking"), "思考中");
 assert.equal(phaseLabel("timeout"), "超时 Mock");
 assert.equal(chipText({ ...idle, phase: "thinking", since: 4_200, line: "思考中" }, now), "思考中 800ms");
+assert.equal(thoughtIsOpen(false, null, 1), false);
+assert.equal(thoughtIsOpen(false, 2, 1), false);
+assert.equal(thoughtIsOpen(false, 1, 1), true);
+assert.equal(thoughtIsOpen(true, null, 1), true);
 
 const first = nextSeatLives([idle, idle, idle, idle], 2, { phase: "thinking", line: "思考中", thought: "Bearer sk-secret-token-value" }, now);
 assert.equal(first.changed, true);

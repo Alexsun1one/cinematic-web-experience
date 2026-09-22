@@ -44,6 +44,10 @@ export function ReplayScrubber({ code }: { code: string }) {
   }, [upper]);
 
   useEffect(() => {
+    setThoughtOpen(false);
+  }, [index]);
+
+  useEffect(() => {
     if (!playing || !data) return;
     if (index >= data.events.length - 1) {
       setPlaying(false);
