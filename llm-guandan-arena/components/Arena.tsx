@@ -27,11 +27,17 @@ export function Arena({ id }: { id: string }) {
 
   useEffect(() => {
     let gone = false;
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("panel") === "stats") {
+      setPanel("stats");
+    }
     void fetch(`/api/matches/${id}`)
       .then(async (response) => {
         const data = (await response.json()) as MatchView & { error?: string };
         if (!response.ok) throw new Error(data.error || "找不到这局牌");
-        if (!gone) setView(data);
+        if (!gone) {
+          setView(data);
+          if (data.status !== "playing") setAuto(false);
+        }
       })
       .catch((cause: unknown) => {
         if (!gone) setError(cause instanceof Error ? cause.message : "读取失败");
@@ -58,7 +64,7 @@ export function Arena({ id }: { id: string }) {
 
   useEffect(() => {
     if (!auto || !view || pending || holding || view.status === "finished") return;
-    const delay = view.status === "between_rounds" ? Math.max(speed, 1600) : speed;
+    const delay = view.status === "between_rounds" ? Math.max(speed, 3200) : speed;
     const timer = setTimeout(() => void step(), delay);
     return () => clearTimeout(timer);
   }, [auto, view, pending, holding, speed]);
