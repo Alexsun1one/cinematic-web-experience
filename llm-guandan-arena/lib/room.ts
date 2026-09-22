@@ -10,6 +10,7 @@ import {
   TenantRoomLimitError,
   normalizeTenant,
   roomStore,
+  roomTtlSec,
   tenantFromRequest,
   tenantMaxRooms,
   type RoomSnapshot,
@@ -86,6 +87,10 @@ export interface Room {
   updatedAt: number;
   /** Last revision successfully stored. 0 until the first save. */
   rev: number;
+  /** Epoch ms. Refreshed on each save. Absent when TTL is disabled. */
+  expiresAt?: number;
+  /** Consecutive server timeouts, cleared by a real act from that seat. */
+  timeoutStreak: [number, number, number, number];
   series: RoomSeries;
   startLevel: FaceRank;
   seatsOpen: boolean;
@@ -135,6 +140,8 @@ interface RoomRecord extends Omit<RoomSnapshot, "status"> {
   autoFillMock: boolean;
   invites: SeatInvite[];
   lastTimeoutSeat: number | null;
+  timeoutStreak?: [number, number, number, number];
+  expiresAt?: number;
 }
 
 function toRecord(room: Room): RoomRecord {
@@ -157,13 +164,21 @@ function toRecord(room: Room): RoomRecord {
     autoFillMock: room.autoFillMock,
     invites: room.invites,
     lastTimeoutSeat: room.lastTimeoutSeat,
+    timeoutStreak: room.timeoutStreak,
+    expiresAt: room.expiresAt,
   };
+}
+
+function normalizeStreak(raw: [number, number, number, number] | undefined): [number, number, number, number] {
+  if (!raw || raw.length !== 4) return [0, 0, 0, 0];
+  return [raw[0] || 0, raw[1] || 0, raw[2] || 0, raw[3] || 0];
 }
 
 function fromRecord(record: RoomRecord): Room {
   return {
     ...record,
     rev: record.rev ?? 0,
+    timeoutStreak: normalizeStreak(record.timeoutStreak),
     spectators: new Map(record.spectators.map((row) => [row.id, { ...row }])),
   };
 }
@@ -187,7 +202,18 @@ function applyRecord(room: Room, record: RoomRecord) {
   room.autoFillMock = record.autoFillMock;
   room.invites = record.invites;
   room.lastTimeoutSeat = record.lastTimeoutSeat;
+  room.timeoutStreak = normalizeStreak(record.timeoutStreak);
+  room.expiresAt = record.expiresAt;
   room.onAct = onAct;
+}
+
+/** Consecutive timeouts before a self seat is switched to Mock. Unset or 0 never kicks. */
+export function kickAfterTimeouts(): number {
+  const raw = process.env.GUANDAN_KICK_AFTER;
+  if (raw === undefined || raw.trim() === "" || raw === "0") return 0;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 1) return 0;
+  return Math.floor(n);
 }
 
 export class RoomRevisionError extends Error {
@@ -202,6 +228,8 @@ export async function saveRoom(room: Room): Promise<void> {
   const expected = room.rev ?? 0;
   room.rev = expected + 1;
   room.updatedAt = Date.now();
+  const ttl = roomTtlSec();
+  room.expiresAt = ttl === 0 ? undefined : Date.now() + ttl * 1000;
   const wrote = await roomStore().compareAndSet(toRecord(room), expected);
   if (!wrote) {
     room.rev = expected;
@@ -289,6 +317,7 @@ export async function createRoom(input: {
     autoFillMock: input.autoFillMock !== false,
     invites: [],
     lastTimeoutSeat: null,
+    timeoutStreak: [0, 0, 0, 0],
   };
   if (room.autoFillMock) assignMockSeats(room);
   await saveRoom(room);
@@ -488,6 +517,8 @@ export async function issueInvite(room: Room, origin: string) {
 }
 
 export async function claimByToken(room: Room, token: string, name?: string) {
+  const existing = seatIndexByToken(room, token);
+  if (existing >= 0) return existing;
   if (room.status !== "lobby") throw new Error("已经开打");
   const invite = room.invites.find((item) => item.token === token && !item.used);
   if (!invite) throw new Error("seatToken 无效或已使用");
@@ -515,15 +546,27 @@ export function seatIndexByToken(room: Room, token: string): number {
 }
 
 export async function notifyAct(room: Room, seat: number) {
-  if (room.lastTimeoutSeat === seat) {
-    room.lastTimeoutSeat = null;
-    await saveRoom(room);
-  }
+  const streak = room.timeoutStreak ?? [0, 0, 0, 0];
+  const hadTimeout = room.lastTimeoutSeat === seat;
+  const hadStreak = (streak[seat] ?? 0) > 0;
+  if (hadTimeout) room.lastTimeoutSeat = null;
+  if (hadStreak) streak[seat] = 0;
+  room.timeoutStreak = streak;
+  if (hadTimeout || hadStreak) await saveRoom(room);
   room.onAct?.(seat);
 }
 
 export async function markTimeout(room: Room, seat: number) {
   room.lastTimeoutSeat = seat;
+  const streak = room.timeoutStreak ?? [0, 0, 0, 0];
+  streak[seat] = (streak[seat] ?? 0) + 1;
+  room.timeoutStreak = streak;
+  const limit = kickAfterTimeouts();
+  const agent = room.seats[seat];
+  if (limit > 0 && streak[seat] >= limit && agent?.drive === "self") {
+    agent.drive = "mock";
+    agent.kind = "mock";
+  }
   await saveRoom(room);
 }
 

@@ -55,8 +55,16 @@ Date: 2026-09-22. Branch `cursor/llm-guandan-arena-6cfe`.
 
 ## Remaining limits
 
-- Without `REDIS_URL`, rooms and matches stay in this process. With `REDIS_URL`, instances share them. See `MULTI_TENANT.md`.
+- Without `REDIS_URL`, rooms and matches stay in this process. With `REDIS_URL`, instances share them. See `MULTI_TENANT.md`. The Redis `EXPIRE` path is in the client and covered by the Lua string plus the memory `expiresAt` tests. This environment did not run a live Redis.
 - There is no click-to-play hand. 知识 plays through claim / state / act.
 - 抗贡 is decided by the engine. Agents do not send a resist move. They wait, then 头游 leads.
 - `npm run operator` uses the shared heuristic unless `LLM_API_KEY` is set.
-- Reaching A does not end the match. Passing A needs 头游 and a partner who is not 末游. Three 头游+末游 failures drop that side to 2.
+- Reaching A does not end the match. Passing A needs 头游 and a partner who is not 末游. The engine labels 头游+二游 as 双下 (+3) and 头游+三游 as +2. Three 头游+末游 failures drop that side to 2.
+
+## QA checklist decisions
+
+- The 打A fail count is per side on that match. A new room calls `createMatch`, which starts both sides at 0. It is not keyed by opponent. Seats stay 0+2 against 1+3 for the series. The other side winning a hand leaves the count where it was.
+- Claiming a token that already owns a seat is a no-op, in the lobby and after the deal. The name does not change. An unknown token after the deal throws and leaves the seats alone. Start requires four ready seats. A second start throws and does not deal again.
+- A second `commitMove` after the hand has left `playing` throws. Levels and the fail count stay as the first settle left them, including a drop to 2.
+- Illegal `moveId` is 400. The hand and the seat to move stay put. The driver catches a thrown tick. Timeout plays one heuristic move. `GUANDAN_KICK_AFTER` unset or `0` does not kick. A positive value switches that self seat to Mock after that many consecutive timeouts and keeps the token.
+- Room TTL defaults to 6 hours, refreshed on each save. `0` disables it. Two compare-and-set writes of the same revision: one full row wins, the other is dropped.

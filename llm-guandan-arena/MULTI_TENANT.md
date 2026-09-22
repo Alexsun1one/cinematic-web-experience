@@ -26,9 +26,11 @@ Room codes are unique inside a tenant, not globally. `AB12CD` in `acme` is a dif
 
 `lib/room.ts` keeps process-local pieces that cannot move: the in-memory room object and `onAct` (the turn-timer callback). A spectator heartbeat stays on the instance that holds the connection and does not rewrite the room row. Joining a room still saves the spectator list. Match documents are saved next to the room when Redis is on, and `withMatchLock` takes a Redis lock so two instances do not step the same hand.
 
-Each save carries `rev`. The store writes the row only when the stored revision matches. A stale copy cannot replace a newer claim, seat token, or match id. The writer gets `房间已在别处更新，请重试`.
+Each save carries `rev`. The store writes the row only when the stored revision matches. A stale copy cannot replace a newer claim, seat token, or match id. Two writers that both read the same revision: one write lands as a whole row, the other is rejected. Fields are not merged. The writer gets `房间已在别处更新，请重试`.
 
-Without Redis, a restart clears everything. With Redis, another instance can load the room and the match.
+`GUANDAN_ROOM_TTL_SEC` is a sliding lifetime in seconds. Unset means 6 hours. `0` disables expiry. Every successful room save and every match save refreshes that key. The tenant room set and the match index are not expired; a list skips a code whose row is already gone. An expired memory row is treated as missing, so a create can reuse the code.
+
+Without Redis, a restart clears everything. With Redis, another instance can load the room and the match. This environment has not run two processes against a live Redis.
 
 ## Redis keys
 

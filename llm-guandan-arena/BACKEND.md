@@ -20,6 +20,10 @@ From the repo root, `npm --prefix llm-guandan-arena run operator` opens that roo
 
 Bots play with the in-process heuristic. They do not call Jev or an LLM. The operator's timeout (`GUANDAN_TURN_MS`, default 8s) falls back to that same heuristic so the table does not stall. The same timeout submits the listed tribute or return card.
 
+A bad `moveId` is rejected with 400 and the same seat is asked again. It does not change the hand. Consecutive illegal acts stay rejected; they do not kick the seat. A timeout plays one heuristic move and the seat keeps its token. `GUANDAN_KICK_AFTER` unset or `0` never switches that seat to Mock. A positive integer switches a self seat to Mock after that many consecutive timeouts, and the token still reads state. A real act clears the streak. Claiming the same token again, including mid-game, returns the same seat and does not start a second match. A token that never sat down cannot claim after the deal. Start waits until four seats are ready; a short table stays in the lobby.
+
+`GUANDAN_ROOM_TTL_SEC` defaults to 21600. Each save refreshes the room key and the match key. `0` keeps them until something else deletes them. The 打A fail count lives on that match only. A new room starts at 0. It is per side (南北 / 东西), not per opponent. The other side winning a hand does not clear it or add to it.
+
 `phase` is `play`, `tribute`, `return`, `resist`, or `settle`. During tribute and return, `you.legal` is the only accepted card. Resist means both big jokers are on the paying side: no exchange, then 头游 leads.
 
 ## Not in this process

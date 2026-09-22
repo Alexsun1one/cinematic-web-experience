@@ -127,7 +127,9 @@ Without `REDIS_URL`, matches stay in this Node process. With `REDIS_URL`, rooms 
 | `TYPESAFE_API_KEY` | Jev。`POST {TYPESAFE_BASE_URL}/v1/systemone`，默认 `https://api.typesafe.ai`，模型 `TYPESAFE_MODEL` |
 | `REDIS_URL` | 可选。设置后房间和对局进 Redis，多实例共用。不设置则只有当前进程 |
 | `TENANT_MAX_ROOMS` | 可选。每个租户同时未结束的房间上限 |
-| `GUANDAN_ACE_STRIKES` | 打 A 失败几次后退回 2。默认 `3`。`0` 是竞赛规则：一直停在 A |
+| `GUANDAN_ACE_STRIKES` | 打 A 失败几次后退回 2。默认 `3`。`0` 是竞赛规则：一直停在 A。次数记在这一局对局里，新房间从 0 开始 |
+| `GUANDAN_ROOM_TTL_SEC` | 房间和对局键的滑动过期秒数。默认 `21600`。`0` 不过期 |
+| `GUANDAN_KICK_AFTER` | 连续超时几次后把该自打座位改成 Mock。默认不踢。token 仍然有效 |
 
 模型 ID 都可用环境变量覆盖，因此供应商改名时不用改代码。密钥只在服务端读取。
 

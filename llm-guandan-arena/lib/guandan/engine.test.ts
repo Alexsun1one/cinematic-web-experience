@@ -306,6 +306,61 @@ function testAcePassFailAndDrop() {
   }
 }
 
+function testQaAcceptance() {
+  const ghost: Move = {
+    id: "again",
+    kind: "pass",
+    cards: [],
+    label: "过",
+    rankKey: 0,
+    bombTier: 0,
+    finishes: false,
+  };
+
+  const second = fresh("A");
+  replayHand(
+    second,
+    [[card(0, "S", "3")], [card(0, "S", "4"), card(0, "H", "8")], [card(0, "S", "5")], [card(0, "S", "6"), card(0, "H", "9")]],
+    0,
+  );
+  commitMove(second, findMove(currentLegal(second), "single", "3"), meta);
+  commitMove(second, findMove(currentLegal(second), "single", "4"), meta);
+  commitMove(second, findMove(currentLegal(second), "single", "5"), meta);
+  assert.equal(second.status, "finished");
+  assert.equal(second.winner, "ns");
+  assert.deepEqual(second.finishOrder.slice(0, 2), [0, 2]);
+  assert.equal(second.rounds[0].outcome, "双下");
+  assert.equal(second.rounds[0].delta, 3);
+  assert.equal(second.aceFails.ns, 0);
+  assert.equal(second.levels.ns, "A");
+  assert.throws(() => commitMove(second, ghost, meta), /not accepting/);
+  assert.equal(second.rounds.length, 1);
+  assert.equal(second.levels.ns, "A");
+  assert.equal(second.winner, "ns");
+
+  const other = fresh("A");
+  playNsLast(other);
+  const sibling = fresh("A");
+  assert.equal(other.aceFails.ns, 1);
+  assert.equal(other.levels.ns, "A");
+  assert.equal(sibling.aceFails.ns, 0);
+  assert.equal(sibling.aceFails.ew, 0);
+  assert.equal(sibling.levels.ns, "A");
+
+  const dropped = fresh("A");
+  playNsLast(dropped);
+  playNsLast(dropped);
+  playNsLast(dropped);
+  assert.equal(dropped.levels.ns, "2");
+  assert.equal(dropped.aceFails.ns, 0);
+  const rounds = dropped.rounds.length;
+  assert.throws(() => commitMove(dropped, ghost, meta), /not accepting/);
+  assert.equal(dropped.levels.ns, "2");
+  assert.equal(dropped.aceFails.ns, 0);
+  assert.equal(dropped.rounds.length, rounds);
+  assert.equal(dropped.winner, null);
+}
+
 function playNsLast(match: Match) {
   replayHand(match, [[card(0, "S", "3")], [card(0, "S", "4")], [card(0, "S", "2"), card(0, "H", "2")], [card(0, "S", "6")]], 0);
   commitMove(match, findMove(currentLegal(match), "single", "3"), meta);
@@ -879,6 +934,7 @@ testWildStraight();
 testScoring();
 testScriptedRound();
 testAcePassFailAndDrop();
+testQaAcceptance();
 testLeadPassAndJiefeng();
 testMovesStayInHand();
 testMockMatchEnds();

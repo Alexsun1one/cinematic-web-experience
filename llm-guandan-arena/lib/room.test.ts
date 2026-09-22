@@ -9,14 +9,27 @@ import {
   fillMockSeats,
   getRoom,
   issueInvite,
+  kickAfterTimeouts,
   makeRoomCode,
+  markTimeout,
+  notifyAct,
   seatsReady,
   openOperatorTable,
   startRoomMatch,
   stateForToken,
   toRoomView,
 } from "./room";
-import { matchKey, matchLockKey, MemoryRoomStore, roomKey, roomStore, tenantRoomsKey, TenantRoomLimitError } from "./room-store";
+import {
+  matchKey,
+  matchLockKey,
+  MemoryRoomStore,
+  ROOM_CAS_LUA,
+  roomKey,
+  roomStore,
+  roomTtlSec,
+  tenantRoomsKey,
+  TenantRoomLimitError,
+} from "./room-store";
 
 function testCodes() {
   const codes = new Set(Array.from({ length: 20 }, () => makeRoomCode()));
@@ -73,7 +86,10 @@ async function testGuestInvite() {
   assert.equal(issued.block.includes(issued.token), true);
   const seat = await claimByToken(room, issued.token, "Guest");
   assert.equal(room.seats[seat]?.drive, "self");
-  await assert.rejects(() => claimByToken(room, issued.token, "Again"));
+  const again = await claimByToken(room, issued.token, "Again");
+  assert.equal(again, seat);
+  assert.equal(room.seats[seat]?.name, "Guest");
+  assert.equal(room.seats.filter(Boolean).length, 4);
   const secretView = JSON.stringify(toRoomView(room, { isHost: false }));
   assert.equal(secretView.includes(issued.token), false);
   assert.equal((await stateForToken(room, "not-a-token")).you, null);
@@ -94,7 +110,11 @@ async function testGuestInvite() {
   assert.match(issued.block, /\{"moveId":"\.\.\."\}/);
   assert.match(issued.block, /legalMoves/);
   assert.match(issued.block, /升到 A 还不算赢/);
+  assert.match(issued.block, /头游\+二游/);
+  assert.match(issued.block, /头游\+三游/);
+  assert.match(issued.block, /头游\+末游/);
   assert.match(issued.block, /退回 2/);
+  assert.match(issued.block, /你自己的 Jev/);
 
   const match = await startRoomMatch(room);
   const opened = tableProcedure(match);
@@ -283,6 +303,178 @@ async function testRoomRevisionAndPrune() {
   assert.equal((await store.list(playingOnly)).every((row) => row.status !== "finished"), true);
 }
 
+async function testQaRooms() {
+  const empty = await createRoom({ autoFillMock: false, tenantId: "qa-empty" });
+  await assert.rejects(() => startRoomMatch(empty.room), /四席未就绪/);
+  assert.equal(empty.room.status, "lobby");
+  assert.equal(empty.room.matchId, null);
+  assert.equal(empty.room.seats.every((seat) => seat === null), true);
+
+  const started = await createRoom({ autoFillMock: true, series: "open", startLevel: "T", tenantId: "qa-start" });
+  const match = await startRoomMatch(started.room);
+  await assert.rejects(() => startRoomMatch(started.room), /已经开打/);
+  assert.equal(started.room.matchId, match.id);
+  assert.equal(match.levels.ns, "T");
+  assert.equal(match.aceFails.ns, 0);
+
+  const guest = await createRoom({ autoFillMock: false, series: "open", startLevel: "2", tenantId: "qa-guest" });
+  const issued = await issueInvite(guest.room, "http://localhost:3456");
+  const seat = await claimByToken(guest.room, issued.token, "Guest");
+  await fillMockSeats(guest.room);
+  const live = await startRoomMatch(guest.room);
+  const rejoin = await claimByToken(guest.room, issued.token, "Other");
+  assert.equal(rejoin, seat);
+  assert.equal(guest.room.seats[seat]?.name, "Guest");
+  assert.equal(guest.room.seats[seat]?.seatToken, issued.token);
+  assert.equal(guest.room.matchId, live.id);
+  assert.equal(live.levels.ns, "2");
+  const seatsBefore = guest.room.seats.map((item) => item?.name);
+  await assert.rejects(() => claimByToken(guest.room, "not-a-seat"), /已经开打/);
+  assert.deepEqual(
+    guest.room.seats.map((item) => item?.name),
+    seatsBefore,
+  );
+  const state = await stateForToken(guest.room, issued.token);
+  assert.equal(state.you?.seat, seat);
+
+  const left = await createRoom({ autoFillMock: true, series: "open", startLevel: "2", tenantId: "qa-pair" });
+  const right = await createRoom({ autoFillMock: true, series: "open", startLevel: "K", tenantId: "qa-pair" });
+  const leftMatch = await startRoomMatch(left.room);
+  const rightMatch = await startRoomMatch(right.room);
+  assert.notEqual(left.room.code, right.room.code);
+  assert.notEqual(leftMatch.id, rightMatch.id);
+  assert.equal(leftMatch.levels.ns, "2");
+  assert.equal(rightMatch.levels.ns, "K");
+  assert.equal(leftMatch.aceFails.ns, 0);
+  assert.equal(rightMatch.aceFails.ew, 0);
+  const leftView = JSON.stringify(toRoomView(left.room, { isHost: false }));
+  const rightView = JSON.stringify(toRoomView(right.room, { isHost: false }));
+  assert.equal(leftView.includes(right.room.code), false);
+  assert.equal(rightView.includes(left.room.code), false);
+  assert.equal(leftView.includes(rightMatch.id), false);
+  assert.equal(rightView.includes(leftMatch.id), false);
+
+  const previousKick = process.env.GUANDAN_KICK_AFTER;
+  delete process.env.GUANDAN_KICK_AFTER;
+  assert.equal(kickAfterTimeouts(), 0);
+  const timing = await createRoom({ autoFillMock: false, tenantId: "qa-timeout" });
+  const token = await issueInvite(timing.room, "http://localhost:3456");
+  await claimByToken(timing.room, token.token, "Slow");
+  await markTimeout(timing.room, token.seat);
+  await markTimeout(timing.room, token.seat);
+  assert.equal(timing.room.timeoutStreak[token.seat], 2);
+  assert.equal(timing.room.seats[token.seat]?.drive, "self");
+  assert.equal(timing.room.lastTimeoutSeat, token.seat);
+  await notifyAct(timing.room, token.seat);
+  assert.equal(timing.room.timeoutStreak[token.seat], 0);
+  assert.equal(timing.room.lastTimeoutSeat, null);
+  process.env.GUANDAN_KICK_AFTER = "2";
+  try {
+    assert.equal(kickAfterTimeouts(), 2);
+    await markTimeout(timing.room, token.seat);
+    assert.equal(timing.room.seats[token.seat]?.drive, "self");
+    await markTimeout(timing.room, token.seat);
+    assert.equal(timing.room.seats[token.seat]?.drive, "mock");
+    assert.equal(timing.room.seats[token.seat]?.seatToken, token.token);
+    const recovered = await stateForToken(timing.room, token.token);
+    assert.equal(recovered.you?.seat, token.seat);
+  } finally {
+    if (previousKick === undefined) delete process.env.GUANDAN_KICK_AFTER;
+    else process.env.GUANDAN_KICK_AFTER = previousKick;
+  }
+}
+
+async function testStoreTtlAndRace() {
+  const previous = process.env.GUANDAN_ROOM_TTL_SEC;
+  delete process.env.GUANDAN_ROOM_TTL_SEC;
+  assert.equal(roomTtlSec(), 6 * 60 * 60);
+  process.env.GUANDAN_ROOM_TTL_SEC = "0";
+  assert.equal(roomTtlSec(), 0);
+  process.env.GUANDAN_ROOM_TTL_SEC = "30";
+  assert.equal(roomTtlSec(), 30);
+  if (previous === undefined) delete process.env.GUANDAN_ROOM_TTL_SEC;
+  else process.env.GUANDAN_ROOM_TTL_SEC = previous;
+  assert.match(ROOM_CAS_LUA, /EXPIRE/);
+  assert.match(ROOM_CAS_LUA, /KEYS\[1\]/);
+
+  const store = new MemoryRoomStore();
+  const past = Date.now() - 1000;
+  await store.put({
+    tenantId: "ttl",
+    code: "OLDROOM",
+    status: "playing",
+    createdAt: 1,
+    updatedAt: 1,
+    rev: 4,
+    expiresAt: past,
+  });
+  assert.equal(await store.get("ttl", "OLDROOM"), null);
+  assert.equal((await store.list("ttl")).some((row) => row.code === "OLDROOM"), false);
+  await store.put({
+    tenantId: "other-ttl",
+    code: "OLDROOM",
+    status: "lobby",
+    createdAt: 2,
+    updatedAt: 2,
+    rev: 1,
+    expiresAt: Date.now() + 60_000,
+  });
+  assert.equal((await store.get("ttl", "OLDROOM")), null);
+  assert.equal((await store.get("other-ttl", "OLDROOM"))?.status, "lobby");
+
+  const rewrote = await store.compareAndSet(
+    {
+      tenantId: "ttl",
+      code: "DEAD",
+      status: "lobby",
+      createdAt: 3,
+      updatedAt: 3,
+      rev: 1,
+      expiresAt: Date.now() + 60_000,
+    },
+    0,
+  );
+  assert.equal(rewrote, true);
+  await store.put({
+    tenantId: "ttl",
+    code: "DEAD",
+    status: "playing",
+    createdAt: 3,
+    updatedAt: 3,
+    rev: 9,
+    expiresAt: past,
+  });
+  const revived = await store.compareAndSet(
+    {
+      tenantId: "ttl",
+      code: "DEAD",
+      status: "lobby",
+      createdAt: 4,
+      updatedAt: 4,
+      rev: 1,
+      expiresAt: Date.now() + 60_000,
+    },
+    0,
+  );
+  assert.equal(revived, true);
+  assert.equal((await store.get("ttl", "DEAD"))?.status, "lobby");
+
+  await store.compareAndSet(
+    { tenantId: "race", code: "RACE1", status: "lobby", createdAt: 1, updatedAt: 1, rev: 1 },
+    0,
+  );
+  const left = { tenantId: "race", code: "RACE1", status: "playing", createdAt: 1, updatedAt: 11, rev: 2 };
+  const right = { tenantId: "race", code: "RACE1", status: "finished", createdAt: 1, updatedAt: 22, rev: 2 };
+  const [okLeft, okRight] = await Promise.all([store.compareAndSet(left, 1), store.compareAndSet(right, 1)]);
+  assert.equal(Number(okLeft) + Number(okRight), 1);
+  const stored = await store.get("race", "RACE1");
+  assert.ok(stored);
+  assert.equal(stored.status, okLeft ? "playing" : "finished");
+  assert.equal(stored.updatedAt, okLeft ? 11 : 22);
+  assert.equal(stored.rev, 2);
+  assert.equal(await store.get("other-ttl", "RACE1"), null);
+}
+
 async function testTenantQuota() {
   const previous = process.env.TENANT_MAX_ROOMS;
   process.env.TENANT_MAX_ROOMS = "1";
@@ -313,6 +505,8 @@ async function main() {
   testStoreKeys();
   await testTenantIsolation();
   await testRoomRevisionAndPrune();
+  await testQaRooms();
+  await testStoreTtlAndRace();
   await testTenantQuota();
   console.log("room tests passed");
 }

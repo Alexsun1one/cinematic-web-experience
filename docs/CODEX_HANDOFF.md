@@ -2,27 +2,26 @@
 
 ## Current Goal
 
-打A pass rule and multi-tenant room store are locked. The cycle note is `llm-guandan-arena/CYCLE.md`.
+Peer QA checklist for seat join, 打A, the fail counter, room isolation, timeout policy, and idempotent settle. The note is `llm-guandan-arena/CYCLE.md`.
 
 ## Changed Files
 
-- `llm-guandan-arena/lib/guandan/score.ts`, `match.ts` — reaching A does not win; on A, 头游+二游 or 头游+三游 passes; 头游+末游 counts a fail; the third fail drops that side to 2
-- `llm-guandan-arena/lib/room-store.ts`, `redis-client.ts`, `room.ts`, `store.ts` — `RoomStore`, memory by default, Redis when `REDIS_URL` is set; `tenantId`; `TENANT_MAX_ROOMS`
-- `llm-guandan-arena/MULTI_TENANT.md`, README, invite prompt, procedure
-- Room saves use `rev` so a stale copy cannot overwrite a newer room. Prune deletes finished rooms only.
-- `llm-guandan-arena/CYCLE.md` — what passed and what is next
+- `llm-guandan-arena/lib/room.ts` — claiming a token that already owns a seat returns that seat; timeout streak; `GUANDAN_KICK_AFTER`
+- `llm-guandan-arena/lib/room-store.ts`, `lib/store.ts` — sliding TTL (`GUANDAN_ROOM_TTL_SEC`, default 6 hours) on room and match keys; expired rows are misses
+- `llm-guandan-arena/lib/guandan/engine.test.ts`, `lib/room.test.ts` — 头游+二游 / 头游+三游 / 头游+末游, new-match counter, duplicate settle, two rooms, TTL, compare-and-set
+- `llm-guandan-arena/CYCLE.md`, `AUDIT.md`, `MULTI_TENANT.md`, `BACKEND.md`, README, `.env.example`
 
 ## Validation Evidence
 
-- `npm run test:engine` passed, including a gap hand, climbing onto A without a win, and `GUANDAN_ACE_STRIKES=0`
+- `npm run test:engine` passed
 - `npm run build` passed
-- Live protocol: bad moveId 400, listed move 200, wrong tenant 404, seat token absent from public JSON
-- `HANDS=2` operator room `ADZM7C`, exit 0. Hand 1 头游+末游 +1 (T→J). Hand 2 头游+三游 +2 (T→Q)
+- Live: empty start 400, duplicate claim 200 same seat, mid-game unknown token 400, bad moveId 400 while still your turn, listed move 200, wrong tenant 404, invite phrases present, public JSON without seatToken
+- `HANDS=2` operator room `GXG73U`, exit 0. Hand 1 东西 头游+末游 +1 (T→J). Hand 2 南北 头游+三游 +2 (T→Q)
 
 ## Blockers
 
-None. A live Redis server is not required for the default memory path.
+None for the memory store. A live Redis server was not available, so `EXPIRE` was not exercised against Redis.
 
 ## Next Step
 
-Point `REDIS_URL` at a private Redis and run two processes against it. The client path is in place; this environment did not have a Redis server.
+Point `REDIS_URL` at a private Redis and run two processes against it.

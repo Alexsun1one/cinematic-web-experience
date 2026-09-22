@@ -11,6 +11,8 @@ export interface RoomSnapshot {
   updatedAt: number;
   /** Incremented on each successful save. Missing means 0. */
   rev?: number;
+  /** Epoch ms. A row at or before this time is gone. Missing means no expiry. */
+  expiresAt?: number;
 }
 
 export interface RoomStore {
@@ -65,6 +67,22 @@ export class TenantRoomLimitError extends Error {
   }
 }
 
+/**
+ * Sliding lifetime for a room key and its match key, in seconds.
+ * Unset is 6 hours. `0` keeps the row until something else deletes it.
+ */
+export function roomTtlSec(): number {
+  const raw = process.env.GUANDAN_ROOM_TTL_SEC;
+  if (raw === undefined || raw.trim() === "") return 6 * 60 * 60;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) return 6 * 60 * 60;
+  return Math.floor(n);
+}
+
+export function snapshotExpired(record: RoomSnapshot, now = Date.now()): boolean {
+  return typeof record.expiresAt === "number" && record.expiresAt <= now;
+}
+
 /** Concurrent non-finished rooms per tenant. Unset means no extra cap. */
 export function tenantMaxRooms(): number | null {
   const raw = process.env.TENANT_MAX_ROOMS;
@@ -84,7 +102,14 @@ function memoryRecords(): Map<string, RoomSnapshot> {
 
 export class MemoryRoomStore implements RoomStore {
   async get(tenantId: string, code: string): Promise<RoomSnapshot | null> {
-    return memoryRecords().get(roomKey(tenantId, code)) ?? null;
+    const key = roomKey(tenantId, code);
+    const row = memoryRecords().get(key);
+    if (!row) return null;
+    if (snapshotExpired(row)) {
+      memoryRecords().delete(key);
+      return null;
+    }
+    return row;
   }
 
   async put(record: RoomSnapshot): Promise<void> {
@@ -99,8 +124,10 @@ export class MemoryRoomStore implements RoomStore {
     const code = record.code.toUpperCase();
     const key = roomKey(tenantId, code);
     const current = memoryRecords().get(key);
-    const rev = current?.rev ?? 0;
-    if (current ? rev !== expectedRev : expectedRev !== 0) return false;
+    if (current && snapshotExpired(current)) memoryRecords().delete(key);
+    const live = memoryRecords().get(key);
+    const rev = live?.rev ?? 0;
+    if (live ? rev !== expectedRev : expectedRev !== 0) return false;
     memoryRecords().set(key, { ...record, tenantId, code });
     return true;
   }
@@ -113,7 +140,12 @@ export class MemoryRoomStore implements RoomStore {
     const prefix = `guandan:room:${normalizeTenant(tenantId)}:`;
     const rows: RoomSnapshot[] = [];
     for (const [key, value] of memoryRecords()) {
-      if (key.startsWith(prefix)) rows.push(value);
+      if (!key.startsWith(prefix)) continue;
+      if (snapshotExpired(value)) {
+        memoryRecords().delete(key);
+        continue;
+      }
+      rows.push(value);
     }
     return rows;
   }
@@ -127,9 +159,16 @@ export class MemoryRoomStore implements RoomStore {
 export class RedisRoomStore implements RoomStore {
   async get(tenantId: string, code: string): Promise<RoomSnapshot | null> {
     const client = await getRedis();
-    const raw = await client.get(roomKey(tenantId, code));
+    const key = roomKey(tenantId, code);
+    const raw = await client.get(key);
     if (!raw) return null;
-    return JSON.parse(raw) as RoomSnapshot;
+    const row = JSON.parse(raw) as RoomSnapshot;
+    if (snapshotExpired(row)) {
+      await client.del(key);
+      await client.sRem(tenantRoomsKey(tenantId), code.toUpperCase());
+      return null;
+    }
+    return row;
   }
 
   async put(record: RoomSnapshot): Promise<void> {
@@ -137,8 +176,11 @@ export class RedisRoomStore implements RoomStore {
     const tenantId = normalizeTenant(record.tenantId);
     const code = record.code.toUpperCase();
     const stored = { ...record, tenantId, code };
-    await client.set(roomKey(tenantId, code), JSON.stringify(stored));
+    const key = roomKey(tenantId, code);
+    await client.set(key, JSON.stringify(stored));
     await client.sAdd(tenantRoomsKey(tenantId), code);
+    const ttl = roomTtlSec();
+    if (ttl > 0) await client.expire(key, ttl);
   }
 
   async compareAndSet(record: RoomSnapshot, expectedRev: number): Promise<boolean> {
@@ -148,7 +190,7 @@ export class RedisRoomStore implements RoomStore {
     const stored = { ...record, tenantId, code };
     const written = await client.eval(ROOM_CAS_LUA, {
       keys: [roomKey(tenantId, code), tenantRoomsKey(tenantId)],
-      arguments: [JSON.stringify(stored), String(expectedRev), code],
+      arguments: [JSON.stringify(stored), String(expectedRev), code, String(roomTtlSec())],
     });
     return Number(written) === 1;
   }
@@ -170,7 +212,13 @@ export class RedisRoomStore implements RoomStore {
         await client.sRem(tenantRoomsKey(tenantId), code);
         continue;
       }
-      rows.push(JSON.parse(raw) as RoomSnapshot);
+      const row = JSON.parse(raw) as RoomSnapshot;
+      if (snapshotExpired(row)) {
+        await client.del(roomKey(tenantId, code));
+        await client.sRem(tenantRoomsKey(tenantId), code);
+        continue;
+      }
+      rows.push(row);
     }
     return rows;
   }
@@ -181,7 +229,8 @@ export class RedisRoomStore implements RoomStore {
   }
 }
 
-const ROOM_CAS_LUA = `
+/** ARGV: json, expectedRev, code, ttlSeconds. Tenant set is not expired. */
+export const ROOM_CAS_LUA = `
 local raw = redis.call('GET', KEYS[1])
 local expected = tonumber(ARGV[2])
 if raw then
@@ -196,6 +245,10 @@ elseif expected ~= 0 then
 end
 redis.call('SET', KEYS[1], ARGV[1])
 redis.call('SADD', KEYS[2], ARGV[3])
+local ttl = tonumber(ARGV[4]) or 0
+if ttl > 0 then
+  redis.call('EXPIRE', KEYS[1], ttl)
+end
 return 1
 `;
 

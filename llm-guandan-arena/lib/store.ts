@@ -1,6 +1,6 @@
 import type { Match } from "./guandan/match";
 import { getRedis, usesRedis } from "./redis-client";
-import { matchKey, matchLockKey, matchesIndexKey } from "./room-store";
+import { matchKey, matchLockKey, matchesIndexKey, roomTtlSec } from "./room-store";
 
 type GlobalStore = { __guandanMatches?: Map<string, Match>; __guandanLocks?: Map<string, Promise<void>> };
 
@@ -17,8 +17,11 @@ export function matchStore(): Map<string, Match> {
 export async function persistMatch(match: Match): Promise<void> {
   if (!usesRedis()) return;
   const client = await getRedis();
-  await client.set(matchKey(match.id), JSON.stringify(match));
+  const key = matchKey(match.id);
+  await client.set(key, JSON.stringify(match));
   await client.sAdd(matchesIndexKey(), match.id);
+  const ttl = roomTtlSec();
+  if (ttl > 0) await client.expire(key, ttl);
 }
 
 export function remember(match: Match) {
