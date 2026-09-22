@@ -21,6 +21,7 @@ export function Arena({
   chat = [],
   onChat,
   turnBudgetMs = 8000,
+  seatStatuses = [],
 }: {
   id: string;
   role?: "host" | "spectator";
@@ -30,6 +31,7 @@ export function Arena({
   chat?: { id: number; name: string; text: string }[];
   onChat?: (text: string) => void;
   turnBudgetMs?: number;
+  seatStatuses?: { status: string; statusLabel: string }[];
 }) {
   const [view, setView] = useState<MatchView | null>(null);
   const [error, setError] = useState("");
@@ -39,6 +41,7 @@ export function Arena({
   const [pending, setPending] = useState(false);
   const [reveal, setReveal] = useState(false);
   const [columns, setColumns] = useState(true);
+  const [popStructures, setPopStructures] = useState(true);
   const [panel, setPanel] = useState<"log" | "stats" | "chat">("log");
   const [swept, setSwept] = useState(false);
   const [holding, setHolding] = useState(false);
@@ -215,9 +218,9 @@ export function Arena({
       </header>
       {error ? <p className="banner-error">{error}</p> : null}
       <section className="board">
-        <SeatPlate view={view} index={0} reveal={reveal} place="north" />
+        <SeatPlate view={view} index={0} reveal={reveal} place="north" statusLabel={seatStatuses[0]?.statusLabel} />
         <div className="table-row">
-        <SeatPlate view={view} index={3} reveal={reveal} place="west" />
+        <SeatPlate view={view} index={3} reveal={reveal} place="west" statusLabel={seatStatuses[3]?.statusLabel} />
         <div className="table-rim">
           <div className={`felt-square ${view.trick.closed && !hideZones ? "clearing" : ""}`} data-testid="felt">
             <span className="bearing n">北</span>
@@ -288,21 +291,24 @@ export function Arena({
             ) : null}
           </div>
         </div>
-        <SeatPlate view={view} index={1} reveal={reveal} place="east" />
+        <SeatPlate view={view} index={1} reveal={reveal} place="east" statusLabel={seatStatuses[1]?.statusLabel} />
         </div>
         <section className="south-hand">
           <div className="south-meta">
-            <NameBlock view={view} index={2} />
+            <NameBlock view={view} index={2} statusLabel={seatStatuses[2]?.statusLabel} />
             <div className="sort-toggle">
               <button className={`chip-btn tiny ${columns ? "on" : ""}`} type="button" data-testid="layout-vertical" onClick={() => setColumns(true)}>
                 垂直理牌
+              </button>
+              <button className={`chip-btn tiny ${popStructures ? "on" : ""}`} type="button" data-testid="pop-structures" onClick={() => setPopStructures((value) => !value)}>
+                炸弹/同花顺
               </button>
               <button className={`chip-btn tiny ${columns ? "" : "on"}`} type="button" data-testid="layout-fan" onClick={() => setColumns(false)}>
                 横排扇形
               </button>
             </div>
           </div>
-          <HandFan cards={view.hands[2]} level={view.level} mode={columns ? "columns" : "fan"} />
+          <HandFan cards={view.hands[2]} level={view.level} mode={columns ? "columns" : "fan"} popStructures={columns && popStructures} />
         </section>
         <aside className="record" data-testid="play-log">
           <h2>
@@ -400,16 +406,18 @@ function SeatPlate({
   index,
   reveal,
   place,
+  statusLabel,
 }: {
   view: MatchView;
   index: number;
   reveal: boolean;
   place: "north" | "west" | "east";
+  statusLabel?: string;
 }) {
   const seat = view.seats[index];
   return (
     <section className={`seat-plate ${place} ${seat.team} ${seat.active ? "active" : ""}`}>
-      <NameBlock view={view} index={index} />
+      <NameBlock view={view} index={index} statusLabel={statusLabel} />
       {reveal ? (
         <HandFan
           cards={view.hands[index]}
@@ -425,20 +433,22 @@ function SeatPlate({
   );
 }
 
-function NameBlock({ view, index }: { view: MatchView; index: number }) {
+function NameBlock({ view, index, statusLabel }: { view: MatchView; index: number; statusLabel?: string }) {
   const seat = view.seats[index];
   const place = seat.finished >= 0 ? PLACES[seat.finished] : null;
+  const face = (seat.short || seat.name || seat.wind).slice(0, 1);
   return (
     <header className="nameplate">
+      <span className={`seat-avatar ${seat.team}`} aria-hidden>{face}</span>
       <span className={`wind-chip ${seat.team}`}>{seat.wind}</span>
       <div>
         <strong>{seat.name}</strong>
         <small>
-          {seat.provider === "mock" ? "Mock" : seat.provider}
+          {statusLabel || (seat.provider === "mock" ? "Mock" : seat.provider)}
           {seat.active ? " · 出牌" : ""}
         </small>
       </div>
-      <b className="count-chip">{seat.cards}张</b>
+      <b className="count-chip">{seat.cards}</b>
       {place ? <em className="place-ribbon">{place}</em> : null}
     </header>
   );

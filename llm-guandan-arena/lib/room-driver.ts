@@ -2,7 +2,7 @@ import { chooseHeuristic } from "./guandan/heuristic";
 import { beginRound, commitMove, currentLegal, logReason, type Match } from "./guandan/match";
 import { mockQuickReason } from "./llm/quick-reason";
 import { TURN_BUDGET_MS } from "./invite";
-import { getRoom, type Room } from "./room";
+import { getRoom, markTimeout, type Room } from "./room";
 import { matchStore, withMatchLock } from "./store";
 
 const running = new Set<string>();
@@ -45,6 +45,7 @@ async function loop(code: string) {
       await withMatchLock(live.id, async () => {
         if (live.status !== "playing" || live.trick.currentSeat !== seat) return;
         playFallback(live, "超时代打");
+        markTimeout(room, seat);
       });
     } else {
       await withMatchLock(match.id, async () => {

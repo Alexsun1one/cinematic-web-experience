@@ -120,18 +120,22 @@ function useLeaving(cards: Card[]): Card[] {
   return leaving;
 }
 
+const POP_ROLES = new Set(["wild", "jokerBomb", "bomb", "flush"]);
+
 export function HandFan({
   cards,
   level,
   mode,
   size = "hand",
   axis = "row",
+  popStructures = false,
 }: {
   cards: Card[];
   level: FaceRank;
   mode: "fan" | "columns";
   size?: "hand" | "mini";
   axis?: "row" | "col";
+  popStructures?: boolean;
 }) {
   const leaving = useLeaving(cards);
   const ordered = handOrder(cards, level);
@@ -140,20 +144,23 @@ export function HandFan({
     const columns = arrangeColumns([...cards, ...leaving], level);
     const squeeze = columns.length > 12 ? Math.min(14, (columns.length - 12) * 1.5) : 0;
     return (
-      <div className="rank-columns" data-testid="vertical-hand">
+      <div className={`rank-columns ${popStructures ? "pop-structures" : ""}`} data-testid="vertical-hand">
         {columns.map((column, columnIndex) => {
-          const stagger = column.lift + (columnIndex % 2 === 0 ? 0 : 8) + (columnIndex % 3 === 0 ? 3 : 0);
+          const pop = popStructures && POP_ROLES.has(column.role);
+          const stagger = column.lift + (columnIndex % 2 === 0 ? 0 : 8) + (columnIndex % 3 === 0 ? 3 : 0) + (pop ? 18 : 0);
+          const tag = column.role === "flush" ? "同花顺" : column.role === "bomb" || column.role === "jokerBomb" ? "炸" : column.role === "wild" ? "配" : "";
           return (
             <div
-              className={`rank-col role-${column.role}`}
+              className={`rank-col role-${column.role} ${pop ? "pop" : ""}`}
               key={column.key}
               data-role={column.role}
               style={{
-                transform: `translateY(-${stagger}px)`,
+                transform: `translateY(-${stagger}px) scale(${pop ? 1.08 : 1})`,
                 marginLeft: columnIndex === 0 ? 0 : -squeeze,
-                zIndex: columns.length - columnIndex,
+                zIndex: columns.length - columnIndex + (pop ? 2 : 0),
               }}
             >
+              {pop ? <em className="col-tag">{tag}</em> : null}
               {column.cards.map((card, index) => (
                 <div key={card.id} className={`rank-col-card ${live.has(card.id) ? "" : "depart"}`} style={{ zIndex: index + 1 }}>
                   <CardView card={card} level={level} />

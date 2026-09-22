@@ -2,7 +2,7 @@
 
 ## Current Goal
 
-Glass Arena. **复制给 Agent** is a self-check + self-play protocol: guest owns Jev and LLM. Server lists legal moves and Mock/passes on timeout. Bigger cards, smaller felt. `npm run watch` still opens a Mock spectator match.
+Glass Arena. Guest owns Jev and LLM. Invite and 规则速览 state the engine opening order. Guest state exposes phase, leaderSeat, currentTurn, mustBeat, legalMoves. Seats show 等待/自检中/就绪/出牌中/超时. Reference player is scripts/guest-agent-player.mjs. South hand is larger than the felt.
 
 ## Changed Files
 

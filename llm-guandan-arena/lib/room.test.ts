@@ -82,6 +82,8 @@ function testGuestInvite() {
   assert.match(issued.block, /第一手领出固定是座位 0/);
   assert.match(issued.block, /接风/);
   assert.match(issued.block, /phase 永远不会是 tribute/);
+  assert.match(issued.block, /guest-agent-player/);
+  assert.match(issued.block, /legalMoves/);
 
   const match = startRoomMatch(room);
   const opened = tableProcedure(match);
@@ -91,6 +93,9 @@ function testGuestInvite() {
   assert.equal(opened.mustBeat, null);
   const lead = currentLegal(match).find((move) => move.kind !== "pass");
   assert.ok(lead);
+  const opening = stateForToken(room, issued.token);
+  assert.ok(Array.isArray(opening.legalMoves));
+  assert.equal(opening.legalMoves?.length, opening.you?.legal.length);
   commitMove(match, lead, { source: "mock", provider: "mock", retries: 0, note: "test" });
   const following = stateForToken(room, issued.token);
   assert.equal(following.phase, "play");
@@ -99,6 +104,22 @@ function testGuestInvite() {
   assert.equal(following.mustBeat?.seat, 0);
   assert.equal(following.you?.mustBeat?.seat, 0);
   assert.equal(following.you?.currentTurn, 1);
+  assert.equal(following.legalMoves, null);
+}
+
+function testSeatPresence() {
+  const { room } = createRoom({ series: "open", autoFillMock: false });
+  assert.equal(toRoomView(room, { isHost: true }).seats[0].status, "waiting");
+  const issued = issueInvite(room, "http://localhost:3456");
+  assert.equal(toRoomView(room, { isHost: false }).seats[issued.seat].status, "checking");
+  claimByToken(room, issued.token, "Guest");
+  assert.equal(toRoomView(room, { isHost: false }).seats[issued.seat].status, "ready");
+  fillMockSeats(room);
+  startRoomMatch(room);
+  assert.equal(toRoomView(room, { isHost: false }).seats[issued.seat].status, "playing");
+  room.lastTimeoutSeat = issued.seat;
+  assert.equal(toRoomView(room, { isHost: false }).seats[issued.seat].status, "timedOut");
+  assert.equal(toRoomView(room, { isHost: false }).seats[issued.seat].statusLabel, "超时");
 }
 
 function testSettleNamesNextLeader() {
@@ -124,5 +145,6 @@ testCodes();
 testMockRoomFlow();
 testByoSeatStripsSecret();
 testGuestInvite();
+testSeatPresence();
 testSettleNamesNextLeader();
 console.log("room tests passed");

@@ -21,6 +21,8 @@ interface RoomSeat {
   model: string | null;
   ready: boolean;
   badge: string;
+  status?: "waiting" | "checking" | "ready" | "playing" | "timedOut";
+  statusLabel?: string;
 }
 
 interface RoomView {
@@ -236,6 +238,7 @@ export function RoomTable({ code }: { code: string }) {
         spectatorCount={view.spectatorCount}
         externalView={view.match}
         turnBudgetMs={view.turnBudgetMs}
+        seatStatuses={view.seats.map((seat) => ({ status: seat.status || "playing", statusLabel: seat.statusLabel || "出牌中" }))}
         chat={view.chat}
         onChat={(text) => void api(`/api/rooms/${upper}/chat`, { text, name: view.isHost ? "房主" : spectatorName })}
       />
@@ -290,12 +293,12 @@ export function RoomTable({ code }: { code: string }) {
             <article key={seat.index} className={`hall-seat room-seat ${seat.team} ${seat.ready ? "ready" : ""}`} data-testid={`room-seat-${seat.index}`}>
               <header>
                 <em>{seat.wind}</em>
-                {seat.ready ? <b className="ready-dot">就绪</b> : <b className="empty-dot">空</b>}
+                <b className={`ready-dot status-${seat.status || "waiting"}`} data-testid={`seat-status-${seat.index}`}>{seat.statusLabel || (seat.ready ? "就绪" : "等待")}</b>
               </header>
               {seat.empty ? (
                 <>
                   <strong>空位</strong>
-                  <small>留给复制给 Agent 的自驾席</small>
+                  <small>{seat.status === "checking" ? "Agent 正在自检 Jev" : "留给复制给 Agent 的自驾席"}</small>
                 </>
               ) : (
                 <>

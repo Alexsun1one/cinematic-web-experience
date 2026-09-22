@@ -46,7 +46,20 @@ export interface RoomSeatPublic {
   model: string | null;
   ready: boolean;
   badge: string;
+  /** waiting | checking | ready | playing | timedOut */
+  status: SeatPresence;
+  statusLabel: string;
 }
+
+export type SeatPresence = "waiting" | "checking" | "ready" | "playing" | "timedOut";
+
+const STATUS_LABEL: Record<SeatPresence, string> = {
+  waiting: "等待",
+  checking: "自检中",
+  ready: "就绪",
+  playing: "出牌中",
+  timedOut: "超时",
+};
 
 export interface ChatMessage {
   id: number;
@@ -72,6 +85,8 @@ export interface Room {
   matchId: string | null;
   autoFillMock: boolean;
   invites: SeatInvite[];
+  /** Seat whose last action was a server timeout fallback. */
+  lastTimeoutSeat: number | null;
   onAct?: (seat: number) => void;
 }
 
@@ -126,6 +141,7 @@ export function createRoom(input: {
     matchId: null,
     autoFillMock: input.autoFillMock !== false,
     invites: [],
+    lastTimeoutSeat: null,
   };
   if (room.autoFillMock) fillMockSeats(room);
   rooms().set(code, room);
@@ -321,7 +337,23 @@ export function seatIndexByToken(room: Room, token: string): number {
 }
 
 export function notifyAct(room: Room, seat: number) {
+  if (room.lastTimeoutSeat === seat) room.lastTimeoutSeat = null;
   room.onAct?.(seat);
+}
+
+export function markTimeout(room: Room, seat: number) {
+  room.lastTimeoutSeat = seat;
+  touch(room);
+}
+
+export function seatPresence(room: Room, index: number): SeatPresence {
+  const seat = room.seats[index];
+  const invited = room.invites.some((item) => item.seat === index && !item.used);
+  if (!seat) return invited ? "checking" : "waiting";
+  if (invited && seat.drive !== "self") return "checking";
+  if (room.status === "lobby") return seat.ready ? "ready" : "waiting";
+  if (room.lastTimeoutSeat === index) return "timedOut";
+  return "playing";
 }
 
 export function seatsReady(room: Room): boolean {
@@ -412,7 +444,9 @@ export function toRoomView(
     isHost: opts.isHost,
     spectatorCount: room.spectators.size,
     spectators: [...room.spectators.values()].map((row) => ({ id: row.id, name: row.name })),
-    seats: room.seats.map((seat, index) => ({
+    seats: room.seats.map((seat, index) => {
+      const status = seatPresence(room, index);
+      return {
       index,
       wind: SEAT_WIND[index],
       team: teamOf(index),
@@ -426,7 +460,10 @@ export function toRoomView(
       model: seat?.model ?? null,
       ready: Boolean(seat?.ready),
       badge: seatBadge(seat),
-    })),
+      status,
+      statusLabel: STATUS_LABEL[status],
+      };
+    }),
     ready: seatsReady(room),
     matchId: room.matchId,
     match: opts.match ? toView(opts.match) : null,
@@ -467,5 +504,6 @@ export function stateForToken(room: Room, token: string | null) {
       currentTurn: view.currentTurn,
       mustBeat: view.mustBeat,
     },
+    legalMoves: yourTurn ? legal : null,
   };
 }

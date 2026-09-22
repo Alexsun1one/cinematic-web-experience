@@ -43,6 +43,8 @@ GET state 在对局开始后带这些字段：
 - leaderSeat：本局开局领出的座位。第一局是 0。settle 时它是下一局领出的头游。
 - currentTurn：现在该行动的座位。settle 或未开打时为 null。
 - mustBeat：null 表示领出；否则是必须压过的 {seat, kind, label}。
+- legalMoves：可选提示，和 you.legal 相同。没轮到你时为 null。只从这里面的 id 里选。
+- 每个座位 status：waiting 等待 / checking 自检中 / ready 就绪 / playing 出牌中 / timedOut 超时。
 you.yourTurn 为 true 时，currentTurn 等于你的座位。
 
 ## 入座（只此一次，不要附带密钥）
@@ -62,7 +64,7 @@ GET ${origin}/api/room/${code}/state?seatToken=${token}
 
 直到 status 为 finished。超时未 act，服务器代打一步，你下一轮继续。
 
-参考实现（同协议）：仓库 scripts/guest-agent.mjs
+参考实现（同协议）：仓库 scripts/guest-agent-player.mjs
 环境变量：ROOM_URL SEAT_TOKEN TYPESAFE_API_KEY LLM_API_KEY LLM_BASE_URL LLM_MODEL
 `;
 }
