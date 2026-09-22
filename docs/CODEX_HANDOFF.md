@@ -20,7 +20,8 @@ Operator seat: three Mock bots plus one open seat the coordinator claims and pla
 ## Validation Evidence
 
 - `npm run test:engine` (includes operator table)
-- `npm run operator` claims 知识 and plays 6 legal moves against 3 bots
+- `npm run operator` claims 知识 and plays 6 legal moves against 3 bots (room `2A2864`: full house, passes, full house; 9 bot plays)
+- `npm run build` passed
 - `npm run build` passed
 - Frozen matches: 钢板 seed 8 step 1, 首炸/4炸 seed 1 step 7, 同花顺 seed 1 step 257, 头游 seed 1 step 47, 双下 ceremony seed 1 step 73
 - Screenshots: `guandan-hl-plate.png`, `guandan-hl-bomb.png`, `guandan-hl-flush.png`, `guandan-hl-firstout.png`, `guandan-hl-ceremony.png`
