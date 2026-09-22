@@ -1,6 +1,7 @@
 import type { QuickBeat } from "../llm/quick-reason";
 import { createDeck, deal, shuffle, subtract } from "./cards";
 import { chooseHeuristic } from "./heuristic";
+import { opponentHasFinished, playHighlight } from "./highlight";
 import { leadAfterTrick, legalMoves, nextSeatWithCards, type Move } from "./legal";
 import { bumpLevel, completeOrder, outcomeLabel, roundIsOver, teamPlaces, upgradeDelta } from "./score";
 import {
@@ -42,6 +43,8 @@ export interface LogEvent {
   en: string;
   cards?: Move["cards"];
   bombTier?: number;
+  moveKind?: string;
+  highlight?: string;
   source?: string;
   note?: string;
   assist?: AssistNote | null;
@@ -195,6 +198,7 @@ export function commitMove(match: Match, move: Move, meta: MoveMeta) {
       trick: match.trickSerial,
       zh: `${seatName(match, seat)} 过牌`,
       en: `${seatNameEn(match, seat)} passes`,
+      moveKind: "pass",
       source: meta.source,
       note: meta.note,
       assist: meta.assist,
@@ -218,6 +222,15 @@ export function commitMove(match: Match, move: Move, meta: MoveMeta) {
   match.trick.lastPlay = played;
   match.trick.lastSeat = seat;
   match.pile = { seat, move: played };
+  const priorBomb = match.log.some((event) => event.round === match.round && (event.bombTier ?? 0) > 0);
+  const highlight = playHighlight({
+    kind: played.kind,
+    bombTier: played.bombTier,
+    seat,
+    level: match.level,
+    priorBomb,
+    opponentFinished: opponentHasFinished(match.finishOrder, seat),
+  });
   pushLog(match, {
     seat,
     kind: "play",
@@ -226,6 +239,8 @@ export function commitMove(match: Match, move: Move, meta: MoveMeta) {
     trick: match.trickSerial,
     cards: played.cards,
     bombTier: played.bombTier,
+    moveKind: played.kind,
+    highlight: highlight ?? undefined,
     source: meta.source,
     note: meta.note,
     assist: meta.assist,
@@ -239,6 +254,7 @@ export function commitMove(match: Match, move: Move, meta: MoveMeta) {
       kind: "finish",
       zh: `${seatName(match, seat)} ${placeName(place)}`,
       en: `${seatNameEn(match, seat)} finishes ${placeNameEn(place)}`,
+      highlight: place === 1 ? "头游" : undefined,
       counts: match.hands.map((hand) => hand.length),
     });
     if (roundIsOver(match.finishOrder)) {
@@ -294,6 +310,7 @@ function closeTrick(match: Match, winner: number) {
       kind: "lead",
       zh: `${seatName(match, partner)} 接风`,
       en: `${seatNameEn(match, partner)} takes the lead`,
+      highlight: "接风",
     });
   }
   match.trick = { currentSeat: leader, lastPlay: null, lastSeat: null, closed: true };
@@ -341,6 +358,7 @@ function endRound(match: Match, lastSeat: number) {
     kind: "round",
     zh: `本局结束 ${names} · ${outcome} · ${team} +${delta}（打${rankName(from)} → 打${rankName(bumped.level)}）`,
     en: `Round over: ${namesEn}. ${outcome} · ${winner.toUpperCase()} +${delta} (${rankName(from)} → ${rankName(bumped.level)})`,
+    highlight: bumped.won ? "打A" : delta >= 3 ? "双下" : "升级",
   });
   if (bumped.won) {
     match.status = "finished";

@@ -2,29 +2,25 @@
 
 ## Current Goal
 
-Glass Arena. Guest owns Jev and LLM. Invite and 规则速览 state the engine opening order. Guest state exposes phase, leaderSeat, currentTurn, mustBeat, legalMoves. Seats show 等待/自检中/就绪/出牌中/超时. Reference player is scripts/guest-agent-player.mjs. South hand is larger than the felt.
+Tasteful esports highlight layer on the teal glass table: combo FX, 高光 banners, and a sequential ranking ceremony. Guest protocol unchanged.
 
 ## Changed Files
 
-- `llm-guandan-arena/lib/invite.ts`, `lib/room.ts`, `lib/room-driver.ts`, `lib/room.test.ts`
-- `llm-guandan-arena/app/api/room/[code]/{claim-seat,state,act}`
-- `llm-guandan-arena/app/api/rooms/[code]/invite`
-- `llm-guandan-arena/scripts/guest-agent.mjs`
-- `llm-guandan-arena/components/RoomTable.tsx`, `Lobby.tsx`, `Arena.tsx`, `RulesDrawer.tsx`
-- `llm-guandan-arena/app/globals.css`, `README.md`
+- `llm-guandan-arena/lib/guandan/highlight.ts` — FX kind and banner rank
+- `llm-guandan-arena/lib/guandan/match.ts` — `moveKind` and `highlight` on the play log
+- `llm-guandan-arena/lib/view.ts` — zones expose `moveKind` and `highlight`
+- `llm-guandan-arena/components/Arena.tsx` — banners, ceremony, level-rail climb
+- `llm-guandan-arena/app/globals.css` — CSS/SVG-free FX, reduced motion, speed via `--fx-ms`
+- `llm-guandan-arena/lib/guandan/engine.test.ts`
 
 ## Validation Evidence
 
-- `npm run test:engine` (engine + room tests, including guest invite)
-- `npm run build`
-- `scripts/guest-agent.mjs` without `TYPESAFE_API_KEY` exits `缺 Jev，不能打`
-- Room `XQYU22`: claim without keys starts a self seat; posting `apiKey` is rejected; illegal `moveId` is rejected; public JSON omits the seat token; idle self seat advances as Mock after the turn budget; a legal `act` is accepted
-- Screenshots: invite copy block, how-to, rules drawer, mid-game cards
+- `npm run test:engine` passed (engine + room)
 
 ## Blockers
 
-None for Mock zero-key room → spectator second tab.
+None.
 
 ## Next Step
 
-Optional Redis-backed rooms for multi-instance.
+Production build, then capture 钢板 / 炸弹 / 同花顺 / 头游 / ranking ceremony.

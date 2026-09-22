@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { BackRow, CardView, HandFan } from "@/components/CardView";
 import { RulesButton } from "@/components/RulesDrawer";
-import { statsToCsv } from "@/lib/guandan/stats";
+import { bannerFromHighlight, fxForMove } from "@/lib/guandan/highlight";
 import { FACE } from "@/lib/guandan/types";
 import type { MatchView } from "@/lib/view";
 
@@ -38,6 +38,10 @@ export function Arena({
   const serverDriven = Boolean(roomCode);
   const [auto, setAuto] = useState(role === "host" && !roomCode);
   const [speed, setSpeed] = useState(700);
+  const [banner, setBanner] = useState<{ id: number; title: string; seat: number | null } | null>(null);
+  const [shake, setShake] = useState(false);
+  const seenLog = useRef(0);
+  const primed = useRef(false);
   const [pending, setPending] = useState(false);
   const [reveal, setReveal] = useState(false);
   const [columns, setColumns] = useState(true);
@@ -79,6 +83,42 @@ export function Arena({
   }, [id, spectator]);
 
   const trickKey = view?.zones.map((zone) => zone?.id ?? 0).join("-") ?? "";
+
+  useEffect(() => {
+    if (!view) return;
+    const lastId = view.log.at(-1)?.id ?? 0;
+    const still = new URLSearchParams(window.location.search).get("still") === "1";
+    if (!primed.current) {
+      primed.current = true;
+      seenLog.current = lastId;
+      if (still) {
+        const prior = [...view.log].reverse().find((event) => bannerFromHighlight(event.highlight));
+        const title = prior ? bannerFromHighlight(prior.highlight) : null;
+        if (prior && title) {
+          setBanner({ id: prior.id, title, seat: prior.seat });
+          if (title === "钢板") {
+            setShake(true);
+            window.setTimeout(() => setShake(false), fxMs(speed));
+          }
+        }
+      }
+      return;
+    }
+    const fresh = view.log.filter((event) => event.id > seenLog.current);
+    seenLog.current = lastId;
+    const hit = [...fresh].reverse().find((event) => bannerFromHighlight(event.highlight));
+    const title = hit ? bannerFromHighlight(hit.highlight) : null;
+    if (!hit || !title) return;
+    setBanner({ id: hit.id, title, seat: hit.seat });
+    if (title === "钢板") {
+      setShake(true);
+      window.setTimeout(() => setShake(false), fxMs(speed));
+    }
+    const timer = window.setTimeout(() => {
+      setBanner((current) => (current?.id === hit.id ? null : current));
+    }, bannerMs(speed));
+    return () => window.clearTimeout(timer);
+  }, [view, speed]);
 
   useEffect(() => {
     setSwept(false);
@@ -165,9 +205,15 @@ export function Arena({
   const hideZones = view.trick.closed && swept;
 
   const seriesNote = view.handLimit ? ` · 共${view.handLimit}局` : view.startLevel === "2" ? " · 2→A" : "";
+  const fireSeat = banner?.title === "头游" ? banner.seat : null;
+  const hl = banner ? hlSlug(banner.title) : "";
 
   return (
-    <main className={`room ${columns ? "vertical" : ""}`} data-testid="table">
+    <main
+      className={`room ${columns ? "vertical" : ""} ${shake ? "fx-shake" : ""} ${hl ? `hl-live hl-${hl}` : ""}`}
+      data-testid="table"
+      style={{ ["--fx-ms" as string]: `${fxMs(speed)}ms`, ["--banner-ms" as string]: `${bannerMs(speed)}ms` }}
+    >
       <header className="hud">
         <div className="hud-brand">
           <b>模型掼蛋擂台</b>
@@ -222,9 +268,9 @@ export function Arena({
       </header>
       {error ? <p className="banner-error">{error}</p> : null}
       <section className="board">
-        <SeatPlate view={view} index={0} reveal={reveal} place="north" statusLabel={seatStatuses[0]?.statusLabel} />
+        <SeatPlate view={view} index={0} reveal={reveal} place="north" statusLabel={seatStatuses[0]?.statusLabel} fire={fireSeat === 0} />
         <div className="table-row">
-        <SeatPlate view={view} index={3} reveal={reveal} place="west" statusLabel={seatStatuses[3]?.statusLabel} />
+        <SeatPlate view={view} index={3} reveal={reveal} place="west" statusLabel={seatStatuses[3]?.statusLabel} fire={fireSeat === 3} />
         <div className="table-rim">
           <div className={`felt-square ${view.trick.closed && !hideZones ? "clearing" : ""}`} data-testid="felt">
             <span className="bearing n">北</span>
@@ -249,53 +295,21 @@ export function Arena({
                 <code>{preview.reason.latencyMs}ms</code>
               </div>
             ) : null}
-            {view.status !== "playing" && latestRound ? (
-              <div className="round-banner ceremony" data-testid="result" key={latestRound.round}>
-                <div className="ceremony-sparks" aria-hidden>
-                  {Array.from({ length: 10 }, (_, index) => (
-                    <i
-                      key={index}
-                      style={{
-                        left: `${8 + ((index * 17) % 84)}%`,
-                        top: `${20 + ((index * 23) % 55)}%`,
-                        animationDelay: `${index * 45}ms`,
-                        background: "#2ee6a6",
-                      }}
-                    />
-                  ))}
-                </div>
-                <div className={`ceremony-seal ${latestRound.delta >= 3 ? "double" : ""}`}>
-                  {latestRound.delta >= 3 ? "双下" : "头游"}
-                </div>
-                <b className="title">{latestRound.outcome} +{latestRound.delta}</b>
-                <div className="places">
-                  {latestRound.order.map((seat, index) => (
-                    <span key={seat}>
-                      <em>{PLACES[index]}</em>
-                      {view.seats[seat].short}
-                    </span>
-                  ))}
-                </div>
-                <p className={latestRound.winner === "ns" ? "climb ns" : "climb"}>
-                  南北 打{chip(latestRound.nsBefore)} → 打{chip(latestRound.nsAfter)}
-                </p>
-                <p className={latestRound.winner === "ew" ? "climb ew" : "climb"}>
-                  东西 打{chip(latestRound.ewBefore)} → 打{chip(latestRound.ewAfter)}
-                </p>
-                {view.status === "finished" ? (
-                  <small>{view.winner === "ns" ? "南北" : "东西"}{latestRound.matchWon ? " 过A" : " 领先"}</small>
-                ) : (
-                  <small>只升不降 · 双下+3 · 头游+三游+2 · 头游+末游+1</small>
-                )}
+            {banner ? (
+              <div className={`hl-banner hl-${hl}`} data-testid="highlight" key={banner.id}>
+                <b>{banner.title}</b>
               </div>
+            ) : null}
+            {view.status !== "playing" && latestRound ? (
+              <Ceremony view={view} round={latestRound} speed={speed} />
             ) : null}
           </div>
         </div>
-        <SeatPlate view={view} index={1} reveal={reveal} place="east" statusLabel={seatStatuses[1]?.statusLabel} />
+        <SeatPlate view={view} index={1} reveal={reveal} place="east" statusLabel={seatStatuses[1]?.statusLabel} fire={fireSeat === 1} />
         </div>
         <section className="south-hand">
           <div className="south-meta">
-            <NameBlock view={view} index={2} statusLabel={seatStatuses[2]?.statusLabel} />
+            <NameBlock view={view} index={2} statusLabel={seatStatuses[2]?.statusLabel} fire={fireSeat === 2} />
             <div className="sort-toggle">
               <button className={`chip-btn tiny ${columns ? "on" : ""}`} type="button" data-testid="layout-vertical" onClick={() => setColumns(true)}>
                 垂直理牌
@@ -328,7 +342,7 @@ export function Arena({
               {(preview ? [...view.log, preview] : view.log).slice(-24).map((event) => (
                 <p key={event.id} className={event.kind === "reason" ? "reason-line" : ""}>
                   <b>{event.zh}</b>
-                  <small>{event.reason ? `${event.reason.latencyMs}ms` : event.source ? event.source : ""}</small>
+                  <small data-highlight={event.highlight || ""}>{event.highlight || (event.reason ? `${event.reason.latencyMs}ms` : event.source || "")}</small>
                 </p>
               ))}
             </div>
@@ -367,6 +381,34 @@ function chip(rank: string): string {
   return rank === "T" ? "10" : rank;
 }
 
+function hlSlug(title: string): string {
+  const map: Record<string, string> = {
+    天王炸: "royal",
+    钢板: "plate",
+    同花顺: "flush",
+    翻盘炸: "comeback",
+    首炸: "first",
+    打A: "ace",
+    头游: "firstout",
+    接风: "lead",
+    双下: "double",
+    升级: "up",
+  };
+  return map[title] || "mark";
+}
+
+function fxMs(speed: number): number {
+  if (speed <= 240) return 200;
+  if (speed >= 1400) return 350;
+  return 280;
+}
+
+function bannerMs(speed: number): number {
+  if (speed <= 240) return 1200;
+  if (speed >= 1400) return 2000;
+  return 1600;
+}
+
 function beatDuration(speed: number): number {
   if (speed <= 240) return 800;
   if (speed >= 1400) return 1500;
@@ -385,10 +427,14 @@ function PlayZone({
   hidden: boolean;
 }) {
   const zone = view.zones[index];
+  const fx = zone ? fxForMove(zone.moveKind || (zone.bombTier > 0 ? "bomb4" : zone.kind)) : "whoosh";
   return (
-    <div className={`play-zone ${wind} ${zone && !hidden ? "live" : ""} ${zone && zone.bombTier > 0 ? "bomb" : ""}`}>
+    <div className={`play-zone ${wind} ${zone && !hidden ? "live" : ""} fx-${fx}`}>
       {zone && !hidden ? (
-        <div key={zone.id} className={`zone-cards well ${zone.bombTier > 0 ? "slam" : `from-${wind}`}`}>
+        <div key={zone.id} className={`zone-cards well ${fx === "bomb" || fx === "royal" || fx === "plate" ? "slam" : `from-${wind}`}`}>
+          <span className={`fx fx-${fx}`} aria-hidden />
+          {fx === "flush" ? <em className="fx-title">同花顺</em> : null}
+          {fx === "royal" ? <em className="fx-title royal">天王炸</em> : null}
           {zone.kind === "pass" ? (
             <div className="pass-stamp">不要</div>
           ) : (
@@ -407,17 +453,19 @@ function SeatPlate({
   reveal,
   place,
   statusLabel,
+  fire,
 }: {
   view: MatchView;
   index: number;
   reveal: boolean;
   place: "north" | "west" | "east";
   statusLabel?: string;
+  fire?: boolean;
 }) {
   const seat = view.seats[index];
   return (
     <section className={`seat-plate ${place} ${seat.team} ${seat.active ? "active" : ""}`}>
-      <NameBlock view={view} index={index} statusLabel={statusLabel} />
+      <NameBlock view={view} index={index} statusLabel={statusLabel} fire={fire} />
       {reveal ? (
         <HandFan
           cards={view.hands[index]}
@@ -433,12 +481,17 @@ function SeatPlate({
   );
 }
 
-function NameBlock({ view, index, statusLabel }: { view: MatchView; index: number; statusLabel?: string }) {
+function NameBlock({ view, index, statusLabel, fire }: { view: MatchView; index: number; statusLabel?: string; fire?: boolean }) {
   const seat = view.seats[index];
   const place = seat.finished >= 0 ? PLACES[seat.finished] : null;
   const face = (seat.short || seat.name || seat.wind).slice(0, 1);
   return (
-    <header className="nameplate">
+    <header className={`nameplate ${fire ? "fire" : ""}`}>
+      {fire ? (
+        <span className="seat-fire" aria-hidden>
+          <i /><i /><i /><i /><i />
+        </span>
+      ) : null}
       <span className={`seat-avatar ${seat.team}`} aria-hidden>{face}</span>
       <span className={`wind-chip ${seat.team}`}>{seat.wind}</span>
       <div>
@@ -456,6 +509,12 @@ function NameBlock({ view, index, statusLabel }: { view: MatchView; index: numbe
 
 function LevelTrack({ view }: { view: MatchView }) {
   const latest = view.rounds.at(-1);
+  const settling = Boolean(latest && view.status !== "playing");
+  const before = settling && latest ? (latest.winner === "ns" ? latest.nsBefore : latest.ewBefore) : "";
+  const after = settling && latest ? (latest.winner === "ns" ? latest.nsAfter : latest.ewAfter) : "";
+  const faces = FACE as readonly string[];
+  const from = faces.indexOf(before);
+  const to = faces.indexOf(after);
   return (
     <div className="level-track" data-testid="level-track">
       <div className="track-rail">
@@ -463,16 +522,14 @@ function LevelTrack({ view }: { view: MatchView }) {
           const ns = view.levels.ns === rank;
           const ew = view.levels.ew === rank;
           const deal = view.level === rank;
-          const climbed = Boolean(
-            latest &&
-              view.status !== "playing" &&
-              ((latest.winner === "ns" && latest.nsAfter === rank && latest.nsBefore !== rank) ||
-                (latest.winner === "ew" && latest.ewAfter === rank && latest.ewBefore !== rank)),
-          );
+          const index = faces.indexOf(rank);
+          const onPath = from >= 0 && to > from && index > from && index <= to;
+          const climbed = Boolean(settling && latest && ((latest.winner === "ns" && ns) || (latest.winner === "ew" && ew)) && latest.from !== latest.to);
           return (
             <div
               key={rank}
-              className={`track-stop ${deal ? "deal" : ""} ${ns ? "has-ns" : ""} ${ew ? "has-ew" : ""} ${climbed ? "climbed" : ""}`}
+              className={`track-stop ${deal ? "deal" : ""} ${ns ? "has-ns" : ""} ${ew ? "has-ew" : ""} ${climbed ? "climbed" : ""} ${onPath ? `climb-path ${latest?.winner === "ew" ? "ew-path" : "ns-path"}` : ""}`}
+              style={onPath ? { animationDelay: `${(index - from) * 90}ms` } : undefined}
             >
               <i className={`mark ns ${ns ? "on" : ""}`}>{ns ? "南" : ""}</i>
               <b>{chip(rank)}</b>
@@ -580,6 +637,59 @@ function StatsPanel({ view, onCsv, onJson }: { view: MatchView; onCsv: () => voi
       </ol>
     </div>
   );
+}
+
+function Ceremony({ view, round, speed }: { view: MatchView; round: MatchView["rounds"][number]; speed: number }) {
+  const winds = ["北", "东", "南", "西"];
+  const replay = view.log.filter((event) => event.round === round.round && event.kind === "play").slice(-4);
+  const gap = speed <= 240 ? 110 : speed >= 1400 ? 220 : 160;
+  return (
+    <div className={`ceremony round-banner team-wash ${round.winner}`} data-testid="ceremony">
+      <div className="podium">
+        {round.order.map((seat, index) => (
+          <span
+            key={`${round.round}-${seat}-${index}`}
+            className={`podium-step ${view.seats[seat]?.team || ""}`}
+            style={{ animationDelay: `${index * gap}ms` }}
+          >
+            <em>{PLACES[index]}</em>
+            <b>{winds[seat] || seat}</b>
+          </span>
+        ))}
+      </div>
+      <p className={`climb ${round.winner}`}>
+        {round.winner === "ns" ? "南北" : "东西"} <DeltaCount delta={round.delta} speed={speed} />
+      </p>
+      {replay.length > 0 ? (
+        <ol className="replay-strip">
+          {replay.map((event) => (
+            <li key={event.id}>{event.highlight || event.zh}</li>
+          ))}
+        </ol>
+      ) : null}
+    </div>
+  );
+}
+
+function DeltaCount({ delta, speed }: { delta: number; speed: number }) {
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce || delta <= 0) {
+      setValue(delta);
+      return;
+    }
+    const step = Math.max(160, Math.round(bannerMs(speed) / Math.max(delta, 1)));
+    let current = 0;
+    setValue(0);
+    const timer = window.setInterval(() => {
+      current += 1;
+      setValue(current);
+      if (current >= delta) window.clearInterval(timer);
+    }, step);
+    return () => window.clearInterval(timer);
+  }, [delta, speed]);
+  return <b className="delta-count">+{value}</b>;
 }
 
 function Sparkline({ values, team }: { values: number[]; team: "ns" | "ew" }) {

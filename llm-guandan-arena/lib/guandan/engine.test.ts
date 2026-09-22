@@ -7,6 +7,7 @@ import { mockQuickReason } from "../llm/quick-reason";
 import { parseMoveId } from "../llm/parse";
 import { buildPrompt } from "../llm/prompt";
 import { arrangeColumns } from "./arrange";
+import { bannerFromHighlight, fxForMove, playHighlight } from "./highlight";
 import { handOrder, presentCards } from "./present";
 import { bumpLevel, outcomeLabel, upgradeDelta } from "./score";
 import { matchStats, statsToCsv } from "./stats";
@@ -408,6 +409,8 @@ function testArrangeSeriesAndStats() {
   const bombMove = currentLegal(bombs).find((move) => move.kind === "bomb4");
   assert.ok(bombMove);
   commitMove(bombs, bombMove, meta);
+  assert.equal(bombs.log.at(-1)?.highlight, "首炸");
+  assert.equal(bombs.log.at(-1)?.moveKind, "bomb4");
   commitMove(bombs, currentLegal(bombs)[0], meta);
   commitMove(bombs, currentLegal(bombs)[0], meta);
   commitMove(bombs, currentLegal(bombs)[0], meta);
@@ -422,6 +425,39 @@ function testArrangeSeriesAndStats() {
 }
 
 testArrangeSeriesAndStats();
+function testHighlights() {
+  assert.equal(fxForMove("single"), "whoosh");
+  assert.equal(fxForMove("pair"), "whoosh");
+  assert.equal(fxForMove("fullhouse"), "burst");
+  assert.equal(fxForMove("straight"), "streak");
+  assert.equal(fxForMove("tube"), "streak");
+  assert.equal(fxForMove("plate"), "plate");
+  assert.equal(fxForMove("bomb6"), "bomb");
+  assert.equal(fxForMove("straightFlush"), "flush");
+  assert.equal(fxForMove("jokerBomb"), "royal");
+  assert.equal(bannerFromHighlight("钢板 · 首炸"), "钢板");
+  assert.equal(bannerFromHighlight("顺子"), null);
+  assert.equal(bannerFromHighlight("头游"), "头游");
+  assert.equal(bannerFromHighlight("天王炸 · 首炸"), "天王炸");
+  assert.equal(
+    playHighlight({ kind: "plate", bombTier: 0, seat: 0, level: "2", priorBomb: false, opponentFinished: false }),
+    "钢板",
+  );
+  assert.equal(
+    playHighlight({ kind: "jokerBomb", bombTier: 7, seat: 1, level: "2", priorBomb: false, opponentFinished: false }),
+    "天王炸 · 首炸",
+  );
+  assert.equal(
+    playHighlight({ kind: "bomb4", bombTier: 1, seat: 0, level: "A", priorBomb: true, opponentFinished: true }),
+    "翻盘炸 · 打A",
+  );
+  assert.equal(
+    playHighlight({ kind: "straightFlush", bombTier: 3, seat: 2, level: "2", priorBomb: false, opponentFinished: false }),
+    "同花顺 · 首炸",
+  );
+}
+
+testHighlights();
 testQuickReason();
 testPresentation();
 testDeck();

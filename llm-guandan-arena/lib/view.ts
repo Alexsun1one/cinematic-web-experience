@@ -18,6 +18,8 @@ function trickZones(match: Match) {
       kind: event.kind,
       label: event.zh.split("·").slice(1).join("·").trim() || event.zh,
       bombTier: event.bombTier ?? 0,
+      moveKind: event.moveKind ?? "",
+      highlight: event.highlight ?? null,
       cards: event.cards ? presentCards(event.cards, event.zh, match.level) : [],
     };
   });
