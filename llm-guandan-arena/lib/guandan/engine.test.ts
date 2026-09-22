@@ -10,7 +10,7 @@ import { buildPrompt } from "../llm/prompt";
 import { arrangeColumns } from "./arrange";
 import { bannerFromHighlight, cueForLog, fxForMove, playHighlight } from "./highlight";
 import { handOrder, presentCards } from "./present";
-import { applyAceAttempt, bumpLevel, outcomeLabel, upgradeDelta } from "./score";
+import { aceStrikeLimit, applyAceAttempt, bumpLevel, outcomeLabel, upgradeDelta } from "./score";
 import { matchStats, statsToCsv } from "./stats";
 import { seatConfigs } from "../roster";
 import { FACE, type Card, type FaceRank, type Rank, type Suit } from "./types";
@@ -258,6 +258,52 @@ function testAcePassFailAndDrop() {
   const dropLog = gap.log.filter((event) => event.kind === "round").at(-1);
   assert.match(dropLog?.zh ?? "", /退回打2/);
   assert.match(dropLog?.en ?? "", /back to 2/);
+
+  const held = fresh("A");
+  playNsLast(held);
+  playNsLast(held);
+  assert.equal(held.aceFails.ns, 2);
+  playEwLast(held);
+  assert.equal(held.aceFails.ns, 2);
+  assert.equal(held.levels.ns, "A");
+  assert.equal(held.aceFails.ew, 1);
+
+  const climbThird = fresh("K");
+  replayHand(climbThird, [[card(0, "S", "3")], [card(0, "S", "4")], [card(0, "S", "5")], [card(0, "S", "6"), card(0, "H", "6")]], 0);
+  commitMove(climbThird, findMove(currentLegal(climbThird), "single", "3"), meta);
+  commitMove(climbThird, findMove(currentLegal(climbThird), "single", "4"), meta);
+  commitMove(climbThird, findMove(currentLegal(climbThird), "single", "5"), meta);
+  assert.equal(climbThird.status, "between_rounds");
+  assert.equal(climbThird.winner, null);
+  assert.equal(climbThird.levels.ns, "A");
+  assert.equal(climbThird.aceFails.ns, 0);
+  assert.equal(climbThird.rounds[0].matchWon, false);
+
+  const climbLast = fresh("K");
+  playNsLast(climbLast);
+  assert.equal(climbLast.status, "between_rounds");
+  assert.equal(climbLast.levels.ns, "A");
+  assert.equal(climbLast.aceFails.ns, 0);
+
+  const previousStrikes = process.env.GUANDAN_ACE_STRIKES;
+  delete process.env.GUANDAN_ACE_STRIKES;
+  assert.equal(aceStrikeLimit(), 3);
+  process.env.GUANDAN_ACE_STRIKES = "0";
+  try {
+    assert.equal(aceStrikeLimit(), 0);
+    const stay = fresh("A");
+    playNsLast(stay);
+    playNsLast(stay);
+    playNsLast(stay);
+    playNsLast(stay);
+    assert.equal(stay.levels.ns, "A");
+    assert.equal(stay.aceFails.ns, 4);
+    assert.equal(stay.status, "between_rounds");
+    assert.equal(stay.winner, null);
+  } finally {
+    if (previousStrikes === undefined) delete process.env.GUANDAN_ACE_STRIKES;
+    else process.env.GUANDAN_ACE_STRIKES = previousStrikes;
+  }
 }
 
 function playNsLast(match: Match) {

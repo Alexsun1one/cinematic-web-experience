@@ -2,7 +2,7 @@
 
 ## Current Goal
 
-打A pass rule and multi-tenant room store for `llm-guandan-arena`, on the existing Glass Arena PR.
+打A pass rule and multi-tenant room store are locked. The cycle note is `llm-guandan-arena/CYCLE.md`.
 
 ## Changed Files
 
@@ -13,9 +13,10 @@
 
 ## Validation Evidence
 
-- `npm run test:engine` passed (过 A with 头游+三游, 头游+末游 stays, third fail drops to 2, a gap hand does not clear the counter, pass resets it, tenant isolation, quota)
+- `npm run test:engine` passed, including a gap hand, climbing onto A without a win, and `GUANDAN_ACE_STRIKES=0`
 - `npm run build` passed
-- Live server: another tenant's room code 404s; `TENANT_MAX_ROOMS=1` returns 429 `该租户同时进行的房间已达上限`; invite text includes 头游+三游 and 退回打 2
+- Live protocol: bad moveId 400, listed move 200, wrong tenant 404, seat token absent from public JSON
+- `HANDS=2` operator room `ADZM7C`, exit 0. Hand 1 头游+末游 +1 (T→J). Hand 2 头游+三游 +2 (T→Q)
 
 ## Blockers
 
@@ -23,4 +24,4 @@ None. A live Redis server is not required for the default memory path.
 
 ## Next Step
 
-Point `REDIS_URL` at a private Redis if more than one Node process should share rooms.
+Point `REDIS_URL` at a private Redis and run two processes against it. The client path is in place; this environment did not have a Redis server.

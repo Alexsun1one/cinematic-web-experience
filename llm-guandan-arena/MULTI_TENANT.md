@@ -24,7 +24,9 @@ Room codes are unique inside a tenant, not globally. `AB12CD` in `acme` is a dif
 | `MemoryRoomStore` | `REDIS_URL` is unset. Default. One Node process. |
 | `RedisRoomStore` | `REDIS_URL` is set. |
 
-`lib/room.ts` keeps process-local pieces that cannot move: the in-memory room object and `onAct` (the turn-timer callback). Spectators are saved with the room. Match documents are saved next to the room when Redis is on, and `withMatchLock` takes a Redis lock so two instances do not step the same hand.
+`lib/room.ts` keeps process-local pieces that cannot move: the in-memory room object and `onAct` (the turn-timer callback). A spectator heartbeat stays on the instance that holds the connection and does not rewrite the room row. Joining a room still saves the spectator list. Match documents are saved next to the room when Redis is on, and `withMatchLock` takes a Redis lock so two instances do not step the same hand.
+
+Each save carries `rev`. The store writes the row only when the stored revision matches. A stale copy cannot replace a newer claim, seat token, or match id. The writer gets `房间已在别处更新，请重试`.
 
 Without Redis, a restart clears everything. With Redis, another instance can load the room and the match.
 
@@ -42,7 +44,7 @@ Without Redis, a restart clears everything. With Redis, another instance can loa
 
 ## Quotas
 
-`TENANT_MAX_ROOMS` is the max number of rooms for one tenant whose status is not `finished`. Unset means no extra cap. The memory store also drops the oldest room in a tenant once that tenant has more than 40 rooms.
+`TENANT_MAX_ROOMS` is the max number of rooms for one tenant whose status is not `finished`. Unset means no extra cap. Once a tenant has more than 40 stored rooms, the next create deletes the oldest finished room only. A lobby or a live match is not deleted to make space.
 
 The cap is checked when the room is created. Two instances can both pass the check and go one over. It is not a cluster-wide transaction.
 

@@ -2,7 +2,7 @@ import { chooseHeuristic } from "./guandan/heuristic";
 import { beginRound, commitMove, currentLegal, finishResist, logReason, stepLocal, type Match } from "./guandan/match";
 import { mockQuickReason } from "./llm/quick-reason";
 import { TURN_BUDGET_MS } from "./invite";
-import { getRoom, markTimeout, saveRoom, type Room } from "./room";
+import { getRoom, markTimeout, RoomRevisionError, saveRoom, type Room } from "./room";
 import { normalizeTenant } from "./room-store";
 import { matchStore, readMatch, withMatchLock } from "./store";
 
@@ -34,7 +34,7 @@ async function tick(tenantId: string, code: string): Promise<boolean> {
   if (!match) return false;
   if (match.status === "finished") {
     room.status = "finished";
-    await saveRoom(room);
+    await saveFinished(room);
     return false;
   }
   if (match.status === "between_rounds") {
@@ -114,6 +114,18 @@ async function tick(tenantId: string, code: string): Promise<boolean> {
   }
   await sleep(320);
   return true;
+}
+
+async function saveFinished(room: Room) {
+  try {
+    await saveRoom(room);
+  } catch (error) {
+    if (!(error instanceof RoomRevisionError)) throw error;
+    const fresh = await getRoom(room.code, room.tenantId);
+    if (!fresh) return;
+    fresh.status = "finished";
+    await saveRoom(fresh);
+  }
 }
 
 function playFallback(match: Match, note: string) {

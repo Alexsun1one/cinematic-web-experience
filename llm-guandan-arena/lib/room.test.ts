@@ -93,6 +93,8 @@ async function testGuestInvite() {
   assert.match(issued.block, /逢人配/);
   assert.match(issued.block, /\{"moveId":"\.\.\."\}/);
   assert.match(issued.block, /legalMoves/);
+  assert.match(issued.block, /升到 A 还不算赢/);
+  assert.match(issued.block, /退回 2/);
 
   const match = await startRoomMatch(room);
   const opened = tableProcedure(match);
@@ -222,6 +224,65 @@ async function testTenantIsolation() {
   assert.equal(await store.get("default", "SAME01"), null);
 }
 
+async function testRoomRevisionAndPrune() {
+  const store = roomStore();
+  const first = {
+    tenantId: "cas",
+    code: "CAS001",
+    status: "lobby",
+    createdAt: 1,
+    updatedAt: 1,
+    rev: 1,
+  };
+  assert.equal(await store.compareAndSet(first, 0), true);
+  assert.equal(await store.compareAndSet({ ...first, rev: 2, status: "playing", updatedAt: 2 }, 1), true);
+  assert.equal(await store.compareAndSet({ ...first, rev: 9, status: "finished", updatedAt: 9 }, 1), false);
+  assert.equal((await store.get("cas", "CAS001"))?.status, "playing");
+
+  await store.compareAndSet({ tenantId: "a", code: "AAAAAA", status: "lobby", createdAt: 1, updatedAt: 1, rev: 1 }, 0);
+  await store.compareAndSet({ tenantId: "ab", code: "BBBBBB", status: "lobby", createdAt: 1, updatedAt: 1, rev: 1 }, 0);
+  const listed = await store.list("a");
+  assert.equal(listed.some((row) => row.code === "AAAAAA"), true);
+  assert.equal(listed.some((row) => row.code === "BBBBBB"), false);
+
+  const tenant = "prune-live";
+  await store.compareAndSet({ tenantId: tenant, code: "LIVE01", status: "playing", createdAt: 1, updatedAt: 1, rev: 1 }, 0);
+  for (let index = 0; index < 40; index += 1) {
+    await store.compareAndSet(
+      {
+        tenantId: tenant,
+        code: `Z${String(index).padStart(5, "0")}`,
+        status: "finished",
+        createdAt: 10 + index,
+        updatedAt: 10 + index,
+        rev: 1,
+      },
+      0,
+    );
+  }
+  const created = await createRoom({ tenantId: tenant, autoFillMock: false });
+  assert.equal((await store.get(tenant, "LIVE01"))?.status, "playing");
+  assert.equal((await store.get(tenant, created.room.code))?.code, created.room.code);
+  const playingOnly = "prune-play";
+  for (let index = 0; index < 40; index += 1) {
+    await store.compareAndSet(
+      {
+        tenantId: playingOnly,
+        code: `P${String(index).padStart(5, "0")}`,
+        status: "playing",
+        createdAt: index + 1,
+        updatedAt: index + 1,
+        rev: 1,
+      },
+      0,
+    );
+  }
+  const extra = await createRoom({ tenantId: playingOnly, autoFillMock: false });
+  assert.equal((await store.list(playingOnly)).length, 41);
+  assert.ok((await store.list(playingOnly)).some((row) => row.code === extra.room.code));
+  assert.equal((await store.list(playingOnly)).every((row) => row.status !== "finished"), true);
+}
+
 async function testTenantQuota() {
   const previous = process.env.TENANT_MAX_ROOMS;
   process.env.TENANT_MAX_ROOMS = "1";
@@ -251,6 +312,7 @@ async function main() {
   testCodes();
   testStoreKeys();
   await testTenantIsolation();
+  await testRoomRevisionAndPrune();
   await testTenantQuota();
   console.log("room tests passed");
 }

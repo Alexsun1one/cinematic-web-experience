@@ -9,11 +9,15 @@ export interface RoomSnapshot {
   status: string;
   createdAt: number;
   updatedAt: number;
+  /** Incremented on each successful save. Missing means 0. */
+  rev?: number;
 }
 
 export interface RoomStore {
   get(tenantId: string, code: string): Promise<RoomSnapshot | null>;
   put(record: RoomSnapshot): Promise<void>;
+  /** Write only when the stored rev equals expectedRev. Missing row matches expectedRev 0. */
+  compareAndSet(record: RoomSnapshot, expectedRev: number): Promise<boolean>;
   delete(tenantId: string, code: string): Promise<void>;
   list(tenantId: string): Promise<RoomSnapshot[]>;
   countOpen(tenantId: string): Promise<number>;
@@ -90,6 +94,17 @@ export class MemoryRoomStore implements RoomStore {
     memoryRecords().set(roomKey(tenantId, code), stored);
   }
 
+  async compareAndSet(record: RoomSnapshot, expectedRev: number): Promise<boolean> {
+    const tenantId = normalizeTenant(record.tenantId);
+    const code = record.code.toUpperCase();
+    const key = roomKey(tenantId, code);
+    const current = memoryRecords().get(key);
+    const rev = current?.rev ?? 0;
+    if (current ? rev !== expectedRev : expectedRev !== 0) return false;
+    memoryRecords().set(key, { ...record, tenantId, code });
+    return true;
+  }
+
   async delete(tenantId: string, code: string): Promise<void> {
     memoryRecords().delete(roomKey(tenantId, code));
   }
@@ -126,6 +141,18 @@ export class RedisRoomStore implements RoomStore {
     await client.sAdd(tenantRoomsKey(tenantId), code);
   }
 
+  async compareAndSet(record: RoomSnapshot, expectedRev: number): Promise<boolean> {
+    const client = await getRedis();
+    const tenantId = normalizeTenant(record.tenantId);
+    const code = record.code.toUpperCase();
+    const stored = { ...record, tenantId, code };
+    const written = await client.eval(ROOM_CAS_LUA, {
+      keys: [roomKey(tenantId, code), tenantRoomsKey(tenantId)],
+      arguments: [JSON.stringify(stored), String(expectedRev), code],
+    });
+    return Number(written) === 1;
+  }
+
   async delete(tenantId: string, code: string): Promise<void> {
     const client = await getRedis();
     const upper = code.toUpperCase();
@@ -153,6 +180,24 @@ export class RedisRoomStore implements RoomStore {
     return rows.filter((row) => row.status !== "finished").length;
   }
 }
+
+const ROOM_CAS_LUA = `
+local raw = redis.call('GET', KEYS[1])
+local expected = tonumber(ARGV[2])
+if raw then
+  local ok, decoded = pcall(cjson.decode, raw)
+  local rev = 0
+  if ok and type(decoded) == 'table' and decoded.rev then
+    rev = tonumber(decoded.rev) or 0
+  end
+  if rev ~= expected then return 0 end
+elseif expected ~= 0 then
+  return 0
+end
+redis.call('SET', KEYS[1], ARGV[1])
+redis.call('SADD', KEYS[2], ARGV[3])
+return 1
+`;
 
 const memoryStore = new MemoryRoomStore();
 let redisStore: RedisRoomStore | null = null;

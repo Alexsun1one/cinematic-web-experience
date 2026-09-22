@@ -84,6 +84,8 @@ export interface Room {
   hostSecret: string;
   createdAt: number;
   updatedAt: number;
+  /** Last revision successfully stored. 0 until the first save. */
+  rev: number;
   series: RoomSeries;
   startLevel: FaceRank;
   seatsOpen: boolean;
@@ -142,6 +144,7 @@ function toRecord(room: Room): RoomRecord {
     hostSecret: room.hostSecret,
     createdAt: room.createdAt,
     updatedAt: room.updatedAt,
+    rev: room.rev,
     series: room.series,
     startLevel: room.startLevel,
     seatsOpen: room.seatsOpen,
@@ -160,6 +163,7 @@ function toRecord(room: Room): RoomRecord {
 function fromRecord(record: RoomRecord): Room {
   return {
     ...record,
+    rev: record.rev ?? 0,
     spectators: new Map(record.spectators.map((row) => [row.id, { ...row }])),
   };
 }
@@ -170,6 +174,7 @@ function applyRecord(room: Room, record: RoomRecord) {
   room.hostSecret = record.hostSecret;
   room.createdAt = record.createdAt;
   room.updatedAt = record.updatedAt;
+  room.rev = record.rev ?? 0;
   room.series = record.series;
   room.startLevel = record.startLevel;
   room.seatsOpen = record.seatsOpen;
@@ -185,9 +190,23 @@ function applyRecord(room: Room, record: RoomRecord) {
   room.onAct = onAct;
 }
 
+export class RoomRevisionError extends Error {
+  readonly status = 409;
+  constructor() {
+    super("房间已在别处更新，请重试");
+    this.name = "RoomRevisionError";
+  }
+}
+
 export async function saveRoom(room: Room): Promise<void> {
+  const expected = room.rev ?? 0;
+  room.rev = expected + 1;
   room.updatedAt = Date.now();
-  await roomStore().put(toRecord(room));
+  const wrote = await roomStore().compareAndSet(toRecord(room), expected);
+  if (!wrote) {
+    room.rev = expected;
+    throw new RoomRevisionError();
+  }
   liveRooms().set(liveKey(room.tenantId, room.code), room);
 }
 
@@ -201,7 +220,8 @@ export async function getRoom(code: string, tenantId: string = DEFAULT_TENANT): 
     return undefined;
   }
   const cached = liveRooms().get(key);
-  if (cached && cached.updatedAt >= record.updatedAt) return cached;
+  const remoteRev = record.rev ?? 0;
+  if (cached && (cached.rev ?? 0) >= remoteRev) return cached;
   if (cached) {
     applyRecord(cached, record);
     return cached;
@@ -225,10 +245,12 @@ export async function listRooms(tenantId: string = DEFAULT_TENANT): Promise<Room
 async function pruneTenant(tenantId: string) {
   const rows = await roomStore().list(tenantId);
   if (rows.length <= 40) return;
-  const oldest = [...rows].sort((a, b) => a.createdAt - b.createdAt)[0];
-  if (!oldest) return;
-  await roomStore().delete(tenantId, oldest.code);
-  liveRooms().delete(liveKey(tenantId, oldest.code));
+  const oldestFinished = [...rows]
+    .filter((row) => row.status === "finished")
+    .sort((a, b) => a.createdAt - b.createdAt)[0];
+  if (!oldestFinished) return;
+  await roomStore().delete(tenantId, oldestFinished.code);
+  liveRooms().delete(liveKey(tenantId, oldestFinished.code));
 }
 
 export async function createRoom(input: {
@@ -254,6 +276,7 @@ export async function createRoom(input: {
     hostSecret,
     createdAt: Date.now(),
     updatedAt: Date.now(),
+    rev: 0,
     series,
     startLevel: series === "full" ? "2" : parseStartLevel(input.startLevel),
     seatsOpen: input.seatsOpen !== false,
@@ -425,19 +448,13 @@ export function heartbeatSpectator(room: Room, id: string) {
   const row = room.spectators.get(id);
   if (!row) return;
   row.lastSeen = Date.now();
-  void saveRoom(room);
 }
 
 export function pruneSpectators(room: Room) {
   const cutoff = Date.now() - 45_000;
-  let changed = false;
   for (const [id, row] of room.spectators) {
-    if (row.lastSeen < cutoff) {
-      room.spectators.delete(id);
-      changed = true;
-    }
+    if (row.lastSeen < cutoff) room.spectators.delete(id);
   }
-  if (changed) void saveRoom(room);
 }
 
 export async function postChat(room: Room, name: string, text: string, role: "host" | "spectator") {
