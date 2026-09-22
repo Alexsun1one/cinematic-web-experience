@@ -46,14 +46,13 @@ async function waitForServer() {
 function pick(state) {
   const legal = state.you?.legal || [];
   if (legal.length === 0) return null;
-  const pass = legal.find((move) => move.kind === "pass");
-  if (state.mustBeat && pass) return pass;
   const order = ["single", "pair", "triple", "fullhouse", "straight", "tube", "plate"];
+  const pass = legal.find((move) => move.kind === "pass");
   for (const kind of order) {
     const hit = legal.find((move) => move.kind === kind);
     if (hit) return hit;
   }
-  return legal.find((move) => move.kind !== "pass") || legal[0];
+  return pass || legal.find((move) => move.kind !== "pass") || legal[0];
 }
 
 async function main() {
@@ -102,6 +101,7 @@ async function main() {
     console.log(`知识 ${played.length}/${TRICKS} ${move.kind} ${move.label}`);
   }
   if (played.length < TRICKS) throw new Error(`only played ${played.length}/${TRICKS}`);
+  if (!played.some((line) => !line.startsWith("pass"))) throw new Error("operator only passed");
 
   const done = await fetch(`${ORIGIN}/api/room/${code}/state?seatToken=${encodeURIComponent(token)}`).then((response) => response.json());
   const bots = (done.match?.log || []).filter((event) => event.kind === "play" && event.seat !== 2);
