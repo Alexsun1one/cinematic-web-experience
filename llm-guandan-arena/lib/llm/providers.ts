@@ -25,6 +25,12 @@ export async function completeVendor(vendor: "deepseek" | "gemini" | "mimo" | "z
   );
 }
 
+export async function completeOpenAICompatible(baseUrl: string, apiKey: string, model: string, prompt: string): Promise<string> {
+  const root = trimSlash(baseUrl);
+  const url = root.endsWith("/chat/completions") ? root : `${root}/chat/completions`;
+  return chatCompletions(url, apiKey, model, prompt, "bearer");
+}
+
 async function chatCompletions(
   url: string,
   apiKey: string,

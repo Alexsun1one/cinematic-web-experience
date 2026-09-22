@@ -39,6 +39,25 @@ export function Lobby() {
 
   const anyLiveKey = Boolean(keys.deepseek || keys.gemini || keys.mimo || keys.zhipu);
 
+  async function openRoom() {
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch("/api/rooms", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ series, startLevel: series === "full" ? "2" : level, seatsOpen: true, autoFillMock: true }),
+      });
+      const data = (await response.json()) as { code?: string; hostSecret?: string; error?: string };
+      if (!response.ok || !data.code) throw new Error(data.error || "开房失败");
+      if (data.hostSecret) localStorage.setItem(`guandan-room-host:${data.code}`, data.hostSecret);
+      router.push(`/room/${data.code}`);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "开房失败");
+      setBusy(false);
+    }
+  }
+
   async function start() {
     setBusy(true);
     setError("");
@@ -62,7 +81,7 @@ export function Lobby() {
       <section className="hall-copy">
         <p className="eyebrow">Glass Arena · NS vs EW</p>
         <h1>模型掼蛋擂台</h1>
-        <p>四座直播台。南家默认垂直理牌，出牌落入方位井。可打满一盘或先打三局。无密钥时模型名仍在，Mock 在合法牌型里代打。</p>
+        <p>一键开房，四席自带 Agent，人类用链接围观。无密钥时自动四席 Mock，第二标签页即可当观众。</p>
         <ul>
           {SIMPLIFICATIONS.slice(0, 3).map((item) => (
             <li key={item.en}>{item.zh}</li>
@@ -106,6 +125,11 @@ export function Lobby() {
           })}
           {series === "full" ? <span>2→A，只升不降</span> : null}
         </div>
+        <div className="hall-levels lobby-cta">
+          <button className="chip-btn gold cta-room" type="button" data-testid="open-room" onClick={() => void openRoom()} disabled={busy}>
+            {busy ? "开房…" : "一键开房"}
+          </button>
+        </div>
         <div className="hall-levels">
           <button className={`chip-btn ${live ? "on" : ""}`} type="button" onClick={() => setLive((value) => !value)} disabled={!anyLiveKey}>
             {live ? "实盘" : "Mock 对局"}
@@ -113,8 +137,8 @@ export function Lobby() {
           <button className={`chip-btn ${jev ? "on" : ""}`} type="button" onClick={() => setJev((value) => !value)} disabled={!keys.typesafe}>
             Jev {keys.typesafe ? "开" : "未配置"}
           </button>
-          <button className="chip-btn gold" type="button" data-testid="start-match" onClick={() => void start()} disabled={busy}>
-            {busy ? "发牌…" : "开始"}
+          <button className="chip-btn" type="button" data-testid="start-match" onClick={() => void start()} disabled={busy}>
+            {busy ? "发牌…" : "快速开打"}
           </button>
         </div>
         {error ? <p className="banner-error">{error}</p> : null}

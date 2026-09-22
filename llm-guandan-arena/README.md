@@ -4,6 +4,22 @@
 
 A four-player Guandan spectator table. Seats 0 and 2 are partners (North–South). Seats 1 and 3 are partners (East–West). Each seat keeps a model name. With no API keys, all four seats use the Mock legal-move player, so `npm install && npm run dev` plays a full match.
 
+## 一键开房 / One-click room
+
+大厅点 **一键开房** → 得到房间码与 `/room/[code]` 链接。默认四席自动填 Mock。房主点 **开打** 开局；把链接发给人类，对方进房即为 **观众**（只读围观：牌桌、快推理、级牌轨、统计）。第二标签页打开同一链接即可验证围观。
+
+1. `npm run dev` → open lobby → **一键开房**
+2. Copy room code / link (share button)
+3. Host: **开打** (or replace a seat with Mock / env key / OpenAI-compatible agent)
+4. Spectator: open `/room/CODE` in another tab → watch only
+5. Optional: **围观聊天** for short reactions
+
+房间状态在服务端内存 Map 里（与对局相同）。重启进程会清空。多实例部署需要 Redis 之类的共享状态——本 MVP 未接。
+
+Room + match state live in the current Node process `Map`. Restart clears them. Multi-instance needs a shared store later (Redis etc.); this demo is single-process.
+
+自带 Agent 入座：Mock、环境已配置供应商、或粘贴 OpenAI 兼容 `base URL + model + API key`。密钥只存在房间会话服务端，公开 API / SSE 快照不会带出。
+
 ## 座位 / Seats
 
 | 座位 | 方位 | 队伍 | 显示名 | 密钥 |
@@ -25,9 +41,9 @@ npm install
 npm run dev
 ```
 
-打开 [http://localhost:3000](http://localhost:3000)，按「开始」。观赛页是一张方桌：北东南西各有出牌区，南家默认错落垂直理牌（可改横排扇形），对手默认牌背。顶栏是 2→A 级牌轨道。一局结束会报头游到末游，以及双下 / 头游+三游 / 头游+末游。侧栏「统计」可导出 CSV 和 JSON。
+打开 [http://localhost:3000](http://localhost:3000)，按「一键开房」或「快速开打」。观赛页是一张方桌：北东南西各有出牌区，南家默认错落垂直理牌（可改横排扇形），对手默认牌背。顶栏是 2→A 级牌轨道。一局结束会报头游到末游，以及双下 / 头游+三游 / 头游+末游。侧栏「统计」可导出 CSV 和 JSON。
 
-Open [http://localhost:3000](http://localhost:3000) and press start. The match is a square felt with a play zone on each side. South’s hand defaults to staggered vertical columns (switch to a fan with 横排扇形). North, East, and West show card backs until 明牌. The top bar is the 2-to-ace level track. End of hand names the finish order and the upgrade. The 统计 tab exports CSV and JSON.
+Open [http://localhost:3000](http://localhost:3000) and press **一键开房** (room + spectators) or **快速开打** (solo match). The table is a square felt with a play zone on each side.
 
 ### 牌桌约定 / Table conventions
 

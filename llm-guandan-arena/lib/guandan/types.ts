@@ -19,7 +19,7 @@ export type Rank = FaceRank | "SJ" | "BJ";
 export type Suit = "S" | "H" | "D" | "C" | "J";
 export type TeamId = "ns" | "ew";
 export type VendorId = "deepseek" | "gemini" | "mimo" | "zhipu";
-export type ProviderId = "mock" | VendorId;
+export type ProviderId = "mock" | VendorId | "openai";
 
 export interface Card {
   id: string;
@@ -34,6 +34,8 @@ export interface SeatConfig {
   provider: ProviderId;
   vendor: VendorId;
   model: string;
+  /** OpenAI-compatible BYO agent. Server-only — never send to clients. */
+  custom?: { baseUrl: string; apiKey: string } | null;
 }
 
 export const SEAT_WIND = ["北", "东", "南", "西"] as const;
@@ -53,6 +55,7 @@ export const PROVIDERS: { id: ProviderId; label: string }[] = [
   { id: "gemini", label: "Gemini" },
   { id: "mimo", label: "MiMo" },
   { id: "zhipu", label: "GLM" },
+  { id: "openai", label: "OpenAI 兼容" },
 ];
 
 export function isProvider(value: string): value is ProviderId {

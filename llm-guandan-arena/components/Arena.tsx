@@ -11,21 +11,44 @@ type LogEvent = MatchView["log"][number];
 const PLACES = ["头游", "二游", "三游", "末游"];
 const WIND = ["n", "e", "s", "w"] as const;
 
-export function Arena({ id }: { id: string }) {
+export function Arena({
+  id,
+  role = "host",
+  roomCode,
+  spectatorCount = 0,
+  externalView = null,
+  chat = [],
+  onChat,
+}: {
+  id: string;
+  role?: "host" | "spectator";
+  roomCode?: string;
+  spectatorCount?: number;
+  externalView?: MatchView | null;
+  chat?: { id: number; name: string; text: string }[];
+  onChat?: (text: string) => void;
+}) {
   const [view, setView] = useState<MatchView | null>(null);
   const [error, setError] = useState("");
-  const [auto, setAuto] = useState(true);
+  const [auto, setAuto] = useState(role === "host");
   const [speed, setSpeed] = useState(700);
   const [pending, setPending] = useState(false);
   const [reveal, setReveal] = useState(false);
   const [columns, setColumns] = useState(true);
-  const [panel, setPanel] = useState<"log" | "stats">("log");
+  const [panel, setPanel] = useState<"log" | "stats" | "chat">("log");
   const [swept, setSwept] = useState(false);
   const [holding, setHolding] = useState(false);
   const [preview, setPreview] = useState<LogEvent | null>(null);
+  const [chatText, setChatText] = useState("");
   const holdTimer = useRef<number | null>(null);
+  const spectator = role === "spectator";
 
   useEffect(() => {
+    if (externalView) setView(externalView);
+  }, [externalView]);
+
+  useEffect(() => {
+    if (spectator) return;
     let gone = false;
     if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("panel") === "stats") {
       setPanel("stats");
@@ -45,7 +68,7 @@ export function Arena({ id }: { id: string }) {
     return () => {
       gone = true;
     };
-  }, [id]);
+  }, [id, spectator]);
 
   const trickKey = view?.zones.map((zone) => zone?.id ?? 0).join("-") ?? "";
 
@@ -63,14 +86,14 @@ export function Arena({ id }: { id: string }) {
   }, []);
 
   useEffect(() => {
-    if (!auto || !view || pending || holding || view.status === "finished") return;
+    if (spectator || !auto || !view || pending || holding || view.status === "finished") return;
     const delay = view.status === "between_rounds" ? Math.max(speed, 3200) : speed;
     const timer = setTimeout(() => void step(), delay);
     return () => clearTimeout(timer);
-  }, [auto, view, pending, holding, speed]);
+  }, [auto, view, pending, holding, speed, spectator]);
 
   async function step() {
-    if (pending) return;
+    if (pending || spectator) return;
     setPending(true);
     setError("");
     try {
@@ -140,8 +163,17 @@ export function Arena({ id }: { id: string }) {
       <header className="hud">
         <div className="hud-brand">
           <b>模型掼蛋擂台</b>
-          <span>第 {view.round} 局{seriesNote} · {id.slice(0, 8)}</span>
+          <span>
+            第 {view.round} 局{seriesNote} · {id.slice(0, 8)}
+            {roomCode ? ` · 房 ${roomCode}` : ""}
+          </span>
         </div>
+        {roomCode ? (
+          <div className="spectator-chip hud-spec" data-testid="hud-spectators">
+            观众 {spectatorCount}
+            {spectator ? " · 围观中" : " · 主持"}
+          </div>
+        ) : null}
         <div className="level-plate" data-testid="level-plate">
           <span className="gem">{levelLabel}</span>
           <div>
@@ -152,16 +184,22 @@ export function Arena({ id }: { id: string }) {
         </div>
         <LevelTrack view={view} />
         <div className="hud-actions">
-          <a className="chip-btn" href="/">大厅</a>
-          <button className="chip-btn" type="button" onClick={() => setAuto((value) => !value)}>{auto ? "暂停" : "继续"}</button>
-          <button className="chip-btn" type="button" data-testid="step" onClick={() => void step()} disabled={pending || holding || view.status === "finished"}>
-            {pending ? "…" : "下一步"}
-          </button>
-          {([240, 700, 1400] as const).map((value) => (
-            <button key={value} className={`chip-btn ${speed === value ? "on" : ""}`} type="button" onClick={() => setSpeed(value)}>
-              {value === 240 ? "快" : value === 700 ? "中" : "慢"}
-            </button>
-          ))}
+          <a className="chip-btn" href={roomCode ? `/room/${roomCode}` : "/"}>{roomCode ? "房间" : "大厅"}</a>
+          {!spectator ? (
+            <>
+              <button className="chip-btn" type="button" onClick={() => setAuto((value) => !value)}>{auto ? "暂停" : "继续"}</button>
+              <button className="chip-btn" type="button" data-testid="step" onClick={() => void step()} disabled={pending || holding || view.status === "finished"}>
+                {pending ? "…" : "下一步"}
+              </button>
+              {([240, 700, 1400] as const).map((value) => (
+                <button key={value} className={`chip-btn ${speed === value ? "on" : ""}`} type="button" onClick={() => setSpeed(value)}>
+                  {value === 240 ? "快" : value === 700 ? "中" : "慢"}
+                </button>
+              ))}
+            </>
+          ) : (
+            <span className="chip-btn" aria-disabled>只读围观</span>
+          )}
           <button className={`chip-btn ${reveal ? "on" : ""}`} type="button" onClick={() => setReveal((value) => !value)}>
             {reveal ? "暗牌" : "明牌"}
           </button>
@@ -263,8 +301,13 @@ export function Arena({ id }: { id: string }) {
             <span className="record-tabs">
               <button className={panel === "log" ? "on" : ""} type="button" onClick={() => setPanel("log")}>记录</button>
               <button className={panel === "stats" ? "on" : ""} type="button" data-testid="stats-tab" onClick={() => setPanel("stats")}>统计</button>
+              {roomCode ? (
+                <button className={panel === "chat" ? "on" : ""} type="button" data-testid="chat-tab" onClick={() => setPanel("chat")}>聊天</button>
+              ) : null}
             </span>
-            <button className="chip-btn tiny" type="button" data-testid="export" onClick={() => void exportReplay()}>复盘</button>
+            {!spectator ? (
+              <button className="chip-btn tiny" type="button" data-testid="export" onClick={() => void exportReplay()}>复盘</button>
+            ) : null}
           </h2>
           {panel === "log" ? (
             <div className="record-list">
@@ -275,8 +318,30 @@ export function Arena({ id }: { id: string }) {
                 </p>
               ))}
             </div>
-          ) : (
+          ) : panel === "stats" ? (
             <StatsPanel view={view} onCsv={() => download(`guandan-${id.slice(0, 8)}-stats.csv`, statsToCsv(view.stats), "text/csv")} onJson={() => download(`guandan-${id.slice(0, 8)}-stats.json`, JSON.stringify(view.stats, null, 2), "application/json")} />
+          ) : (
+            <div className="room-chat in-arena" data-testid="arena-chat">
+              <div className="room-chat-list">
+                {chat.length === 0 ? <p className="muted">还没有消息</p> : null}
+                {chat.map((row) => (
+                  <p key={row.id}><b>{row.name}</b> {row.text}</p>
+                ))}
+              </div>
+              {onChat ? (
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    if (!chatText.trim()) return;
+                    onChat(chatText);
+                    setChatText("");
+                  }}
+                >
+                  <input value={chatText} onChange={(event) => setChatText(event.target.value)} placeholder="短评" maxLength={80} />
+                  <button className="chip-btn tiny" type="submit">发送</button>
+                </form>
+              ) : null}
+            </div>
           )}
         </aside>
       </section>

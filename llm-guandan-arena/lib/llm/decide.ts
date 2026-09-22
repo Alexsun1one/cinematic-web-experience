@@ -29,7 +29,7 @@ export async function decide(match: Match, moves: Move[]): Promise<Decision> {
 
   const rejected: string[] = [];
   try {
-    const first = await ask(config.provider, config.model, contextOf(match), moves, assist);
+    const first = await ask(config.provider, config.model, contextOf(match), moves, assist, undefined, config.custom);
     const firstMove = moves.find((move) => move.id === first.moveId);
     if (firstMove) {
       return {
@@ -46,6 +46,7 @@ export async function decide(match: Match, moves: Move[]): Promise<Decision> {
       moves,
       assist,
       rejected[0],
+      config.custom,
     );
     const secondMove = moves.find((move) => move.id === second.moveId);
     if (secondMove) {
@@ -80,9 +81,17 @@ async function ask(
   moves: Move[],
   assist: AssistNote | null,
   rejection?: string,
+  custom?: { baseUrl: string; apiKey: string } | null,
 ) {
   if (provider === "mock") return { moveId: undefined, note: "mock" };
-  const text = await completeVendor(provider, model, buildPrompt(ctx, moves, assist, rejection));
+  const prompt = buildPrompt(ctx, moves, assist, rejection);
+  if (provider === "openai") {
+    if (!custom?.baseUrl || !custom.apiKey) throw new Error("missing openai credentials");
+    const { completeOpenAICompatible } = await import("./providers");
+    const text = await completeOpenAICompatible(custom.baseUrl, custom.apiKey, model, prompt);
+    return parseMoveId(text);
+  }
+  const text = await completeVendor(provider, model, prompt);
   return parseMoveId(text);
 }
 

@@ -2,26 +2,27 @@
 
 ## Current Goal
 
-`llm-guandan-arena/` uses the **Glass Arena** skin: charcoal floor, electric teal accent, luminous emerald felt, glass HUD chips. Engine, Mock, vertical 理牌, level track, stats, and 快推理 are unchanged underneath.
+Glass Arena skin + **一键开房** MVP: shareable `/room/[code]`, BYO agents (Mock / env / OpenAI-compatible), human spectators via SSE/poll, optional chat. In-memory Map (document Redis for multi-instance).
 
 ## Changed Files
 
-- `llm-guandan-arena/app/globals.css` — full rewrite away from lacquer/gold to modern glass/esports.
-- `llm-guandan-arena/components/Arena.tsx` — chip controls, glass reason toast with mono latency, kinetic ceremony.
-- `llm-guandan-arena/components/Lobby.tsx` — Glass Arena lobby copy + chip buttons.
-- `llm-guandan-arena/components/CardView.tsx` — neon 「配」 badge on 逢人配.
-- `docs/CODEX_HANDOFF.md` — this note.
+- `llm-guandan-arena/lib/room.ts` + `lib/room.test.ts` — room state machine
+- `llm-guandan-arena/app/api/rooms/**` — create/join/seat/fill/start/chat/stream
+- `llm-guandan-arena/components/RoomTable.tsx`, `Lobby.tsx`, `Arena.tsx`
+- `llm-guandan-arena/app/room/[code]/page.tsx`
+- `llm-guandan-arena/lib/llm/decide.ts`, `providers.ts`, `guandan/types.ts` — openai BYO
+- `llm-guandan-arena/app/globals.css`, `README.md`
 
 ## Validation Evidence
 
-- `npm run test:engine`
+- `npm run test:engine` (engine + room tests)
 - `npm run build`
-- Screenshots: lobby, vertical hand, 快推理, end/stats + short mp4.
+- Screenshots: room lobby with code, 4 agents seated, spectator HUD
 
 ## Blockers
 
-None for Mock.
+None for Mock zero-key room → spectator second tab.
 
 ## Next Step
 
-Optional live-key seat check under the same skin.
+Optional Redis-backed rooms for multi-instance.
