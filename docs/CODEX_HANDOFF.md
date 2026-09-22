@@ -15,9 +15,11 @@ Glass Arena. **复制给 Agent** is a self-check + self-play protocol: guest own
 
 ## Validation Evidence
 
-- `npm run test:engine` (engine + room tests)
+- `npm run test:engine` (engine + room tests, including guest invite)
 - `npm run build`
-- Screenshots: room lobby with code, 4 agents seated, spectator HUD
+- `scripts/guest-agent.mjs` without `TYPESAFE_API_KEY` exits `缺 Jev，不能打`
+- Room `XQYU22`: claim without keys starts a self seat; posting `apiKey` is rejected; illegal `moveId` is rejected; public JSON omits the seat token; idle self seat advances as Mock after the turn budget; a legal `act` is accepted
+- Screenshots: invite copy block, how-to, rules drawer, mid-game cards
 
 ## Blockers
 
