@@ -15,8 +15,10 @@ export async function POST(request: Request, context: { params: Promise<{ code: 
   if (!room) return json({ error: "房间不存在" }, 404);
   const body = (await request.json().catch(() => ({}))) as { seatToken?: string; moveId?: string; apiKey?: string };
   if (body.apiKey) return json({ error: "不要把密钥发给服务器" }, 400);
-  if (!body.seatToken || !body.moveId) return json({ error: "需要 seatToken 和 moveId" }, 400);
-  const seat = seatIndexByToken(room, body.seatToken);
+  const seatToken = body.seatToken;
+  const moveId = body.moveId;
+  if (!seatToken || !moveId) return json({ error: "需要 seatToken 和 moveId" }, 400);
+  const seat = seatIndexByToken(room, seatToken);
   if (seat < 0) return json({ error: "seatToken 无效" }, 404);
   const match = room.matchId ? matchStore().get(room.matchId) : undefined;
   if (!match || match.status !== "playing") return json({ error: "还没开打" }, 409);
@@ -24,7 +26,7 @@ export async function POST(request: Request, context: { params: Promise<{ code: 
     if (match.status !== "playing" || match.trick.currentSeat !== seat) {
       return json({ error: "还没轮到你" }, 409);
     }
-    const move = currentLegal(match).find((item) => item.id === body.moveId);
+    const move = currentLegal(match).find((item) => item.id === moveId);
     if (!move) return json({ error: "非法着法，只能出 legal 列表里的 moveId" }, 400);
     commitMove(match, move, {
       source: "llm",
@@ -34,6 +36,6 @@ export async function POST(request: Request, context: { params: Promise<{ code: 
       assist: null,
     });
     notifyAct(room, seat);
-    return json(stateForToken(room, body.seatToken));
+    return json(stateForToken(room, seatToken));
   });
 }

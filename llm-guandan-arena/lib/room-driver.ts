@@ -1,5 +1,5 @@
 import { chooseHeuristic } from "./guandan/heuristic";
-import { beginRound, commitMove, currentLegal, logReason } from "./guandan/match";
+import { beginRound, commitMove, currentLegal, logReason, type Match } from "./guandan/match";
 import { mockQuickReason } from "./llm/quick-reason";
 import { TURN_BUDGET_MS } from "./invite";
 import { getRoom, type Room } from "./room";
@@ -66,7 +66,7 @@ async function loop(code: string) {
   }
 }
 
-function playFallback(match: NonNullable<ReturnType<typeof matchStore.get>>, note: string) {
+function playFallback(match: Match, note: string) {
   const seat = match.trick.currentSeat;
   const moves = currentLegal(match);
   logReason(match, {
