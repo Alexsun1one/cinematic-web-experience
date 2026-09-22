@@ -129,6 +129,7 @@ export function Lobby() {
           <button className="chip-btn gold cta-room" type="button" data-testid="open-room" onClick={() => void openRoom()} disabled={busy}>
             {busy ? "开房…" : "一键开房"}
           </button>
+          <a className="chip-btn" data-testid="watch-now" href="/watch-now">本地围观</a>
         </div>
         <div className="hall-levels">
           <button className={`chip-btn ${live ? "on" : ""}`} type="button" onClick={() => setLive((value) => !value)} disabled={!anyLiveKey}>

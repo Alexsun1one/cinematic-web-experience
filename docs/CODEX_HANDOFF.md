@@ -2,7 +2,7 @@
 
 ## Current Goal
 
-Glass Arena skin + **一键开房** MVP: shareable `/room/[code]`, BYO agents (Mock / env / OpenAI-compatible), human spectators via SSE/poll, optional chat. In-memory Map (document Redis for multi-instance).
+Glass Arena + rooms. Local one-shot: `npm run watch` (alias `arena:watch`) starts dev on :3456 if needed, fills 4 Mock seats, starts the match, opens `/room/CODE?role=spectator`. Host URL is printed with `?host=<secret>`. In-browser: `/watch-now`.
 
 ## Changed Files
 

@@ -94,8 +94,16 @@ export function RoomTable({ code }: { code: string }) {
   }, [upper]);
 
   useEffect(() => {
-    const savedHost = localStorage.getItem(hostKey(upper));
-    if (savedHost) setHostSecret(savedHost);
+    const params = new URLSearchParams(window.location.search);
+    const forceSpectator = params.get("role") === "spectator";
+    const hostParam = params.get("host");
+    if (!forceSpectator && hostParam && hostParam !== "1") {
+      localStorage.setItem(hostKey(upper), hostParam);
+    }
+    if (!forceSpectator) {
+      const savedHost = localStorage.getItem(hostKey(upper));
+      if (savedHost) setHostSecret(savedHost);
+    }
     try {
       const raw = localStorage.getItem(spectatorKey(upper));
       if (raw) {
@@ -112,7 +120,13 @@ export function RoomTable({ code }: { code: string }) {
     let gone = false;
     async function bootstrap() {
       try {
-        const savedHost = localStorage.getItem(hostKey(upper));
+        const params = new URLSearchParams(window.location.search);
+        const forceSpectator = params.get("role") === "spectator";
+        const hostParam = params.get("host");
+        if (!forceSpectator && hostParam && hostParam !== "1") {
+          localStorage.setItem(hostKey(upper), hostParam);
+        }
+        const savedHost = forceSpectator ? null : localStorage.getItem(hostKey(upper));
         if (savedHost) {
           const response = await fetch(`/api/rooms/${upper}/join`, {
             method: "POST",

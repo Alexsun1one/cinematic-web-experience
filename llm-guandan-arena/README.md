@@ -33,6 +33,8 @@ Mock 模式下界面仍显示这些名字，决策不访问网络。大厅里的
 
 In Mock mode the UI still shows those names and never calls a provider. Live mode sends a seat to its model only when that key exists. Optional Jev / TypeSafe assist (`TYPESAFE_API_KEY`) may answer a Noul and a Choice over the engine's legal moves. The model must still pick a listed move. One illegal answer is retried with the rejection reason; a second failure falls back to Mock.
 
+本地围观：`npm run watch`
+
 ## 运行 / Run
 
 ```bash
