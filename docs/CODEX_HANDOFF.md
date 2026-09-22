@@ -2,11 +2,12 @@
 
 ## Current Goal
 
-Live per-seat status board on the glass table, with telemetry and status events in the replay. 打A and tenants stay. The note is `llm-guandan-arena/CYCLE.md`.
+Status board streams live seat states, with the thinking text collapsed until a spectator expands it. Telemetry, replay, and the four-seat marathon stay on the same branch. 打A and tenants stay. The note is `llm-guandan-arena/CYCLE.md`.
 
 ## Changed Files
 
 - `llm-guandan-arena/lib/telemetry.ts`, `lib/room.ts`, act route, room driver — think time, Jev/decision rows, replay events. Secrets are redacted. The server does not take a key.
+- `llm-guandan-arena/components/StatusBoard.tsx`, `lib/seat-live.ts` — live chips and timeline; full thought only after 展开思考. 显示思考 starts off.
 - `llm-guandan-arena/components/TelemetryHud.tsx`, `Arena.tsx` — live HUD and the 统计 table with JSON/CSV
 - `llm-guandan-arena/app/replay/[code]/page.tsx`, `components/ReplayScrubber.tsx` — timestamped event scrubber
 - `llm-guandan-arena/scripts/marathon.mjs`, `MARATHON.md` — four seats, Jev only from `TYPESAFE_API_KEY`, next room after 过A
@@ -17,7 +18,7 @@ Live per-seat status board on the glass table, with telemetry and status events 
 - `npm run test:engine` passed, including telemetry redaction
 - `npm run build` passed
 - `HANDS=1 START_LEVEL=A` four-seat marathon, exit 0, key unset. Room `2X3Y2Z` settled 头游+末游 +1, 打A 南北 1 / 东西 0.
-- Room `56SXNJ` status board: chip moved from `Jev 快判中 916ms` to `3916ms`, then `LLM 决策中`, with thought `Jev 用了 180ms，费用 0.004。`
+- Room `2MBFPH`: status board `data-thoughts=collapsed`, 显示思考 off, thought text absent. North chip `Jev 快判中` moved from 22607ms to 23807ms. 展开思考 revealed the full thought. `/replay/2MBFPH` on `北 Jev 快判中` stayed collapsed, and moving the scrubber closed the thought again.
 - HUD on `/room/HJLWR4` showed `座1 · play · success · 321ms` and the strip `0/3`. The 统计 tab listed think, Jev, reaction, tokens, and cost. `/replay/HJLWR4` scrubbed from the settle line back to `开房`.
 
 ## Blockers

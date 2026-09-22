@@ -59,7 +59,7 @@ Peer QA checklist, then `test:engine`, `build`, and `HANDS=2`.
 | Telemetry | **Pass.** Room `HJLWR4` stored 95 rows: play think time, decision reaction, seat, hand, move outcome. The HUD read `座1 · play · success · 321ms`. The 统计 tab exported from a table with 思考, Jev, 反应, tokens, 费用. `TYPESAFE_API_KEY` was unset, so Jev rows and cost stayed empty. A posted key is rejected. |
 | Replay | **Pass.** `/replay/HJLWR4` opened on the settle line `第1局 头游+三游 +2 … 打A失败 南北0 东西0` and scrubbed back to `开房`. |
 | Marathon | **Pass, key unset.** Four seats are claimed in this process. `HANDS=1 START_LEVEL=A` room `2X3Y2Z` settled 头游+末游 +1 with 打A counters 南北 1 / 东西 0. Load the key with `set -a; source /path/to/guandan.env; set +a` and do not commit that file. |
-| Status board | **Pass.** Room `56SXNJ` streamed 思考中 then `Jev 快判中` from 916ms to 3916ms, then `Jev 180ms · $0.004` and the thought line. Replay events use kind `status`. |
+| Status board | **Pass.** Thoughts stay collapsed until 展开思考. Room `2MBFPH` opened with `data-thoughts=collapsed`, 显示思考 off, and no thought text. The north chip moved from `Jev 快判中 22607ms` to `23807ms` while the timeline stayed on `北 Jev 快判中`. Expanding that row showed the full thought. Scrubbing `/replay/2MBFPH` closed it again. |
 
 `npm run test:engine` passed. `npm run build` passed. Live Redis was not run.
 
