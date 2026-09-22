@@ -12,7 +12,7 @@ Same teal glass skin. Three layers, no new theme.
 | 打A strip | **Pass.** Fixed above the seat map and above the table: `目标 A · 本方已试 n/3 · 三不过 → 回 2`. `n` and the limit come from `match.aceFails` and `aceStrikeLimit()`. A fresh live match reported `{ns:0,ew:0}` and limit 3, and the strip showed `0/3`. Dropping from A to 2 flashes the strip once. Limit `0` says 一直停在 A. |
 | Room rail | **Pass.** 大厅 stays on the rail. Rooms show a waiting or active dot. The current room is solid. Opening `WHGAS4` then `VPX9CH` left the locked tenant as `default`. |
 
-Deferred: tenant admin shell, replay timeline, seat FX polish, in-table chat, A-history charts.
+Deferred: tenant admin shell, seat FX polish, in-table chat, A-history charts. The replay timeline is the `/replay/[code]` scrubber.
 
 `npm run test:engine` passed. `npm run build` passed. Redis is still the shared store when `REDIS_URL` is set. This environment did not run a live Redis.
 
@@ -52,9 +52,20 @@ Peer QA checklist, then `test:engine`, `build`, and `HANDS=2`.
 - TTL: 6 hours sliding, on the room key and the match key. The tenant set and the match index are not expired.
 - Duplicate settle is refused because the match is no longer `playing`. There is no second level bump.
 
+## Telemetry, replay, marathon
+
+| Piece | Result |
+| --- | --- |
+| Telemetry | **Pass.** Room `HJLWR4` stored 95 rows: play think time, decision reaction, seat, hand, move outcome. The HUD read `座1 · play · success · 321ms`. The 统计 tab exported from a table with 思考, Jev, 反应, tokens, 费用. `TYPESAFE_API_KEY` was unset, so Jev rows and cost stayed empty. A posted key is rejected. |
+| Replay | **Pass.** `/replay/HJLWR4` opened on the settle line `第1局 头游+三游 +2 … 打A失败 南北0 东西0` and scrubbed back to `开房`. |
+| Marathon | **Pass, key unset.** `HANDS=2 START_LEVEL=A` exit 0. Copy-invite for seats 0–3, claim, Mock fill, play, settle. Room `QM3MHF` 双下 +3, counters 0/0, 92 metrics. Room `HJLWR4` 头游+三游 +2, counters 0/0, 95 metrics. Passing A ended each room; the harness opened the next one. Notes are in `MARATHON.md`. The log has no seat token and no key. |
+
+`npm run test:engine` passed. `npm run build` passed. Live Redis was not run.
+
 ## Next
 
 - Point `REDIS_URL` at a private Redis and run two processes. The client path is in place; this environment did not connect.
+- Run `npm run marathon` with `TYPESAFE_API_KEY` in the environment when a real Jev latency and usage sample is needed.
 
 ## Previous
 

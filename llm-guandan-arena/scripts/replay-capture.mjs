@@ -131,7 +131,20 @@ async function main() {
   ws.close();
   const encoded = spawnSync(
     "ffmpeg",
-    ["-y", "-framerate", "2", "-i", `${dir}/frame-%03d.png`, "-c:v", "libx264", "-pix_fmt", "yuv420p", out],
+    [
+      "-y",
+      "-framerate",
+      "2",
+      "-i",
+      `${dir}/frame-%03d.png`,
+      "-vf",
+      "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+      "-c:v",
+      "libx264",
+      "-pix_fmt",
+      "yuv420p",
+      out,
+    ],
     { encoding: "utf8" },
   );
   if (encoded.status !== 0) {
