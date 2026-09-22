@@ -1,18 +1,21 @@
 "use client";
 
+import { tenantHeaders } from "@/lib/tenant-client";
 import { metricsToCsv, sparkValues, type PlayMetric } from "@/lib/telemetry";
 
 export function TelemetryHud({ metrics }: { metrics: PlayMetric[] }) {
-  const last = metrics.at(-1);
+  const play = [...metrics].reverse().find((row) => row.kind === "play" || row.kind === "timeout");
+  const jev = [...metrics].reverse().find((row) => row.jevMs !== null);
+  const decision = [...metrics].reverse().find((row) => row.kind === "decision");
   const thinks = sparkValues(metrics, "thinkMs").slice(-24);
+  const cost = jev?.costUsd ?? decision?.costUsd ?? null;
   return (
     <aside className="telemetry-hud" data-testid="telemetry-hud">
       <b>遥测</b>
-      {last ? (
+      {play || jev || decision ? (
         <span data-testid="telemetry-last">
-          座{last.seat ?? "—"} · {last.kind} · {last.outcome} · {last.thinkMs ?? "—"}ms
-          {last.jevMs !== null ? ` · Jev ${last.jevMs}ms` : ""}
-          {last.tokens !== null ? ` · ${last.tokens} tok` : ""}
+          出牌 {play?.thinkMs ?? "—"}ms · Jev {jev?.jevMs ?? "—"}ms · 反应 {decision?.reactionMs ?? play?.reactionMs ?? "—"}ms
+          {cost !== null ? ` · $${cost}` : ""}
         </span>
       ) : (
         <span data-testid="telemetry-last">等待出牌</span>
@@ -22,20 +25,15 @@ export function TelemetryHud({ metrics }: { metrics: PlayMetric[] }) {
   );
 }
 
-export function TelemetryTable({ metrics }: { metrics: PlayMetric[] }) {
+export function TelemetryTable({ metrics, roomCode }: { metrics: PlayMetric[]; roomCode?: string }) {
   const rows = metrics.slice(-12).reverse();
   return (
     <div data-testid="telemetry-table">
       <div className="stats-actions">
-        <button className="chip-btn tiny" type="button" data-testid="telemetry-csv" onClick={() => download("telemetry.csv", metricsToCsv(metrics), "text/csv")}>
+        <button className="chip-btn tiny" type="button" data-testid="telemetry-csv" onClick={() => void exportMetrics(roomCode, metrics, "csv")}>
           遥测 CSV
         </button>
-        <button
-          className="chip-btn tiny"
-          type="button"
-          data-testid="telemetry-json"
-          onClick={() => download("telemetry.json", JSON.stringify(metrics, null, 2), "application/json")}
-        >
+        <button className="chip-btn tiny" type="button" data-testid="telemetry-json" onClick={() => void exportMetrics(roomCode, metrics, "json")}>
           遥测 JSON
         </button>
       </div>
@@ -89,6 +87,23 @@ function Spark({ values }: { values: number[] }) {
       <polyline points={points} />
     </svg>
   );
+}
+
+async function exportMetrics(roomCode: string | undefined, fallback: PlayMetric[], format: "json" | "csv") {
+  let rows = fallback;
+  if (roomCode) {
+    const response = await fetch(`/api/room/${roomCode}/telemetry${format === "csv" ? "?format=csv" : ""}`, { headers: tenantHeaders() });
+    if (response.ok) {
+      if (format === "csv") {
+        download("telemetry.csv", await response.text(), "text/csv");
+        return;
+      }
+      const body = (await response.json()) as { metrics?: PlayMetric[] };
+      rows = body.metrics ?? fallback;
+    }
+  }
+  if (format === "csv") download("telemetry.csv", metricsToCsv(rows), "text/csv");
+  else download("telemetry.json", JSON.stringify(rows, null, 2), "application/json");
 }
 
 function download(filename: string, text: string, type: string) {

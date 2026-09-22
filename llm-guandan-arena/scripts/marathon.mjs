@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 /**
- * Marathon table. One invited seat plus three Mock bots.
- * Jev and LLM stay in this process. The server never receives a key.
+ * Four-seat marathon. This process claims every seat.
+ * Jev runs here when TYPESAFE_API_KEY is already in the environment.
+ * The key is never sent to the Guandan server and never printed.
  *
  * HANDS=50            stop after this many settled hands (default 50)
  * DURATION_MIN=120    optional time cap, whichever comes first
  * START_LEVEL=A       so 打A counters are in the settle line
- * Passing A ends that room. The harness opens another until the cap.
+ * JEV_MS=3500         per-call budget; the seat still acts inside the turn
  * PORT=3456
+ * Passing A ends that room. The harness opens another until the cap.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -37,11 +39,16 @@ function fail(message) {
   throw new Error(redact(message));
 }
 
+function asNumber(value) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
 function usageOf(body) {
-  const usage = body && typeof body === "object" ? body.usage : null;
-  const tokens = typeof usage?.total_tokens === "number" ? usage.total_tokens : null;
-  const cost = typeof usage?.cost_usd === "number" ? usage.cost_usd : typeof usage?.cost === "number" ? usage.cost : null;
-  return { tokens, costUsd: cost };
+  if (!body || typeof body !== "object") return { tokens: null, costUsd: null };
+  const usage = body.usage && typeof body.usage === "object" ? body.usage : {};
+  const tokens = asNumber(usage.total_tokens) ?? asNumber(usage.totalTokens);
+  const costUsd = asNumber(usage.cost_usd) ?? asNumber(usage.cost) ?? asNumber(usage.estimated_cost) ?? asNumber(body.cost);
+  return { tokens, costUsd };
 }
 
 async function api(path, options = {}) {
@@ -90,7 +97,7 @@ async function jevHint(state) {
           play: { type: "choice", instructions: "Pick one legal move id.", criteria },
         },
       }),
-      signal: AbortSignal.timeout(800),
+      signal: AbortSignal.timeout(Math.min(6000, Number(process.env.JEV_MS || 3500))),
     });
     const raw = await response.json().catch(() => ({}));
     const usage = usageOf(raw);
@@ -149,26 +156,30 @@ async function openTable(failures) {
     invites.push(issued.body);
   }
   log(`room ${code} copy-invite seats ${invites.map((item) => item.seat).join(",")}`);
-  const token = invites[2].token;
-  const claim = await api(`/api/room/${code}/claim-seat`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ seatToken: token, name: "马拉松" }),
-  });
-  if (!claim.response.ok) fail(claim.body.error || "claim failed");
-  const filled = await api(`/api/rooms/${code}/fill-mock`, {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-room-host": host },
-    body: JSON.stringify({ hostSecret: host }),
-  });
-  if (!filled.response.ok) fail(filled.body.error || "fill failed");
-  const started = await api(`/api/rooms/${code}/start`, {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-room-host": host },
-    body: JSON.stringify({ hostSecret: host }),
-  });
-  if (!started.response.ok) fail(started.body.error || "start failed");
-  return { code, token };
+  const winds = ["北", "东", "南", "西"];
+  const seats = [];
+  for (const invite of invites) {
+    const claim = await api(`/api/room/${code}/claim-seat`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ seatToken: invite.token, name: `马拉松${winds[invite.seat] ?? invite.seat}` }),
+    });
+    if (!claim.response.ok) fail(claim.body.error || "claim failed");
+    seats.push({ seat: invite.seat, token: invite.token });
+  }
+  log(`joined seats ${seats.map((item) => item.seat).join(",")}`);
+  const room = await api(`/api/rooms/${code}`);
+  if (room.body.status === "lobby") {
+    const started = await api(`/api/rooms/${code}/start`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-room-host": host },
+      body: JSON.stringify({ hostSecret: host }),
+    });
+    if (!started.response.ok && started.body.error !== "已经开打") fail(started.body.error || "start failed");
+  } else if (room.body.status !== "playing" && room.body.status !== "finished") {
+    fail(room.body.error || "room did not start");
+  }
+  return { code, seats };
 }
 
 async function main() {
@@ -190,31 +201,38 @@ async function main() {
     let roomHands = 0;
     let ended = false;
     while (Date.now() < deadline && !(DURATION_MS && Date.now() - startedAt >= DURATION_MS)) {
-      const state = await api(`/api/room/${table.code}/state?seatToken=${encodeURIComponent(table.token)}`);
-      if (!state.response.ok) {
-        failures.push(state.body.error || "state failed");
+      const probe = await api(`/api/room/${table.code}/state?seatToken=${encodeURIComponent(table.seats[0].token)}`);
+      if (!probe.response.ok) {
+        failures.push(probe.body.error || "state failed");
         break;
       }
-      const rounds = state.body.match?.rounds?.length ?? 0;
+      const rounds = probe.body.match?.rounds?.length ?? 0;
       if (rounds > announced) {
-        const last = state.body.match.rounds[rounds - 1];
-        const fails = state.body.match.aceFails;
+        const last = probe.body.match.rounds[rounds - 1];
+        const fails = probe.body.match.aceFails;
         log(`room ${table.code} hand ${rounds} ${last?.outcome || ""} +${last?.delta ?? ""} ace ns ${fails?.ns ?? 0} ew ${fails?.ew ?? 0}`);
         hands += rounds - announced;
         announced = rounds;
         roomHands = rounds;
       }
-      ended = state.body.status === "finished" || state.body.match?.status === "finished";
+      ended = probe.body.status === "finished" || probe.body.match?.status === "finished";
       if (hands >= HANDS || ended) break;
+      const turn = probe.body.currentTurn;
+      const actor = table.seats.find((item) => item.seat === turn) ?? table.seats[0];
+      const state = actor.seat === table.seats[0].seat ? probe : await api(`/api/room/${table.code}/state?seatToken=${encodeURIComponent(actor.token)}`);
+      if (!state.response.ok) {
+        failures.push(state.body.error || "state failed");
+        break;
+      }
       if (!state.body.you?.yourTurn) {
-        await new Promise((resolve) => setTimeout(resolve, 120));
+        await new Promise((resolve) => setTimeout(resolve, 80));
         continue;
       }
       const thinkStarted = Date.now();
       const hint = await jevHint(state.body);
       if (!hint.skipped) {
         jevCalls += 1;
-        await postMetric(table.code, table.token, {
+        await postMetric(table.code, actor.token, {
           kind: "jev",
           outcome: hint.ok ? "success" : "fail",
           jevMs: hint.ms,
@@ -229,17 +247,19 @@ async function main() {
         break;
       }
       const reactionMs = Date.now() - thinkStarted;
-      await postMetric(table.code, table.token, {
+      await postMetric(table.code, actor.token, {
         kind: "decision",
         outcome: "success",
         reactionMs,
         moveId: move.id,
         jevMs: hint.skipped ? null : hint.ms,
+        tokens: hint.tokens,
+        costUsd: hint.costUsd,
       });
       const acted = await api(`/api/room/${table.code}/act`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ seatToken: table.token, moveId: move.id }),
+        body: JSON.stringify({ seatToken: actor.token, moveId: move.id }),
       });
       if (!acted.response.ok) {
         failures.push(acted.body.error || "act failed");
@@ -249,7 +269,7 @@ async function main() {
       plays += 1;
     }
 
-    const done = await api(`/api/room/${table.code}/state?seatToken=${encodeURIComponent(table.token)}`);
+    const done = await api(`/api/room/${table.code}/state?seatToken=${encodeURIComponent(table.seats[0].token)}`);
     const ace = done.body.match?.aceFails;
     const telemetry = await api(`/api/room/${table.code}/telemetry`);
     rooms.push({
@@ -275,7 +295,7 @@ async function main() {
 ## Last run
 
 - Start level ${START_LEVEL}. Settled hands ${hands}. Seat plays ${plays}. Rooms: ${roomLines || "none"}.
-- Jev calls from this process: ${jevCalls}. ${jevOn ? "TYPESAFE_API_KEY was set." : "TYPESAFE_API_KEY was unset, so Jev was skipped and the heuristic played."}
+- Four seats claimed in this process. Jev calls: ${jevCalls}. ${jevOn ? "TYPESAFE_API_KEY was set in the environment." : "TYPESAFE_API_KEY was unset, so Jev was skipped and the heuristic played."}
 - Passing A ends that match. The harness opens another room until HANDS or DURATION_MIN.
 - Failures and UX notes: ${failures.length ? failures.map((item) => redact(item)).join("; ") : "none in this run"}.
 `);

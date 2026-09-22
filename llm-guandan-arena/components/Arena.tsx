@@ -389,6 +389,7 @@ export function Arena({
             <StatsPanel
               view={view}
               metrics={metrics}
+              roomCode={roomCode}
               onCsv={() => download(`guandan-${id.slice(0, 8)}-stats.csv`, statsToCsv(view.stats), "text/csv")}
               onJson={() => download(`guandan-${id.slice(0, 8)}-stats.json`, JSON.stringify(view.stats, null, 2), "application/json")}
             />
@@ -590,7 +591,7 @@ function LevelTrack({ view }: { view: MatchView }) {
   );
 }
 
-function StatsPanel({ view, metrics, onCsv, onJson }: { view: MatchView; metrics: PlayMetric[]; onCsv: () => void; onJson: () => void }) {
+function StatsPanel({ view, metrics, roomCode, onCsv, onJson }: { view: MatchView; metrics: PlayMetric[]; roomCode?: string; onCsv: () => void; onJson: () => void }) {
   const stats = view.stats;
   return (
     <div className="stats-panel" data-testid="stats-panel">
@@ -677,7 +678,7 @@ function StatsPanel({ view, metrics, onCsv, onJson }: { view: MatchView; metrics
           </tbody>
         </table>
       </details>
-      <TelemetryTable metrics={metrics} />
+      <TelemetryTable metrics={metrics} roomCode={roomCode} />
       <ol className="hand-log">
         {stats.hands.map((hand) => (
           <li key={hand.round}>

@@ -58,7 +58,7 @@ Peer QA checklist, then `test:engine`, `build`, and `HANDS=2`.
 | --- | --- |
 | Telemetry | **Pass.** Room `HJLWR4` stored 95 rows: play think time, decision reaction, seat, hand, move outcome. The HUD read `座1 · play · success · 321ms`. The 统计 tab exported from a table with 思考, Jev, 反应, tokens, 费用. `TYPESAFE_API_KEY` was unset, so Jev rows and cost stayed empty. A posted key is rejected. |
 | Replay | **Pass.** `/replay/HJLWR4` opened on the settle line `第1局 头游+三游 +2 … 打A失败 南北0 东西0` and scrubbed back to `开房`. |
-| Marathon | **Pass, key unset.** `HANDS=2 START_LEVEL=A` exit 0. Copy-invite for seats 0–3, claim, Mock fill, play, settle. Room `QM3MHF` 双下 +3, counters 0/0, 92 metrics. Room `HJLWR4` 头游+三游 +2, counters 0/0, 95 metrics. Passing A ended each room; the harness opened the next one. Notes are in `MARATHON.md`. The log has no seat token and no key. |
+| Marathon | **Pass, key unset.** Four seats are claimed in this process. `HANDS=1 START_LEVEL=A` room `2X3Y2Z` settled 头游+末游 +1 with 打A counters 南北 1 / 东西 0. Jev stays off until `TYPESAFE_API_KEY` is already in the shell. The command is in `MARATHON.md`. The log has no seat token and no key. |
 
 `npm run test:engine` passed. `npm run build` passed. Live Redis was not run.
 

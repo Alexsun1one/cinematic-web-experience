@@ -45,6 +45,8 @@ npm --prefix llm-guandan-arena run operator
 
 默认 `HANDS=1` `SERIES=three` `START_LEVEL=T` `OPERATOR_SEAT=2` `PORT=3456`。打完三局：`HANDS=3 SERIES=three npm --prefix llm-guandan-arena run operator`。`npm run watch`（在 `llm-guandan-arena` 里）只开房并打印 curl，座位空着。已经有 token 时：`ROOM_CODE=CODE SEAT_TOKEN=TOKEN npm --prefix llm-guandan-arena run operator`。
 
+四席马拉松（Jev 只读环境里的 `TYPESAFE_API_KEY`，命令行不要带密钥）见 `MARATHON.md`。服务器起来之后，在 `llm-guandan-arena` 里执行 `npm run marathon`。默认 50 局；两小时用 `DURATION_MIN=120 npm run marathon`。
+
 操作席循环（不要把密钥发给服务器）。先在 `llm-guandan-arena` 里 `npm run dev` 或 `npm run start`，端口 3456：
 
 ```bash
@@ -124,7 +126,7 @@ Without `REDIS_URL`, matches stay in this Node process. With `REDIS_URL`, rooms 
 | `GEMINI_API_KEY` 或 `GOOGLE_API_KEY` | Gemini。默认 `GEMINI_MODEL=gemini-3.8-flash` |
 | `MIMO_API_KEY` | 小米 MiMo。必须同时有 `MIMO_BASE_URL`（按量默认 `https://api.xiaomimimo.com/v1`）。模型 `MIMO_MODEL=mimo-v2.6-flash` |
 | `ZHIPU_API_KEY` | 智谱 GLM。默认 `ZHIPU_MODEL=glm-5.3-flash`，`ZHIPU_BASE_URL` |
-| `TYPESAFE_API_KEY` | Jev。`POST {TYPESAFE_BASE_URL}/v1/systemone`，默认 `https://api.typesafe.ai`，模型 `TYPESAFE_MODEL` |
+| `TYPESAFE_API_KEY` | Jev。`POST {TYPESAFE_BASE_URL}/v1/systemone`，默认 `https://api.typesafe.ai`，模型 `TYPESAFE_MODEL`。马拉松只从环境读它，见 `MARATHON.md` |
 | `REDIS_URL` | 可选。设置后房间和对局进 Redis，多实例共用。不设置则只有当前进程 |
 | `TENANT_MAX_ROOMS` | 可选。每个租户同时未结束的房间上限 |
 | `GUANDAN_ACE_STRIKES` | 打 A 失败几次后退回 2。默认 `3`。`0` 是竞赛规则：一直停在 A。次数记在这一局对局里，新房间从 0 开始 |
