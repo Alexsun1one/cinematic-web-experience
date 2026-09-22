@@ -1,6 +1,7 @@
 import { createMatch, currentLegal, parseStartLevel, type Match } from "./guandan/match";
 import type { FaceRank, ProviderId, SeatConfig, VendorId } from "./guandan/types";
 import { SEAT_WIND, teamOf } from "./guandan/types";
+import { tableProcedure } from "./guandan/procedure";
 import { buildInviteBlock, JEV_BUDGET_MS, TURN_BUDGET_MS } from "./invite";
 import { ROSTER } from "./roster-data";
 import { keyStatus, vendorReady } from "./roster";
@@ -394,8 +395,13 @@ export function toRoomView(
   keys: ReturnType<typeof keyStatus>;
   updatedAt: number;
   turnBudgetMs: number;
+  phase: ReturnType<typeof tableProcedure>["phase"];
+  leaderSeat: number | null;
+  currentTurn: number | null;
+  mustBeat: ReturnType<typeof tableProcedure>["mustBeat"];
 } {
   pruneSpectators(room);
+  const procedure = tableProcedure(opts.match ?? null);
   return {
     code: room.code,
     path: `/room/${room.code}`,
@@ -428,6 +434,10 @@ export function toRoomView(
     keys: keyStatus(),
     updatedAt: room.updatedAt,
     turnBudgetMs: TURN_BUDGET_MS,
+    phase: procedure.phase,
+    leaderSeat: procedure.leaderSeat,
+    currentTurn: procedure.currentTurn,
+    mustBeat: procedure.mustBeat,
   };
 }
 
@@ -452,6 +462,10 @@ export function stateForToken(room: Room, token: string | null) {
       jevBudgetMs: JEV_BUDGET_MS,
       hand: match ? match.hands[seat].map((card) => ({ id: card.id, suit: card.suit, rank: card.rank })) : [],
       legal,
+      phase: view.phase,
+      leaderSeat: view.leaderSeat,
+      currentTurn: view.currentTurn,
+      mustBeat: view.mustBeat,
     },
   };
 }

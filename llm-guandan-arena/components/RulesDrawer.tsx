@@ -1,14 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { OPENING_ORDER } from "@/lib/guandan/procedure";
 
-const LINES = [
-  "四人两队：北南对东西，每人 27 张。",
-  "级牌从 2 打到 A。红心级牌是逢人配，能补点数和花色，不能当王。",
-  "常见牌型：单张、对子、三张、三带二、顺子、三连对、钢板、炸弹、同花顺、四王。",
-  "先出完的是头游，最后一家是末游。",
-  "只升不降：双下 +3，头游+三游 +2，头游+末游 +1。",
-  "引擎只接受合法着法。轮到你的 Agent 时，从 legal 列表里选。",
+const COMBOS = [
+  "牌型：单张、对子、三张、三带二、五张顺子、三连对、钢板、四至八炸、同花顺、四王。同花顺只当炸弹。",
+  "轮到你时只出 legal 里的 moveId。领出看 mustBeat === null；要压的牌看 mustBeat。",
 ];
 
 export function RulesButton() {
@@ -26,12 +23,22 @@ export function RulesButton() {
               <b>规则速览</b>
               <button className="chip-btn tiny" type="button" onClick={() => setOpen(false)}>关闭</button>
             </header>
-            <p>三十秒看懂这桌怎么打。完整约束以引擎为准。</p>
-            <ol>
-              {LINES.map((line) => (
-                <li key={line}>{line}</li>
+            <p>开局与出牌顺序以这张引擎为准。没有写的流程不要假设。</p>
+            <h3>开局与出牌顺序</h3>
+            <ol data-testid="opening-order">
+              {OPENING_ORDER.map((step) => (
+                <li key={step.title}>
+                  <b>{step.title}</b>
+                  <span>{step.body}</span>
+                </li>
               ))}
             </ol>
+            <h3>牌型</h3>
+            <ul>
+              {COMBOS.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
           </aside>
         </div>
       ) : null}

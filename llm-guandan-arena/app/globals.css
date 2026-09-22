@@ -1271,7 +1271,7 @@ button:disabled { opacity: 0.4; cursor: wait; }
 .invite-card small { color: var(--muted); }
 .invite-card pre {
   margin: 0;
-  max-height: 220px;
+  max-height: 320px;
   overflow: auto;
   padding: 10px;
   border-radius: 12px;
@@ -1289,8 +1289,9 @@ button:disabled { opacity: 0.4; cursor: wait; }
 .rules-backdrop { position: absolute; inset: 0; border: 0; background: rgba(0, 0, 0, 0.45); }
 .rules-panel {
   position: relative;
-  width: min(380px, 100%);
+  width: min(440px, 100%);
   height: 100%;
+  overflow: auto;
   padding: 22px;
   background: rgba(12, 16, 22, 0.92);
   border-left: 1px solid rgba(46, 230, 166, 0.35);
@@ -1298,7 +1299,11 @@ button:disabled { opacity: 0.4; cursor: wait; }
   box-shadow: -20px 0 50px rgba(0, 0, 0, 0.4);
 }
 .rules-panel header { display: flex; justify-content: space-between; align-items: center; }
-.rules-panel ol { padding-left: 18px; color: #d5dde6; line-height: 1.55; }
+.rules-panel h3 { margin: 16px 0 8px; font-size: 13px; letter-spacing: 0.06em; color: var(--accent); }
+.rules-panel ol, .rules-panel ul { padding-left: 18px; color: #d5dde6; line-height: 1.55; }
+.rules-panel li { margin: 0 0 10px; }
+.rules-panel li b { display: block; color: var(--text); }
+.rules-panel li span { color: #d5dde6; }
 .rules-panel p { color: var(--muted); }
 
 @keyframes fly-n { from { transform: translateY(-28px); opacity: 0.1; } to { transform: none; opacity: 1; } }

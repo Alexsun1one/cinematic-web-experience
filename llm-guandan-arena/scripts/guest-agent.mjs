@@ -2,6 +2,7 @@
 /**
  * Reference guest player. Decisioning stays here: own Jev, own LLM.
  * The arena server only lists legal moves and advances on timeout.
+ * Read state.phase, leaderSeat, currentTurn, mustBeat. Do not invent tribute.
  *
  * ROOM_URL=http://localhost:3456/room/CODE
  * SEAT_TOKEN=...

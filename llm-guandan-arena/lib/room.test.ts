@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { commitMove, currentLegal, stepLocal } from "./guandan/match";
+import { tableProcedure } from "./guandan/procedure";
 import {
   claimByToken,
   claimSeat,
@@ -71,13 +73,56 @@ function testGuestInvite() {
   assert.throws(() => claimByToken(room, issued.token, "Again"));
   const secretView = JSON.stringify(toRoomView(room, { isHost: false }));
   assert.equal(secretView.includes(issued.token), false);
-  const state = stateForToken(room, issued.token);
-  assert.equal(state.you?.seat, seat);
-  assert.equal(JSON.stringify(state).includes("apiKey"), false);
+  const waiting = stateForToken(room, issued.token);
+  assert.equal(waiting.you?.seat, seat);
+  assert.equal(waiting.phase, null);
+  assert.equal(JSON.stringify(waiting).includes("apiKey"), false);
+  assert.match(issued.block, /开局与出牌顺序/);
+  assert.match(issued.block, /本引擎简化：不进贡、不还贡、不抗贡/);
+  assert.match(issued.block, /第一手领出固定是座位 0/);
+  assert.match(issued.block, /接风/);
+  assert.match(issued.block, /phase 永远不会是 tribute/);
+
+  const match = startRoomMatch(room);
+  const opened = tableProcedure(match);
+  assert.equal(opened.phase, "play");
+  assert.equal(opened.leaderSeat, 0);
+  assert.equal(opened.currentTurn, 0);
+  assert.equal(opened.mustBeat, null);
+  const lead = currentLegal(match).find((move) => move.kind !== "pass");
+  assert.ok(lead);
+  commitMove(match, lead, { source: "mock", provider: "mock", retries: 0, note: "test" });
+  const following = stateForToken(room, issued.token);
+  assert.equal(following.phase, "play");
+  assert.equal(following.leaderSeat, 0);
+  assert.equal(following.currentTurn, 1);
+  assert.equal(following.mustBeat?.seat, 0);
+  assert.equal(following.you?.mustBeat?.seat, 0);
+  assert.equal(following.you?.currentTurn, 1);
+}
+
+function testSettleNamesNextLeader() {
+  const { room } = createRoom({ series: "open", autoFillMock: true });
+  const match = startRoomMatch(room);
+  let guard = 0;
+  while (match.status === "playing" && guard < 4000) {
+    stepLocal(match);
+    guard += 1;
+  }
+  assert.equal(match.status, "between_rounds");
+  const procedure = tableProcedure(match);
+  assert.equal(procedure.phase, "settle");
+  assert.equal(procedure.currentTurn, null);
+  assert.equal(procedure.mustBeat, null);
+  assert.equal(procedure.leaderSeat, match.finishOrder[0]);
+  const state = stateForToken(room, null);
+  assert.equal(state.phase, "settle");
+  assert.equal(state.leaderSeat, match.finishOrder[0]);
 }
 
 testCodes();
 testMockRoomFlow();
 testByoSeatStripsSecret();
 testGuestInvite();
+testSettleNamesNextLeader();
 console.log("room tests passed");

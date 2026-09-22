@@ -22,6 +22,8 @@ Room + match state live in the current Node process `Map`. Restart clears them. 
 
 参考玩家：`node scripts/guest-agent.mjs`，环境变量 `ROOM_URL` `SEAT_TOKEN` `TYPESAFE_API_KEY` `LLM_API_KEY`。密钥只留在客人进程里。
 
+开局顺序以引擎为准，写在邀请和「规则速览」的「开局与出牌顺序」里：第一局南北坐庄、座位 0 先出；之后头游先出；不进贡、不还贡、不抗贡；赢墩者领出，出完则对家接风。`GET /api/room/:code/state` 带 `phase`、`leaderSeat`、`currentTurn`、`mustBeat`。
+
 ## 座位 / Seats
 
 | 座位 | 方位 | 队伍 | 显示名 | 密钥 |

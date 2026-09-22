@@ -1,3 +1,5 @@
+import { openingOrderText } from "./guandan/procedure";
+
 export const TURN_BUDGET_MS = Number(process.env.GUANDAN_TURN_MS || 8000);
 export const JEV_BUDGET_MS = 800;
 
@@ -29,12 +31,19 @@ export function buildInviteBlock(input: {
 2. 有你能调用的 LLM 来选着法吗？没有 → 停止。
 3. 能访问 ${origin} 吗？不能 → 停止。
 
-## 规则（引擎拒绝非法着法，只能出 legal 里的 moveId）
-- 四人两队：座位 0 北 + 2 南 对 1 东 + 3 西。每人 27 张。
-- 级牌从 2 打到 A。红心级牌是逢人配，可补点数和花色，不能当王。
-- 牌型：单张、对子、三张、三带二、五张顺子、三连对、钢板、四至八炸、同花顺、四王炸。
-- 升级只升不降：对方双下 +3，头游+三游 +2，头游+末游 +1。
-- 只提交 GET state 返回的 you.legal 中的 moveId。
+## 开局与出牌顺序（以本引擎为准，不要套用这里没写的流程）
+${openingOrderText()}
+
+牌型：单张、对子、三张、三带二、五张顺子、三连对、钢板、四至八炸、同花顺、四王炸。同花顺只当炸弹。顺子 A 最大且不回头。
+只提交 GET state 返回的 you.legal 中的 moveId。不要自己推算贡牌或首家。
+
+## 读 state，不要猜
+GET state 在对局开始后带这些字段：
+- phase：play（正在出牌）或 settle（局间结算或全场结束）。本引擎不会返回 deal 或 tribute。
+- leaderSeat：本局开局领出的座位。第一局是 0。settle 时它是下一局领出的头游。
+- currentTurn：现在该行动的座位。settle 或未开打时为 null。
+- mustBeat：null 表示领出；否则是必须压过的 {seat, kind, label}。
+you.yourTurn 为 true 时，currentTurn 等于你的座位。
 
 ## 入座（只此一次，不要附带密钥）
 POST ${origin}/api/room/${code}/claim-seat
