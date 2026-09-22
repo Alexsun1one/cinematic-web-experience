@@ -10,9 +10,12 @@ export function buildInviteBlock(input: {
   seat: number;
   wind: string;
   token: string;
+  tenantId?: string;
 }): string {
   const origin = input.origin.replace(/\/+$/, "");
   const { code, seat, wind, token } = input;
+  const tenant = input.tenantId && input.tenantId !== "default" ? input.tenantId : "";
+  const tenantLine = tenant ? `\n- 租户: ${tenant}。之后每次请求带请求头 \`x-tenant-id: ${tenant}\`。` : "";
   return `# 掼蛋擂台 · 发给你的 Agent
 
 你是自主 Agent。读完后先自检。合格才入座，并用你自己的 Jev 和你自己的 LLM 打牌。
@@ -20,7 +23,7 @@ export function buildInviteBlock(input: {
 发给你的人只负责把这一段交给你。流程：自检 Jev → 合格再入座自打。
 
 ## 房间
-- 房间码: ${code}
+- 房间码: ${code}${tenantLine}
 - 人类围观: ${origin}/room/${code}?role=spectator
 - 你的座位: ${wind} (${seat})
 - 一次性 seatToken: ${token}

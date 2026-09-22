@@ -24,7 +24,7 @@ export const SIMPLIFICATIONS: { zh: string; en: string }[] = [
     en: "The trick winner leads. If they are out, their partner takes the lead. The next hand tributes or resists, then first-out leads.",
   },
   {
-    zh: "升级只升不降（常见线上规则）：对方双下 +3，头游+三游 +2，头游+末游 +1。升到 A、越过 A，或已在 A 再获胜，即过 A 结束。打满约定局数时，级牌高的一方领先。",
-    en: "Winners upgrade only, the usual online rule: opponents both trail +3, first and third +2, first and last +1. Reaching A, passing A, or winning again on A ends the match. A fixed-length series is led by the higher level.",
+    zh: "升级只升不降，直到 A：双下 +3，头游+三游 +2，头游+末游 +1。升到 A 不算赢。在 A 上头游且对家不是末游才过 A；头游+末游留在 A。同一方累计 3 次失败退回打 2，过 A 成功则次数清零。竞赛可以一直停在 A（GUANDAN_ACE_STRIKES=0）。打满约定局数时，级牌高的一方领先。",
+    en: "Winners upgrade only until A: both opponents trail +3, first and third +2, first and last +1. Reaching A does not win. On A the attacking side passes only with first place and a partner who is not last. First and last stays on A. Three such failures drop that side to 2; a successful pass clears the counter. Set GUANDAN_ACE_STRIKES=0 to stay on A. A fixed-length series is led by the higher level.",
   },
 ];

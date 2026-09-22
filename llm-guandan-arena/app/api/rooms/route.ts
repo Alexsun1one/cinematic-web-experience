@@ -1,5 +1,6 @@
 import { createRoom, listRooms, openOperatorTable, toRoomView } from "@/lib/room";
-import { matchStore } from "@/lib/store";
+import { TenantRoomLimitError, tenantFromRequest } from "@/lib/room-store";
+import { readMatch } from "@/lib/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -8,9 +9,12 @@ function json(data: unknown, status = 200) {
   return Response.json(data, { status, headers: { "cache-control": "no-store" } });
 }
 
-export function GET() {
+export async function GET(request: Request) {
+  const tenantId = tenantFromRequest(request);
+  const rooms = await listRooms(tenantId);
   return json({
-    rooms: listRooms().slice(0, 12).map((room) => ({
+    tenantId,
+    rooms: rooms.slice(0, 12).map((room) => ({
       code: room.code,
       status: room.status,
       series: room.series,
@@ -29,34 +33,46 @@ export async function POST(request: Request) {
     autoFillMock?: unknown;
     operator?: unknown;
     operatorSeat?: unknown;
+    tenantId?: unknown;
   };
+  const tenantId = tenantFromRequest(request, body);
   const series = body.series === "full" || body.series === "three" || body.series === "open" ? body.series : "three";
-  if (body.operator === true || typeof body.operatorSeat === "number") {
-    const opened = openOperatorTable({
-      seat: typeof body.operatorSeat === "number" ? body.operatorSeat : 2,
-      series: body.series === "full" || body.series === "three" || body.series === "open" ? body.series : "open",
+  try {
+    if (body.operator === true || typeof body.operatorSeat === "number") {
+      const opened = await openOperatorTable({
+        seat: typeof body.operatorSeat === "number" ? body.operatorSeat : 2,
+        series: body.series === "full" || body.series === "three" || body.series === "open" ? body.series : "open",
+        startLevel: body.startLevel,
+        tenantId,
+      });
+      return json({
+        hostSecret: opened.hostSecret,
+        tenantId,
+        operator: {
+          seat: opened.seat,
+          wind: opened.wind,
+          name: "知识",
+          seatToken: opened.seatToken,
+        },
+        ...toRoomView(opened.room, { isHost: true, match: null }),
+      });
+    }
+    const { room, hostSecret } = await createRoom({
+      series,
       startLevel: body.startLevel,
+      seatsOpen: body.seatsOpen !== false,
+      autoFillMock: body.autoFillMock !== false,
+      tenantId,
     });
+    const match = await readMatch(room.matchId);
     return json({
-      hostSecret: opened.hostSecret,
-      operator: {
-        seat: opened.seat,
-        wind: opened.wind,
-        name: "知识",
-        seatToken: opened.seatToken,
-      },
-      ...toRoomView(opened.room, { isHost: true, match: null }),
+      hostSecret,
+      tenantId,
+      ...toRoomView(room, { isHost: true, match }),
     });
+  } catch (error) {
+    if (error instanceof TenantRoomLimitError) return json({ error: error.message }, 429);
+    const message = error instanceof Error ? error.message : "开房失败";
+    return json({ error: message }, 400);
   }
-  const { room, hostSecret } = createRoom({
-    series,
-    startLevel: body.startLevel,
-    seatsOpen: body.seatsOpen !== false,
-    autoFillMock: body.autoFillMock !== false,
-  });
-  const match = room.matchId ? matchStore().get(room.matchId) : null;
-  return json({
-    hostSecret,
-    ...toRoomView(room, { isHost: true, match }),
-  });
 }

@@ -15,7 +15,7 @@ Date: 2026-09-22. Branch `cursor/llm-guandan-arena-6cfe`.
 | Illegal `moveId` rejected | Pass. `commitMove` throws. Live `POST act` returned 400 `非法着法，只能出 legal 列表里的 moveId`. A listed id returned 200 |
 | `legalMoves` matches `you.legal` on your turn, null otherwise | Pass |
 | +3 / +2 / +1 | Pass |
-| 打A: winning on A, and reaching A from K | Pass. A scripted 双下 at 打K finished the match at A |
+| 打A: winning on A, and reaching A from K | Updated after this audit. Reaching A no longer wins. On A, 头游+二游 or 头游+三游 passes; 头游+末游 stays; the third failure drops that side to 2 |
 
 ## Round 2 — Agent protocol
 
@@ -55,8 +55,8 @@ Date: 2026-09-22. Branch `cursor/llm-guandan-arena-6cfe`.
 
 ## Remaining limits
 
-- Rooms and matches are in-memory. Restarting the process clears them. More than one instance needs a sticky process or Redis.
+- Without `REDIS_URL`, rooms and matches stay in this process. With `REDIS_URL`, instances share them. See `MULTI_TENANT.md`.
 - There is no click-to-play hand. 知识 plays through claim / state / act.
 - 抗贡 is decided by the engine. Agents do not send a resist move. They wait, then 头游 leads.
 - `npm run operator` uses the shared heuristic unless `LLM_API_KEY` is set.
-- Reaching A ends the match. A series started at 打10 can finish before three hands if an upgrade lands on A.
+- Reaching A does not end the match. Passing A needs 头游 and a partner who is not 末游. Three 头游+末游 failures drop that side to 2.

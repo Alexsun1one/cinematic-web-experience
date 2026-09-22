@@ -11,7 +11,7 @@ import {
   type TributeState,
 } from "./tribute";
 import { leadAfterTrick, legalMoves, nextSeatWithCards, type Move } from "./legal";
-import { bumpLevel, completeOrder, outcomeLabel, roundIsOver, teamPlaces, upgradeDelta } from "./score";
+import { aceStrikeLimit, applyAceAttempt, completeOrder, outcomeLabel, roundIsOver, teamPlaces, upgradeDelta } from "./score";
 import {
   FACE,
   SEAT_WIND,
@@ -88,6 +88,8 @@ export interface Match {
   startLevel: FaceRank;
   handLimit: number | null;
   levels: Record<TeamId, FaceRank>;
+  /** Failed attempts to pass A. Cumulative per side, cleared on a pass or a drop to 2. */
+  aceFails: Record<TeamId, number>;
   dealer: TeamId;
   level: FaceRank;
   round: number;
@@ -143,6 +145,7 @@ export function createMatch(input: CreateMatchInput): Match {
     startLevel: start,
     handLimit: input.handLimit ?? null,
     levels: { ns: start, ew: start },
+    aceFails: { ns: 0, ew: 0 },
     dealer: "ns",
     level: start,
     round: 0,
@@ -425,9 +428,11 @@ function endRound(match: Match, lastSeat: number) {
   const nsBefore = match.levels.ns;
   const ewBefore = match.levels.ew;
   const from = match.levels[winner];
-  const bumped = bumpLevel(from, delta);
+  if (!match.aceFails) match.aceFails = { ns: 0, ew: 0 };
+  const attempt = applyAceAttempt(from, delta, match.aceFails[winner] ?? 0);
   const dealtBy = match.dealer;
-  match.levels[winner] = bumped.level;
+  match.levels[winner] = attempt.level;
+  match.aceFails[winner] = attempt.fails;
   match.dealer = winner;
   match.nextLeader = order[0];
   const outcome = outcomeLabel(delta);
@@ -440,12 +445,12 @@ function endRound(match: Match, lastSeat: number) {
     delta,
     outcome,
     from,
-    to: bumped.level,
+    to: attempt.level,
     nsBefore,
     nsAfter: match.levels.ns,
     ewBefore,
     ewAfter: match.levels.ew,
-    matchWon: bumped.won,
+    matchWon: attempt.won,
   };
   match.rounds.push(summary);
   const names = order.map((seat, index) => `${placeName(index + 1)}${seatName(match, seat)}`).join(" ");
@@ -453,14 +458,19 @@ function endRound(match: Match, lastSeat: number) {
     .map((seat, index) => `${placeNameEn(index + 1)} ${seatNameEn(match, seat)}`)
     .join(", ");
   const team = winner === "ns" ? "南北" : "东西";
+  const strikeNote = attempt.dropped
+    ? ` · 打A未过已满 ${aceStrikeLimit()} 次，退回打2`
+    : from === "A" && !attempt.won
+      ? ` · 打A未过，第 ${attempt.fails} 次`
+      : "";
   pushLog(match, {
     seat: null,
     kind: "round",
-    zh: `本局结束 ${names} · ${outcome} · ${team} +${delta}（打${rankName(from)} → 打${rankName(bumped.level)}）`,
-    en: `Round over: ${namesEn}. ${outcome} · ${winner.toUpperCase()} +${delta} (${rankName(from)} → ${rankName(bumped.level)})`,
-    highlight: bumped.won ? "打A" : delta >= 3 ? "双下" : "升级",
+    zh: `本局结束 ${names} · ${outcome} · ${team} +${delta}（打${rankName(from)} → 打${rankName(attempt.level)}）${strikeNote}`,
+    en: `Round over: ${namesEn}. ${outcome} · ${winner.toUpperCase()} +${delta} (${rankName(from)} → ${rankName(attempt.level)})${strikeNote}`,
+    highlight: attempt.won ? "打A" : delta >= 3 ? "双下" : "升级",
   });
-  if (bumped.won) {
+  if (attempt.won) {
     match.status = "finished";
     match.winner = winner;
     pushLog(match, {

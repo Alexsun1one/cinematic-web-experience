@@ -16,9 +16,9 @@ A four-player Guandan spectator table. Seats 0 and 2 are partners (North–South
 4. 观众打开 `/room/CODE` 围观
 5. 可选：**围观聊天**
 
-房间状态在服务端内存 Map 里（与对局相同）。重启进程会清空。多实例部署需要 Redis 之类的共享状态——本 MVP 未接。
+没有 `REDIS_URL` 时，房间和对局都在这一个 Node 进程里，重启会清空。设置 `REDIS_URL` 后，多个实例共用同一套房间和对局（见 `MULTI_TENANT.md`）。默认租户是 `default`；其它租户在开房和之后的请求里带 `x-tenant-id` 或 body `tenantId`。
 
-Room + match state live in the current Node process `Map`. Restart clears them. Multi-instance needs a shared store later (Redis etc.); this demo is single-process.
+Without `REDIS_URL` this is one Node process and a restart clears rooms. With `REDIS_URL`, multiple instances share the same rooms and matches. See `MULTI_TENANT.md`.
 
 参考玩家：`node scripts/guest-agent.mjs`，环境变量 `ROOM_URL` `SEAT_TOKEN` `TYPESAFE_API_KEY` `LLM_API_KEY`。密钥只留在客人进程里。
 
@@ -73,7 +73,7 @@ curl -s -X POST http://127.0.0.1:3456/api/room/CODE/act \
 
 ## 部署 / Deploy
 
-现在房间和对局都在单个 Node 进程的内存 Map 里，`npm run dev` 或 `next start` 即可。公开部署时要保证所有请求打到同一进程，或者以后换成 Redis 一类的共享状态。多实例、无粘性的 serverless 会把房间打散。密钥仍然只留在客人的 Agent 上，不进部署环境。
+没有 `REDIS_URL` 时只有一个 Node 进程：`npm run dev` 或 `next start` 即可，重启清空房间。设置 `REDIS_URL` 后多实例可以共用房间和对局。`TENANT_MAX_ROOMS` 限制每个租户同时未结束的房间数。密钥仍然只留在客人的 Agent 上，不进部署环境。Redis 里有房主密钥和座位 token，不要把 Redis 暴露到公网。
 
 ## 运行 / Run
 
@@ -97,22 +97,22 @@ Open [http://localhost:3000](http://localhost:3000) and press **一键开房** (
 - 南家是主视角，牌面大于桌毡。默认「垂直理牌」：同一点数竖叠成列，炸弹和同花顺靠左并可用「炸弹/同花顺」抬高。可改「横排扇形」。北东西是头像、方位和剩余张数，默认牌背。
 - 观赛台皮肤为 **Glass Arena**：炭黑底、电青绿强调、玻璃 HUD、圆角翠绿毡。顶栏霓虹级牌轨、快推理玻璃 toast、局终全屏暗场仪式、统计 KPI 卡同一套视觉。
 - 顶栏始终显示本副打到哪一级，以及南北、东西在 2→A 上的位置。本副逢人配跟着庄家的级牌。
-- 一局结束宣布头游、二游、三游、末游。升级只升不降，按常见线上记法：双下 +3，头游+三游 +2，头游+末游 +1。动画写出「南北 打8 → 打J」这种前后级牌。打满一盘从 2 打到过 A；选「三局」则打完三副就按级牌高低收场。
+- 一局结束宣布头游、二游、三游、末游。升级只升不降，按常见线上记法：双下 +3，头游+三游 +2，头游+末游 +1。动画写出「南北 打8 → 打J」这种前后级牌。升到 A 不算赢。过 A 要头游且对家不是末游（头游+二游或头游+三游）。头游+末游留在 A；同一方累计 3 次失败退回打 2，过 A 成功则次数清零。竞赛变体是一直停在 A：设 `GUANDAN_ACE_STRIKES=0`。默认是 3 次失败退回 2。选「三局」则打完三副就按级牌高低收场。
 - 统计按座位记下局数、队伍胜率、头游率、末游率、平均名次、炸弹、同花顺、过牌、快推理耗时、拒牌次数，以及对家走完时自己还剩几张。队伍记下升级数、双下次数、到 A 的局数。复盘 JSON 和 CSV 都带这份记录。
 - 每家出牌前先闪一句「快推理」。有 `TYPESAFE_API_KEY` 时问 Jev，约 800ms 超时就写「超时跳过」；没有密钥时用局面事实写 Mock 快推理。问题和答案记进复盘。
 
 Before each play the table flashes a short 快推理 glass toast beside that seat. With `TYPESAFE_API_KEY` it asks Jev and gives up after about 800ms (`超时跳过`). With no key it shows a Mock line from the same facts. Questions, answers, and latency are stored on the replay log.
 
-These follow a Jiangsu-style square table rather than a casino oval: luminous rim, four bearings, a play zone per seat, heart level-card in the center, and South’s hand in staggered vertical columns. Upgrades follow the common online rule, winners only: 双下 +3, 头游+三游 +2, 头游+末游 +1.
+These follow a Jiangsu-style square table rather than a casino oval: luminous rim, four bearings, a play zone per seat, heart level-card in the center, and South’s hand in staggered vertical columns. Upgrades follow the common online rule until A: 双下 +3, 头游+三游 +2, 头游+末游 +1. Passing A needs 头游 and a partner who is not 末游.
 
 ```bash
 npm run test:engine
 npm run build
 ```
 
-对局存在当前 Node 进程的内存里。重启 dev server 会清空。这是单进程观赛台，不是多实例 serverless 存储。
+没有 `REDIS_URL` 时对局在当前 Node 进程里，重启会清空。有 `REDIS_URL` 时房间和对局写进 Redis，多实例可以一起打。
 
-Matches live in the current Node process. Restarting the server clears them.
+Without `REDIS_URL`, matches stay in this Node process. With `REDIS_URL`, rooms and matches are shared across instances.
 
 ## 环境变量 / Environment
 
@@ -125,6 +125,9 @@ Matches live in the current Node process. Restarting the server clears them.
 | `MIMO_API_KEY` | 小米 MiMo。必须同时有 `MIMO_BASE_URL`（按量默认 `https://api.xiaomimimo.com/v1`）。模型 `MIMO_MODEL=mimo-v2.6-flash` |
 | `ZHIPU_API_KEY` | 智谱 GLM。默认 `ZHIPU_MODEL=glm-5.3-flash`，`ZHIPU_BASE_URL` |
 | `TYPESAFE_API_KEY` | Jev。`POST {TYPESAFE_BASE_URL}/v1/systemone`，默认 `https://api.typesafe.ai`，模型 `TYPESAFE_MODEL` |
+| `REDIS_URL` | 可选。设置后房间和对局进 Redis，多实例共用。不设置则只有当前进程 |
+| `TENANT_MAX_ROOMS` | 可选。每个租户同时未结束的房间上限 |
+| `GUANDAN_ACE_STRIKES` | 打 A 失败几次后退回 2。默认 `3`。`0` 是竞赛规则：一直停在 A |
 
 模型 ID 都可用环境变量覆盖，因此供应商改名时不用改代码。密钥只在服务端读取。
 
@@ -132,14 +135,14 @@ Model ids are env-overridable. Keys are read only on the server.
 
 ## 规则与简化 / Rules and simplifications
 
-实现了发牌、级牌、常见牌型、炸弹、过牌、局分和过 A。下面这些是故意的简化：
+实现了发牌、级牌、常见牌型、炸弹、过牌、局分和过 A。过 A 不要求双下：头游且对家不是末游即可。头游+末游留在 A，默认累计 3 次后退回打 2。下面这些是故意的简化：
 
 - 两副牌 108 张，每人 27 张。红桃级牌两张是逢人配，可补点数和花色，不能当王。
 - 牌型：单张、对子、三张、三带二、五张顺子、三连对（木板）、钢板、四至八炸、同花顺、天王炸（四王）。没有更长顺子，没有 A-2-3-4-5 回头。同花顺只当炸弹：大于五炸，小于六炸。
 - 顺子、三连对、钢板按自然点数比大小。对子、三张、三带二、炸弹按「级牌大于 A、小于王」。
 - 同点同型只留一组代表牌，尽量少用逢人配。
 - 赢墩者领出；若已出完，对家接风。下一局发牌后先进贡或抗贡，再由头游领出。双下两家进贡最大的非逢人配，较大者给头游；单下只末游进贡给头游。还贡是 2–10 且不是级牌。进贡方有两张大王则抗贡。
-- 只升级不降级：双上 +3，头游+三游 +2，头游+末游 +1。升到 A、越过 A，或已经在 A 再赢，比赛结束。
+- 没到 A 之前只升级不降级：双下 +3，头游+三游 +2，头游+末游 +1。升到 A 不算赢。在 A 上头游+二游或头游+三游才过 A；头游+末游留在 A。默认同一方累计 3 次失败退回打 2（`GUANDAN_ACE_STRIKES=0` 则一直停在 A，竞赛变体）。
 - 首局南北坐庄，从所选级牌开打。大厅默认从 K 开，方便看完升级；选 2 即从最低级打起。
 - 观赛台明牌能看见四家手牌。发给模型的提示只包含该座位自己的手牌、张数和明面出牌。
 
@@ -150,7 +153,7 @@ The engine deals, tracks levels, recognizes the common combos and bombs, support
 - Straights, tubes, and plates use natural rank. Pairs, triples, full houses, and bombs rank the level card above aces and below jokers.
 - One representative holding per pattern and rank.
 - Trick winner leads. If they are out, the partner takes the lead. The next deal is followed by tribute or a two-big-joker resist, then first-out leads.
-- Upgrades only: +3 / +2 / +1. Reaching A, passing A, or winning on A ends the match.
+- Upgrades only until A: +3 / +2 / +1. Reaching A does not win. On A, first plus second or first plus third passes. First plus last stays on A. The default drops that side to 2 after 3 failures (`GUANDAN_ACE_STRIKES=0` stays on A).
 - North–South starts as dealer. The lobby defaults to level K so a round can finish on screen; choose 2 for a match from the bottom.
 - The spectator view can show every hand. A model prompt contains only that seat's hand, public counts, and the visible trick.
 

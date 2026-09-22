@@ -21,12 +21,49 @@ export function teamPlaces(order: number[], team: TeamId): number[] {
   return places;
 }
 
-/** Reaching or passing A wins. Winning while already on A also wins. */
+/** Failed 打A attempts before that side drops to 2. 0 keeps them on A (competition). */
+export function aceStrikeLimit(): number {
+  const raw = process.env.GUANDAN_ACE_STRIKES;
+  if (raw === undefined || raw.trim() === "") return 3;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) return 3;
+  return Math.floor(n);
+}
+
+/**
+ * Climb toward A. Landing on A does not win.
+ * Already on A: 头游+二游 or 头游+三游 (delta >= 2) passes. 头游+末游 does not.
+ */
 export function bumpLevel(level: FaceRank, delta: number): { level: FaceRank; won: boolean } {
-  if (level === "A") return { level: "A", won: true };
+  if (level === "A") return { level: "A", won: delta >= 2 };
   const next = FACE.indexOf(level) + delta;
-  if (next >= FACE.length - 1) return { level: "A", won: true };
+  if (next >= FACE.length - 1) return { level: "A", won: false };
   return { level: FACE[next], won: false };
+}
+
+export interface AceAttempt {
+  level: FaceRank;
+  won: boolean;
+  fails: number;
+  dropped: boolean;
+}
+
+/**
+ * One hand for the side that took 头游.
+ * Below A, the level climbs and the fail counter is unchanged.
+ * On A, delta >= 2 passes and clears the counter. delta 1 stays on A and counts a fail.
+ * After `limit` fails (default 3, cumulative) that side drops to 2 and the counter clears.
+ * limit 0 never drops.
+ */
+export function applyAceAttempt(level: FaceRank, delta: number, fails: number, limit = aceStrikeLimit()): AceAttempt {
+  if (level !== "A") {
+    const climbed = bumpLevel(level, delta);
+    return { level: climbed.level, won: false, fails, dropped: false };
+  }
+  if (delta >= 2) return { level: "A", won: true, fails: 0, dropped: false };
+  const nextFails = fails + 1;
+  if (limit > 0 && nextFails >= limit) return { level: "2", won: false, fails: 0, dropped: true };
+  return { level: "A", won: false, fails: nextFails, dropped: false };
 }
 
 export function completeOrder(order: number[], lastSeat: number): number[] {

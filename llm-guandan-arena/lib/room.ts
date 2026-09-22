@@ -5,7 +5,16 @@ import { tableProcedure } from "./guandan/procedure";
 import { buildInviteBlock, JEV_BUDGET_MS, TURN_BUDGET_MS } from "./invite";
 import { ROSTER } from "./roster-data";
 import { keyStatus, vendorReady } from "./roster";
-import { remember, matchStore } from "./store";
+import {
+  DEFAULT_TENANT,
+  TenantRoomLimitError,
+  normalizeTenant,
+  roomStore,
+  tenantFromRequest,
+  tenantMaxRooms,
+  type RoomSnapshot,
+} from "./room-store";
+import { persistMatch, readMatch, remember } from "./store";
 import { toView, type MatchView } from "./view";
 
 export type RoomSeries = "open" | "three" | "full";
@@ -71,6 +80,7 @@ export interface ChatMessage {
 
 export interface Room {
   code: string;
+  tenantId: string;
   hostSecret: string;
   createdAt: number;
   updatedAt: number;
@@ -90,14 +100,16 @@ export interface Room {
   onAct?: (seat: number) => void;
 }
 
-type GlobalRooms = {
-  __guandanRooms?: Map<string, Room>;
-};
+type LiveGlobal = { __guandanLiveRooms?: Map<string, Room> };
 
-function rooms(): Map<string, Room> {
-  const g = globalThis as GlobalRooms;
-  if (!g.__guandanRooms) g.__guandanRooms = new Map();
-  return g.__guandanRooms;
+function liveRooms(): Map<string, Room> {
+  const g = globalThis as LiveGlobal;
+  if (!g.__guandanLiveRooms) g.__guandanLiveRooms = new Map();
+  return g.__guandanLiveRooms;
+}
+
+function liveKey(tenantId: string, code: string): string {
+  return `${normalizeTenant(tenantId)}:${code.toUpperCase()}`;
 }
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -107,26 +119,138 @@ export function makeRoomCode(): string {
   return [...bytes].map((b) => CODE_ALPHABET[b % CODE_ALPHABET.length]).join("");
 }
 
-export function getRoom(code: string): Room | undefined {
-  return rooms().get(code.toUpperCase());
+interface RoomRecord extends Omit<RoomSnapshot, "status"> {
+  status: RoomStatus;
+  hostSecret: string;
+  series: RoomSeries;
+  startLevel: FaceRank;
+  seatsOpen: boolean;
+  seats: [RoomSeatAgent | null, RoomSeatAgent | null, RoomSeatAgent | null, RoomSeatAgent | null];
+  spectators: { id: string; name: string; lastSeen: number }[];
+  chat: ChatMessage[];
+  chatSeq: number;
+  matchId: string | null;
+  autoFillMock: boolean;
+  invites: SeatInvite[];
+  lastTimeoutSeat: number | null;
 }
 
-export function listRooms(): Room[] {
-  return [...rooms().values()].sort((a, b) => b.createdAt - a.createdAt);
+function toRecord(room: Room): RoomRecord {
+  return {
+    tenantId: room.tenantId,
+    code: room.code,
+    hostSecret: room.hostSecret,
+    createdAt: room.createdAt,
+    updatedAt: room.updatedAt,
+    series: room.series,
+    startLevel: room.startLevel,
+    seatsOpen: room.seatsOpen,
+    status: room.status,
+    seats: room.seats,
+    spectators: [...room.spectators.values()],
+    chat: room.chat,
+    chatSeq: room.chatSeq,
+    matchId: room.matchId,
+    autoFillMock: room.autoFillMock,
+    invites: room.invites,
+    lastTimeoutSeat: room.lastTimeoutSeat,
+  };
 }
 
-export function createRoom(input: {
+function fromRecord(record: RoomRecord): Room {
+  return {
+    ...record,
+    spectators: new Map(record.spectators.map((row) => [row.id, { ...row }])),
+  };
+}
+
+function applyRecord(room: Room, record: RoomRecord) {
+  const onAct = room.onAct;
+  room.tenantId = record.tenantId;
+  room.hostSecret = record.hostSecret;
+  room.createdAt = record.createdAt;
+  room.updatedAt = record.updatedAt;
+  room.series = record.series;
+  room.startLevel = record.startLevel;
+  room.seatsOpen = record.seatsOpen;
+  room.status = record.status;
+  room.seats = record.seats;
+  room.spectators = new Map(record.spectators.map((row) => [row.id, { ...row }]));
+  room.chat = record.chat;
+  room.chatSeq = record.chatSeq;
+  room.matchId = record.matchId;
+  room.autoFillMock = record.autoFillMock;
+  room.invites = record.invites;
+  room.lastTimeoutSeat = record.lastTimeoutSeat;
+  room.onAct = onAct;
+}
+
+export async function saveRoom(room: Room): Promise<void> {
+  room.updatedAt = Date.now();
+  await roomStore().put(toRecord(room));
+  liveRooms().set(liveKey(room.tenantId, room.code), room);
+}
+
+export async function getRoom(code: string, tenantId: string = DEFAULT_TENANT): Promise<Room | undefined> {
+  const tenant = normalizeTenant(tenantId);
+  const upper = code.toUpperCase();
+  const record = (await roomStore().get(tenant, upper)) as RoomRecord | null;
+  const key = liveKey(tenant, upper);
+  if (!record) {
+    liveRooms().delete(key);
+    return undefined;
+  }
+  const cached = liveRooms().get(key);
+  if (cached && cached.updatedAt >= record.updatedAt) return cached;
+  if (cached) {
+    applyRecord(cached, record);
+    return cached;
+  }
+  const room = fromRecord(record);
+  liveRooms().set(key, room);
+  return room;
+}
+
+export async function listRooms(tenantId: string = DEFAULT_TENANT): Promise<Room[]> {
+  const tenant = normalizeTenant(tenantId);
+  const records = await roomStore().list(tenant);
+  const rooms: Room[] = [];
+  for (const record of records) {
+    const room = await getRoom(record.code, tenant);
+    if (room) rooms.push(room);
+  }
+  return rooms.sort((a, b) => b.createdAt - a.createdAt);
+}
+
+async function pruneTenant(tenantId: string) {
+  const rows = await roomStore().list(tenantId);
+  if (rows.length <= 40) return;
+  const oldest = [...rows].sort((a, b) => a.createdAt - b.createdAt)[0];
+  if (!oldest) return;
+  await roomStore().delete(tenantId, oldest.code);
+  liveRooms().delete(liveKey(tenantId, oldest.code));
+}
+
+export async function createRoom(input: {
   series?: RoomSeries;
   startLevel?: unknown;
   seatsOpen?: boolean;
   autoFillMock?: boolean;
-}): { room: Room; hostSecret: string } {
+  tenantId?: string;
+}): Promise<{ room: Room; hostSecret: string }> {
+  const tenantId = normalizeTenant(input.tenantId);
+  const max = tenantMaxRooms();
+  if (max !== null) {
+    const open = await roomStore().countOpen(tenantId);
+    if (open >= max) throw new TenantRoomLimitError();
+  }
   let code = makeRoomCode();
-  while (rooms().has(code)) code = makeRoomCode();
+  while (await roomStore().get(tenantId, code)) code = makeRoomCode();
   const hostSecret = crypto.randomUUID();
   const series = input.series === "full" || input.series === "three" || input.series === "open" ? input.series : "three";
   const room: Room = {
     code,
+    tenantId,
     hostSecret,
     createdAt: Date.now(),
     updatedAt: Date.now(),
@@ -143,21 +267,18 @@ export function createRoom(input: {
     invites: [],
     lastTimeoutSeat: null,
   };
-  if (room.autoFillMock) fillMockSeats(room);
-  rooms().set(code, room);
-  pruneRooms();
+  if (room.autoFillMock) assignMockSeats(room);
+  await saveRoom(room);
+  await pruneTenant(tenantId);
   return { room, hostSecret };
 }
 
-function pruneRooms() {
-  const store = rooms();
-  if (store.size <= 40) return;
-  const oldest = [...store.values()].sort((a, b) => a.createdAt - b.createdAt)[0];
-  if (oldest) store.delete(oldest.code);
-}
-
-export function touch(room: Room) {
-  room.updatedAt = Date.now();
+export async function loadRequestRoom(
+  request: Request,
+  code: string,
+  body?: { tenantId?: unknown } | null,
+): Promise<Room | undefined> {
+  return getRoom(code, tenantFromRequest(request, body));
 }
 
 export function isHost(room: Room, secret: string | null | undefined): boolean {
@@ -179,26 +300,32 @@ function mockAgent(index: number): RoomSeatAgent {
   };
 }
 
-export function fillMockSeats(room: Room) {
+function assignMockSeats(room: Room) {
   for (let i = 0; i < 4; i++) {
     if (room.seats[i]) continue;
     room.seats[i] = mockAgent(i);
   }
-  touch(room);
+}
+
+export async function fillMockSeats(room: Room) {
+  assignMockSeats(room);
+  await saveRoom(room);
 }
 
 /** Three heuristic bots plus one open self-drive seat. The seatToken is only returned here. */
-export function openOperatorTable(input?: {
+export async function openOperatorTable(input?: {
   seat?: number;
   series?: RoomSeries;
   startLevel?: unknown;
-}): { room: Room; hostSecret: string; seat: number; wind: string; seatToken: string } {
+  tenantId?: string;
+}): Promise<{ room: Room; hostSecret: string; seat: number; wind: string; seatToken: string }> {
   const seat = input?.seat === 0 || input?.seat === 1 || input?.seat === 2 || input?.seat === 3 ? input.seat : 2;
-  const { room, hostSecret } = createRoom({
+  const { room, hostSecret } = await createRoom({
     series: input?.series ?? "open",
     startLevel: input?.startLevel ?? "T",
     autoFillMock: false,
     seatsOpen: true,
+    tenantId: input?.tenantId,
   });
   for (let index = 0; index < 4; index += 1) {
     if (index === seat) continue;
@@ -206,11 +333,11 @@ export function openOperatorTable(input?: {
   }
   const seatToken = crypto.randomUUID();
   room.invites.push({ token: seatToken, seat, used: false });
-  touch(room);
+  await saveRoom(room);
   return { room, hostSecret, seat, wind: SEAT_WIND[seat], seatToken };
 }
 
-export function claimSeat(
+export async function claimSeat(
   room: Room,
   index: number,
   input: {
@@ -221,7 +348,7 @@ export function claimSeat(
     apiKey?: string;
     vendor?: VendorId;
   },
-): RoomSeatAgent {
+): Promise<RoomSeatAgent> {
   if (room.status !== "lobby") throw new Error("对局已开始，不能改座位");
   if (index < 0 || index > 3) throw new Error("座位无效");
   if (!room.seatsOpen && room.seats[index]) throw new Error("座位已占用");
@@ -276,21 +403,21 @@ export function claimSeat(
   }
 
   room.seats[index] = agent;
-  touch(room);
+  await saveRoom(room);
   return agent;
 }
 
-export function clearSeat(room: Room, index: number) {
+export async function clearSeat(room: Room, index: number) {
   if (room.status !== "lobby") throw new Error("对局已开始");
   room.seats[index] = null;
-  touch(room);
+  await saveRoom(room);
 }
 
-export function addSpectator(room: Room, name?: string): { id: string; name: string } {
+export async function addSpectator(room: Room, name?: string): Promise<{ id: string; name: string }> {
   const id = crypto.randomUUID();
   const label = (name?.trim() || `观众${room.spectators.size + 1}`).slice(0, 16);
   room.spectators.set(id, { id, name: label, lastSeen: Date.now() });
-  touch(room);
+  await saveRoom(room);
   return { id, name: label };
 }
 
@@ -298,25 +425,31 @@ export function heartbeatSpectator(room: Room, id: string) {
   const row = room.spectators.get(id);
   if (!row) return;
   row.lastSeen = Date.now();
+  void saveRoom(room);
 }
 
 export function pruneSpectators(room: Room) {
   const cutoff = Date.now() - 45_000;
+  let changed = false;
   for (const [id, row] of room.spectators) {
-    if (row.lastSeen < cutoff) room.spectators.delete(id);
+    if (row.lastSeen < cutoff) {
+      room.spectators.delete(id);
+      changed = true;
+    }
   }
+  if (changed) void saveRoom(room);
 }
 
-export function postChat(room: Room, name: string, text: string, role: "host" | "spectator") {
+export async function postChat(room: Room, name: string, text: string, role: "host" | "spectator") {
   const cleaned = text.replace(/\s+/g, " ").trim().slice(0, 80);
   if (!cleaned) throw new Error("空消息");
   room.chatSeq += 1;
   room.chat.push({ id: room.chatSeq, at: Date.now(), name: name.slice(0, 16), text: cleaned, role });
   if (room.chat.length > 40) room.chat = room.chat.slice(-40);
-  touch(room);
+  await saveRoom(room);
 }
 
-export function issueInvite(room: Room, origin: string) {
+export async function issueInvite(room: Room, origin: string) {
   if (room.status !== "lobby") throw new Error("已经开打，不能再发入座邀请");
   const empty = room.seats.findIndex((seat) => !seat);
   const seat = empty >= 0 ? empty : 0;
@@ -325,18 +458,19 @@ export function issueInvite(room: Room, origin: string) {
     invite = { token: crypto.randomUUID(), seat, used: false };
     room.invites.push(invite);
   }
-  touch(room);
+  await saveRoom(room);
   const block = buildInviteBlock({
     origin,
     code: room.code,
     seat,
     wind: SEAT_WIND[seat],
     token: invite.token,
+    tenantId: room.tenantId,
   });
   return { token: invite.token, seat, wind: SEAT_WIND[seat], block };
 }
 
-export function claimByToken(room: Room, token: string, name?: string) {
+export async function claimByToken(room: Room, token: string, name?: string) {
   if (room.status !== "lobby") throw new Error("已经开打");
   const invite = room.invites.find((item) => item.token === token && !item.used);
   if (!invite) throw new Error("seatToken 无效或已使用");
@@ -355,7 +489,7 @@ export function claimByToken(room: Room, token: string, name?: string) {
     seatToken: token,
     custom: null,
   };
-  touch(room);
+  await saveRoom(room);
   return invite.seat;
 }
 
@@ -363,14 +497,17 @@ export function seatIndexByToken(room: Room, token: string): number {
   return room.seats.findIndex((seat) => seat?.seatToken === token);
 }
 
-export function notifyAct(room: Room, seat: number) {
-  if (room.lastTimeoutSeat === seat) room.lastTimeoutSeat = null;
+export async function notifyAct(room: Room, seat: number) {
+  if (room.lastTimeoutSeat === seat) {
+    room.lastTimeoutSeat = null;
+    await saveRoom(room);
+  }
   room.onAct?.(seat);
 }
 
-export function markTimeout(room: Room, seat: number) {
+export async function markTimeout(room: Room, seat: number) {
   room.lastTimeoutSeat = seat;
-  touch(room);
+  await saveRoom(room);
 }
 
 export function seatPresence(room: Room, index: number): SeatPresence {
@@ -387,10 +524,10 @@ export function seatsReady(room: Room): boolean {
   return room.seats.every((seat) => seat && seat.ready);
 }
 
-export function startRoomMatch(room: Room): Match {
+export async function startRoomMatch(room: Room): Promise<Match> {
   if (room.status !== "lobby") throw new Error("已经开打");
   if (!seatsReady(room)) {
-    if (room.autoFillMock) fillMockSeats(room);
+    if (room.autoFillMock) assignMockSeats(room);
   }
   if (!seatsReady(room)) throw new Error("四席未就绪");
 
@@ -419,9 +556,10 @@ export function startRoomMatch(room: Room): Match {
     handLimit: room.series === "three" ? 3 : handLimit,
   });
   remember(match);
+  await persistMatch(match);
   room.matchId = match.id;
   room.status = "playing";
-  touch(room);
+  await saveRoom(room);
   return match;
 }
 
@@ -505,8 +643,8 @@ export function toRoomView(
   };
 }
 
-export function stateForToken(room: Room, token: string | null) {
-  const match = room.matchId ? matchStore().get(room.matchId) ?? null : null;
+export async function stateForToken(room: Room, token: string | null) {
+  const match = await readMatch(room.matchId);
   const view = toRoomView(room, { isHost: false, match });
   const seat = token ? seatIndexByToken(room, token) : -1;
   if (seat < 0) return { ...view, you: null };

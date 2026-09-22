@@ -1,12 +1,12 @@
 # Backend checklist
 
-Single Node process. Rooms and matches live in `globalThis` Maps. A restart clears them. Several instances without a sticky process will not see the same room.
+Without `REDIS_URL`, one Node process keeps rooms and matches in memory. A restart clears them. With `REDIS_URL`, `RedisRoomStore` shares rooms and match documents across instances. See `MULTI_TENANT.md`.
 
 ## Ready
 
 | Call | What it does |
 | --- | --- |
-| `POST /api/rooms` | Create a room. `{"operator":true,"operatorSeat":2}` leaves South open and seats three Mock bots. The response `operator.seatToken` is the only copy of that token. |
+| `POST /api/rooms` | Create a room. Optional `tenantId` in the body or `x-tenant-id`. `{"operator":true,"operatorSeat":2}` leaves South open and seats three Mock bots. The response `operator.seatToken` is the only copy of that token. |
 | `POST /api/rooms/:code/start` | Host header `x-room-host`. Starts when four seats are ready. |
 | `POST /api/rooms/:code/fill-mock` | Host fills every empty seat with a heuristic bot. |
 | `GET /api/rooms/:code/invite` | Host-only guest paste. Token is not on the public room JSON. |
@@ -24,5 +24,5 @@ Bots play with the in-process heuristic. They do not call Jev or an LLM. The ope
 
 ## Not in this process
 
-- Shared store (Redis) and multi-instance rooms.
 - Click-to-play on the cards is not this API. Sound (mute toggle, first click unlocks) and the larger felt are in the spectator page.
+- `TENANT_MAX_ROOMS` is checked when a room is created. Two instances can race past it by one.

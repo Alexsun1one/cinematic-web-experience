@@ -1,12 +1,12 @@
 import { matchStats } from "@/lib/guandan/stats";
-import { matchStore } from "@/lib/store";
+import { readMatch } from "@/lib/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
-  const match = matchStore().get(id);
+  const match = await readMatch(id);
   if (!match) return Response.json({ error: "对局不存在" }, { status: 404 });
   return Response.json(
     {

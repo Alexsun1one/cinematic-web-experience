@@ -1,5 +1,5 @@
-import { getRoom, heartbeatSpectator, isHost, pruneSpectators, toRoomView } from "@/lib/room";
-import { matchStore } from "@/lib/store";
+import { heartbeatSpectator, isHost, loadRequestRoom, pruneSpectators, saveRoom, toRoomView } from "@/lib/room";
+import { readMatch } from "@/lib/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,15 +18,16 @@ function spectatorFrom(request: Request): string | null {
 
 export async function GET(request: Request, context: { params: Promise<{ code: string }> }) {
   const { code } = await context.params;
-  const room = getRoom(code);
+  const room = await loadRequestRoom(request, code);
   if (!room) return json({ error: "房间不存在" }, 404);
   pruneSpectators(room);
   const spectatorId = spectatorFrom(request);
   if (spectatorId) heartbeatSpectator(room, spectatorId);
   const host = isHost(room, hostFrom(request));
-  const match = room.matchId ? matchStore().get(room.matchId) ?? null : null;
+  const match = await readMatch(room.matchId);
   if (room.matchId && match && match.status === "finished" && room.status === "playing") {
     room.status = "finished";
+    await saveRoom(room);
   }
   return json(toRoomView(room, { isHost: host, match }));
 }

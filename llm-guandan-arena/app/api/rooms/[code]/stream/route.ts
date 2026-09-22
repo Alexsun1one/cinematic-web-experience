@@ -1,5 +1,6 @@
-import { getRoom, heartbeatSpectator, isHost, pruneSpectators, toRoomView } from "@/lib/room";
-import { matchStore } from "@/lib/store";
+import { getRoom, heartbeatSpectator, isHost, loadRequestRoom, pruneSpectators, saveRoom, toRoomView } from "@/lib/room";
+import { tenantFromRequest } from "@/lib/room-store";
+import { readMatch } from "@/lib/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -7,7 +8,8 @@ export const dynamic = "force-dynamic";
 /** SSE snapshot stream for spectators (and host). Falls back clients can poll GET /api/rooms/[code]. */
 export async function GET(request: Request, context: { params: Promise<{ code: string }> }) {
   const { code } = await context.params;
-  const room = getRoom(code);
+  const tenantId = tenantFromRequest(request);
+  const room = await loadRequestRoom(request, code);
   if (!room) return Response.json({ error: "房间不存在" }, { status: 404 });
 
   const hostSecret = request.headers.get("x-room-host");
@@ -17,9 +19,9 @@ export async function GET(request: Request, context: { params: Promise<{ code: s
 
   const stream = new ReadableStream({
     start(controller) {
-      const send = () => {
+      const send = async () => {
         if (closed) return;
-        const live = getRoom(code);
+        const live = await getRoom(code, tenantId);
         if (!live) {
           controller.enqueue(encoder.encode(`event: end\ndata: ${JSON.stringify({ error: "gone" })}\n\n`));
           controller.close();
@@ -28,15 +30,16 @@ export async function GET(request: Request, context: { params: Promise<{ code: s
         }
         pruneSpectators(live);
         if (spectatorId) heartbeatSpectator(live, spectatorId);
-        const match = live.matchId ? matchStore().get(live.matchId) ?? null : null;
+        const match = await readMatch(live.matchId);
         if (live.matchId && match && match.status === "finished" && live.status === "playing") {
           live.status = "finished";
+          await saveRoom(live);
         }
         const view = toRoomView(live, { isHost: isHost(live, hostSecret), match });
         controller.enqueue(encoder.encode(`event: room\ndata: ${JSON.stringify(view)}\n\n`));
       };
-      send();
-      const timer = setInterval(send, 700);
+      void send();
+      const timer = setInterval(() => void send(), 700);
       const ping = setInterval(() => {
         if (!closed) controller.enqueue(encoder.encode(`: ping\n\n`));
       }, 15000);

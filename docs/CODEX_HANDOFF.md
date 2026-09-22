@@ -2,28 +2,25 @@
 
 ## Current Goal
 
-Audit of `llm-guandan-arena` is written in `llm-guandan-arena/AUDIT.md`. Engine, invite, two-hand operator play, felt, and mute passed.
+打A pass rule and multi-tenant room store for `llm-guandan-arena`, on the existing Glass Arena PR.
 
 ## Changed Files
 
-- `llm-guandan-arena/AUDIT.md`
-- `llm-guandan-arena/lib/room-driver.ts` — a thrown tick does not stop the table
-- `llm-guandan-arena/lib/table-audio.ts` — missing audio or storage does not throw
-- `llm-guandan-arena/app/api/room/[code]/act/route.ts` — clearer reject messages
-- `llm-guandan-arena/lib/guandan/engine.test.ts`, `lib/room.test.ts` — edge cases
+- `llm-guandan-arena/lib/guandan/score.ts`, `match.ts` — reaching A does not win; on A, 头游+二游 or 头游+三游 passes; 头游+末游 counts a fail; the third fail drops that side to 2
+- `llm-guandan-arena/lib/room-store.ts`, `redis-client.ts`, `room.ts`, `store.ts` — `RoomStore`, memory by default, Redis when `REDIS_URL` is set; `tenantId`; `TENANT_MAX_ROOMS`
+- `llm-guandan-arena/MULTI_TENANT.md`, README, invite prompt, procedure
+- Engine and room tests for the pass, the fail, the drop, the reset, and tenant isolation
 
 ## Validation Evidence
 
-- `npm run test:engine` passed
+- `npm run test:engine` passed (过 A with 头游+三游, 头游+末游 stays, third fail drops to 2, pass resets the counter, tenant isolation, quota)
 - `npm run build` passed
-- `HANDS=2 npm --prefix llm-guandan-arena run operator` — room `WW4C6J`, exit 0, two scored hands
-- Live act of a bad moveId returned 400. Public room JSON did not contain the seatToken
-- Felt 560×560, south card 84×117, mute toggled to 静音, invite preview included the goals
+- Live server: another tenant's room code 404s; `TENANT_MAX_ROOMS=1` returns 429 `该租户同时进行的房间已达上限`; invite text includes 头游+三游 and 退回打 2
 
 ## Blockers
 
-None.
+None. A live Redis server is not required for the default memory path.
 
 ## Next Step
 
-Sticky process or Redis if this is deployed on more than one instance.
+Point `REDIS_URL` at a private Redis if more than one Node process should share rooms.

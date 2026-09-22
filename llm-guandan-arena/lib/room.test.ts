@@ -16,6 +16,7 @@ import {
   stateForToken,
   toRoomView,
 } from "./room";
+import { matchKey, matchLockKey, MemoryRoomStore, roomKey, roomStore, tenantRoomsKey, TenantRoomLimitError } from "./room-store";
 
 function testCodes() {
   const codes = new Set(Array.from({ length: 20 }, () => makeRoomCode()));
@@ -23,8 +24,8 @@ function testCodes() {
   for (const code of codes) assert.match(code, /^[A-Z2-9]{6}$/);
 }
 
-function testMockRoomFlow() {
-  const { room, hostSecret } = createRoom({ series: "three", startLevel: "T", autoFillMock: true });
+async function testMockRoomFlow() {
+  const { room, hostSecret } = await createRoom({ series: "three", startLevel: "T", autoFillMock: true });
   assert.equal(room.seats.filter(Boolean).length, 4);
   assert.equal(seatsReady(room), true);
   const view = toRoomView(room, { isHost: true });
@@ -33,17 +34,17 @@ function testMockRoomFlow() {
   assert.ok(view.seats.every((seat) => seat.badge === "Mock"));
   assert.ok(!JSON.stringify(view).includes("apiKey"));
 
-  const match = startRoomMatch(room);
+  const match = await startRoomMatch(room);
   assert.equal(room.status, "playing");
   assert.equal(room.matchId, match.id);
   assert.equal(match.seats.every((seat) => seat.provider === "mock"), true);
   assert.equal(hostSecret.length > 10, true);
 }
 
-function testByoSeatStripsSecret() {
-  const { room } = createRoom({ series: "open", autoFillMock: false });
+async function testByoSeatStripsSecret() {
+  const { room } = await createRoom({ series: "open", autoFillMock: false });
   assert.equal(seatsReady(room), false);
-  claimSeat(room, 0, {
+  await claimSeat(room, 0, {
     kind: "openai",
     name: "MyBot",
     baseUrl: "https://example.com/v1",
@@ -56,27 +57,27 @@ function testByoSeatStripsSecret() {
   assert.equal(blob.includes("sk-secret-never-leak"), false);
   assert.equal(blob.includes("apiKey"), false);
   assert.equal(publicView.seats[0].badge, "OpenAI");
-  fillMockSeats(room);
+  await fillMockSeats(room);
   assert.equal(seatsReady(room), true);
-  assert.ok(getRoom(room.code));
+  assert.ok(await getRoom(room.code));
 }
 
-function testGuestInvite() {
-  const { room } = createRoom({ series: "three", autoFillMock: true });
-  const issued = issueInvite(room, "http://localhost:3456");
+async function testGuestInvite() {
+  const { room } = await createRoom({ series: "three", autoFillMock: true });
+  const issued = await issueInvite(room, "http://localhost:3456");
   assert.match(issued.block, /缺 Jev，不能打/);
   assert.match(issued.block, /你自己的 Jev/);
   assert.match(issued.block, /claim-seat/);
   assert.match(issued.block, /\/act/);
   assert.equal(issued.block.includes("apiKey"), false);
   assert.equal(issued.block.includes(issued.token), true);
-  const seat = claimByToken(room, issued.token, "Guest");
+  const seat = await claimByToken(room, issued.token, "Guest");
   assert.equal(room.seats[seat]?.drive, "self");
-  assert.throws(() => claimByToken(room, issued.token, "Again"));
+  await assert.rejects(() => claimByToken(room, issued.token, "Again"));
   const secretView = JSON.stringify(toRoomView(room, { isHost: false }));
   assert.equal(secretView.includes(issued.token), false);
-  assert.equal(stateForToken(room, "not-a-token").you, null);
-  const waiting = stateForToken(room, issued.token);
+  assert.equal((await stateForToken(room, "not-a-token")).you, null);
+  const waiting = await stateForToken(room, issued.token);
   assert.equal(waiting.you?.seat, seat);
   assert.equal(waiting.phase, null);
   assert.equal(JSON.stringify(waiting).includes("apiKey"), false);
@@ -93,7 +94,7 @@ function testGuestInvite() {
   assert.match(issued.block, /\{"moveId":"\.\.\."\}/);
   assert.match(issued.block, /legalMoves/);
 
-  const match = startRoomMatch(room);
+  const match = await startRoomMatch(room);
   const opened = tableProcedure(match);
   assert.equal(opened.phase, "play");
   assert.equal(opened.leaderSeat, 0);
@@ -101,11 +102,11 @@ function testGuestInvite() {
   assert.equal(opened.mustBeat, null);
   const lead = currentLegal(match).find((move) => move.kind !== "pass");
   assert.ok(lead);
-  const opening = stateForToken(room, issued.token);
+  const opening = await stateForToken(room, issued.token);
   assert.ok(Array.isArray(opening.legalMoves));
   assert.equal(opening.legalMoves?.length, opening.you?.legal.length);
   commitMove(match, lead, { source: "mock", provider: "mock", retries: 0, note: "test" });
-  const following = stateForToken(room, issued.token);
+  const following = await stateForToken(room, issued.token);
   assert.equal(following.phase, "play");
   assert.equal(following.leaderSeat, 0);
   assert.equal(following.currentTurn, 1);
@@ -115,24 +116,24 @@ function testGuestInvite() {
   assert.equal(following.legalMoves, null);
 }
 
-function testSeatPresence() {
-  const { room } = createRoom({ series: "open", autoFillMock: false });
+async function testSeatPresence() {
+  const { room } = await createRoom({ series: "open", autoFillMock: false });
   assert.equal(toRoomView(room, { isHost: true }).seats[0].status, "waiting");
-  const issued = issueInvite(room, "http://localhost:3456");
+  const issued = await issueInvite(room, "http://localhost:3456");
   assert.equal(toRoomView(room, { isHost: false }).seats[issued.seat].status, "checking");
-  claimByToken(room, issued.token, "Guest");
+  await claimByToken(room, issued.token, "Guest");
   assert.equal(toRoomView(room, { isHost: false }).seats[issued.seat].status, "ready");
-  fillMockSeats(room);
-  startRoomMatch(room);
+  await fillMockSeats(room);
+  await startRoomMatch(room);
   assert.equal(toRoomView(room, { isHost: false }).seats[issued.seat].status, "playing");
   room.lastTimeoutSeat = issued.seat;
   assert.equal(toRoomView(room, { isHost: false }).seats[issued.seat].status, "timedOut");
   assert.equal(toRoomView(room, { isHost: false }).seats[issued.seat].statusLabel, "超时");
 }
 
-function testSettleNamesNextLeader() {
-  const { room } = createRoom({ series: "open", autoFillMock: true });
-  const match = startRoomMatch(room);
+async function testSettleNamesNextLeader() {
+  const { room } = await createRoom({ series: "open", autoFillMock: true });
+  const match = await startRoomMatch(room);
   let guard = 0;
   while (match.status === "playing" && guard < 4000) {
     stepLocal(match);
@@ -144,13 +145,13 @@ function testSettleNamesNextLeader() {
   assert.equal(procedure.currentTurn, null);
   assert.equal(procedure.mustBeat, null);
   assert.equal(procedure.leaderSeat, match.finishOrder[0]);
-  const state = stateForToken(room, null);
+  const state = await stateForToken(room, null);
   assert.equal(state.phase, "settle");
   assert.equal(state.leaderSeat, match.finishOrder[0]);
 }
 
-function testOperatorTable() {
-  const opened = openOperatorTable({ seat: 2, series: "open", startLevel: "T" });
+async function testOperatorTable() {
+  const opened = await openOperatorTable({ seat: 2, series: "open", startLevel: "T" });
   assert.equal(opened.seat, 2);
   assert.equal(opened.wind, "南");
   assert.equal(opened.room.seats.filter((seat) => seat?.drive === "mock").length, 3);
@@ -158,13 +159,13 @@ function testOperatorTable() {
   assert.equal(seatsReady(opened.room), false);
   const hidden = JSON.stringify(toRoomView(opened.room, { isHost: false }));
   assert.equal(hidden.includes(opened.seatToken), false);
-  const seat = claimByToken(opened.room, opened.seatToken, "知识");
+  const seat = await claimByToken(opened.room, opened.seatToken, "知识");
   assert.equal(seat, 2);
   assert.equal(opened.room.seats[2]?.name, "知识");
   assert.equal(opened.room.seats[2]?.drive, "self");
   assert.equal(seatsReady(opened.room), true);
-  const match = startRoomMatch(opened.room);
-  const state = stateForToken(opened.room, opened.seatToken);
+  const match = await startRoomMatch(opened.room);
+  const state = await stateForToken(opened.room, opened.seatToken);
   assert.equal(state.you?.seat, 2);
   assert.equal(state.you?.yourTurn, false);
   assert.equal(state.currentTurn, 0);
@@ -173,7 +174,7 @@ function testOperatorTable() {
   assert.ok(lead);
   commitMove(match, lead, { source: "mock", provider: "mock", retries: 0, note: "bot" });
   commitMove(match, currentLegal(match)[0], { source: "mock", provider: "mock", retries: 0, note: "bot" });
-  const yours = stateForToken(opened.room, opened.seatToken);
+  const yours = await stateForToken(opened.room, opened.seatToken);
   assert.equal(yours.you?.yourTurn, true);
   assert.ok((yours.you?.legal.length ?? 0) > 0);
   const moveId = yours.you?.legal[0]?.id;
@@ -184,7 +185,55 @@ function testOperatorTable() {
     retries: 0,
     note: "知识",
   });
-  assert.equal(stateForToken(opened.room, opened.seatToken).you?.yourTurn, false);
+  assert.equal((await stateForToken(opened.room, opened.seatToken)).you?.yourTurn, false);
+}
+
+function testStoreKeys() {
+  assert.equal(roomStore() instanceof MemoryRoomStore, true);
+  assert.equal(roomKey("Acme", "ab12cd"), "guandan:room:acme:AB12CD");
+  assert.equal(tenantRoomsKey("acme"), "guandan:tenant:acme:rooms");
+  assert.equal(matchKey("m1"), "guandan:match:m1");
+  assert.equal(matchLockKey("m1"), "guandan:lock:match:m1");
+}
+
+async function testTenantIsolation() {
+  const alpha = await createRoom({ tenantId: "Alpha_Team", autoFillMock: false });
+  assert.equal(alpha.room.tenantId, "alpha_team");
+  assert.equal(await getRoom(alpha.room.code, "alpha_team"), alpha.room);
+  assert.equal(await getRoom(alpha.room.code, "beta"), undefined);
+  assert.equal(await getRoom(alpha.room.code), undefined);
+  const store = roomStore();
+  await store.put({
+    tenantId: "alpha",
+    code: "SAME01",
+    status: "lobby",
+    createdAt: 1,
+    updatedAt: 1,
+  });
+  await store.put({
+    tenantId: "beta",
+    code: "SAME01",
+    status: "lobby",
+    createdAt: 2,
+    updatedAt: 2,
+  });
+  assert.equal((await store.get("alpha", "same01"))?.tenantId, "alpha");
+  assert.equal((await store.get("beta", "SAME01"))?.tenantId, "beta");
+  assert.equal(await store.get("default", "SAME01"), null);
+}
+
+async function testTenantQuota() {
+  const previous = process.env.TENANT_MAX_ROOMS;
+  process.env.TENANT_MAX_ROOMS = "1";
+  try {
+    await createRoom({ tenantId: "quota-side", autoFillMock: false });
+    await assert.rejects(() => createRoom({ tenantId: "quota-side", autoFillMock: false }), TenantRoomLimitError);
+    const other = await createRoom({ tenantId: "quota-other", autoFillMock: false });
+    assert.equal(other.room.tenantId, "quota-other");
+  } finally {
+    if (previous === undefined) delete process.env.TENANT_MAX_ROOMS;
+    else process.env.TENANT_MAX_ROOMS = previous;
+  }
 }
 
 assert.equal(readMuted(), false);
@@ -192,11 +241,21 @@ armAudio();
 playTableCue("bomb");
 playTableCue("plate");
 
-testCodes();
-testMockRoomFlow();
-testByoSeatStripsSecret();
-testGuestInvite();
-testOperatorTable();
-testSeatPresence();
-testSettleNamesNextLeader();
-console.log("room tests passed");
+async function main() {
+  await testMockRoomFlow();
+  await testByoSeatStripsSecret();
+  await testGuestInvite();
+  await testOperatorTable();
+  await testSeatPresence();
+  await testSettleNamesNextLeader();
+  testCodes();
+  testStoreKeys();
+  await testTenantIsolation();
+  await testTenantQuota();
+  console.log("room tests passed");
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

@@ -2,22 +2,23 @@ import { chooseHeuristic } from "./guandan/heuristic";
 import { beginRound, commitMove, currentLegal, finishResist, logReason, stepLocal, type Match } from "./guandan/match";
 import { mockQuickReason } from "./llm/quick-reason";
 import { TURN_BUDGET_MS } from "./invite";
-import { getRoom, markTimeout, type Room } from "./room";
-import { matchStore, withMatchLock } from "./store";
+import { getRoom, markTimeout, saveRoom, type Room } from "./room";
+import { normalizeTenant } from "./room-store";
+import { matchStore, readMatch, withMatchLock } from "./store";
 
 const running = new Set<string>();
 
-export function ensureRoomDriver(code: string) {
-  const key = code.toUpperCase();
+export function ensureRoomDriver(code: string, tenantId = "default") {
+  const key = `${normalizeTenant(tenantId)}:${code.toUpperCase()}`;
   if (running.has(key)) return;
   running.add(key);
-  void loop(key).finally(() => running.delete(key));
+  void loop(normalizeTenant(tenantId), code.toUpperCase()).finally(() => running.delete(key));
 }
 
-async function loop(code: string) {
+async function loop(tenantId: string, code: string) {
   while (true) {
     try {
-      const progressed = await tick(code);
+      const progressed = await tick(tenantId, code);
       if (!progressed) return;
     } catch (error) {
       console.error(`room ${code} driver`, error instanceof Error ? error.message : error);
@@ -26,13 +27,14 @@ async function loop(code: string) {
   }
 }
 
-async function tick(code: string): Promise<boolean> {
-  const room = getRoom(code);
+async function tick(tenantId: string, code: string): Promise<boolean> {
+  const room = await getRoom(code, tenantId);
   if (!room?.matchId) return false;
-  const match = matchStore().get(room.matchId);
+  const match = await readMatch(room.matchId);
   if (!match) return false;
   if (match.status === "finished") {
     room.status = "finished";
+    await saveRoom(room);
     return false;
   }
   if (match.status === "between_rounds") {
@@ -63,7 +65,7 @@ async function tick(code: string): Promise<boolean> {
       await withMatchLock(live.id, async () => {
         if ((live.status !== "tribute" && live.status !== "return") || live.trick.currentSeat !== seat) return;
         stepLocal(live);
-        markTimeout(room, seat);
+        await markTimeout(room, seat);
       });
     } else {
       await withMatchLock(match.id, async () => {
@@ -89,7 +91,7 @@ async function tick(code: string): Promise<boolean> {
     await withMatchLock(live.id, async () => {
       if (live.status !== "playing" || live.trick.currentSeat !== seat) return;
       playFallback(live, "超时代打");
-      markTimeout(room, seat);
+      await markTimeout(room, seat);
     });
   } else {
     await withMatchLock(match.id, async () => {

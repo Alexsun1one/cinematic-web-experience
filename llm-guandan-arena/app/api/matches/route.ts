@@ -1,6 +1,6 @@
 import { createMatch, parseStartLevel } from "@/lib/guandan/match";
 import { keyStatus, seatConfigs } from "@/lib/roster";
-import { remember, matchStore } from "@/lib/store";
+import { listStoredMatches, remember } from "@/lib/store";
 import { toView } from "@/lib/view";
 
 export const runtime = "nodejs";
@@ -10,8 +10,8 @@ function json(data: unknown, status = 200) {
   return Response.json(data, { status, headers: { "cache-control": "no-store" } });
 }
 
-export function GET() {
-  const matches = [...matchStore().values()].sort((a, b) => b.createdAt - a.createdAt);
+export async function GET() {
+  const matches = (await listStoredMatches()).sort((a, b) => b.createdAt - a.createdAt);
   return json({
     keys: keyStatus(),
     matches: matches.map((match) => ({

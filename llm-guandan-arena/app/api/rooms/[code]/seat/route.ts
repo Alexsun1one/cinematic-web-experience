@@ -1,6 +1,6 @@
-import { claimSeat, clearSeat, getRoom, isHost, toRoomView } from "@/lib/room";
+import { claimSeat, clearSeat, isHost, loadRequestRoom, toRoomView } from "@/lib/room";
 import type { VendorId } from "@/lib/guandan/types";
-import { matchStore } from "@/lib/store";
+import { readMatch } from "@/lib/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,8 +11,6 @@ function json(data: unknown, status = 200) {
 
 export async function POST(request: Request, context: { params: Promise<{ code: string }> }) {
   const { code } = await context.params;
-  const room = getRoom(code);
-  if (!room) return json({ error: "房间不存在" }, 404);
   const body = (await request.json().catch(() => ({}))) as {
     seat?: unknown;
     kind?: unknown;
@@ -23,7 +21,10 @@ export async function POST(request: Request, context: { params: Promise<{ code: 
     vendor?: VendorId;
     clear?: unknown;
     hostSecret?: string;
+    tenantId?: unknown;
   };
+  const room = await loadRequestRoom(request, code, body);
+  if (!room) return json({ error: "房间不存在" }, 404);
   const host = isHost(room, body.hostSecret || request.headers.get("x-room-host"));
   if (!host && !room.seatsOpen) return json({ error: "仅房主可排座" }, 403);
   const index = typeof body.seat === "number" ? body.seat : Number(body.seat);
@@ -31,10 +32,10 @@ export async function POST(request: Request, context: { params: Promise<{ code: 
   try {
     if (body.clear === true) {
       if (!host) return json({ error: "仅房主可清空座位" }, 403);
-      clearSeat(room, index);
+      await clearSeat(room, index);
     } else {
       const kind = body.kind === "env" || body.kind === "openai" || body.kind === "mock" ? body.kind : "mock";
-      claimSeat(room, index, {
+      await claimSeat(room, index, {
         kind,
         name: body.name,
         model: body.model,
@@ -43,7 +44,7 @@ export async function POST(request: Request, context: { params: Promise<{ code: 
         vendor: body.vendor,
       });
     }
-    const match = room.matchId ? matchStore().get(room.matchId) ?? null : null;
+    const match = await readMatch(room.matchId);
     return json(toRoomView(room, { isHost: host, match }));
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : "入座失败" }, 400);

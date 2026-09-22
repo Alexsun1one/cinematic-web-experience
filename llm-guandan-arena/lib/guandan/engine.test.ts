@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createDeck, deal, shuffle } from "./cards";
 import { chooseHeuristic } from "./heuristic";
 import { beats, leadAfterTrick, legalMoves, type Move } from "./legal";
-import { beginRound, commitMove, createMatch, currentLegal, enterTribute, finishResist, logReason, performSeatAction, seatActions, stepLocal, type MoveMeta } from "./match";
+import { beginRound, commitMove, createMatch, currentLegal, enterTribute, finishResist, logReason, performSeatAction, seatActions, stepLocal, type Match, type MoveMeta } from "./match";
 import { bothBigJokers, returnCards, tributeCard, tributePlan } from "./tribute";
 import { mockQuickReason } from "../llm/quick-reason";
 import { parseMoveId } from "../llm/parse";
@@ -10,7 +10,7 @@ import { buildPrompt } from "../llm/prompt";
 import { arrangeColumns } from "./arrange";
 import { bannerFromHighlight, cueForLog, fxForMove, playHighlight } from "./highlight";
 import { handOrder, presentCards } from "./present";
-import { bumpLevel, outcomeLabel, upgradeDelta } from "./score";
+import { applyAceAttempt, bumpLevel, outcomeLabel, upgradeDelta } from "./score";
 import { matchStats, statsToCsv } from "./stats";
 import { seatConfigs } from "../roster";
 import { FACE, type Card, type FaceRank, type Rank, type Suit } from "./types";
@@ -126,11 +126,13 @@ function testScoring() {
   assert.equal(upgradeDelta([1, 3]), 2);
   assert.equal(upgradeDelta([1, 4]), 1);
   assert.deepEqual(bumpLevel("T", 3), { level: "K", won: false });
-  assert.deepEqual(bumpLevel("Q", 2), { level: "A", won: true });
-  assert.deepEqual(bumpLevel("A", 1), { level: "A", won: true });
+  assert.deepEqual(bumpLevel("Q", 2), { level: "A", won: false });
+  assert.deepEqual(bumpLevel("A", 1), { level: "A", won: false });
+  assert.deepEqual(bumpLevel("A", 2), { level: "A", won: true });
+  assert.deepEqual(bumpLevel("A", 3), { level: "A", won: true });
   assert.deepEqual(bumpLevel("2", 1), { level: "3", won: false });
-  assert.deepEqual(bumpLevel("K", 1), { level: "A", won: true });
-  assert.deepEqual(bumpLevel("J", 3), { level: "A", won: true });
+  assert.deepEqual(bumpLevel("K", 1), { level: "A", won: false });
+  assert.deepEqual(bumpLevel("J", 3), { level: "A", won: false });
   assert.deepEqual(bumpLevel("Q", 1), { level: "K", won: false });
   assert.equal(outcomeLabel(3), "双下");
   assert.equal(outcomeLabel(2), "头游+三游");
@@ -156,6 +158,87 @@ function testScriptedRound() {
   assert.equal(match.winner, "ns");
   assert.equal(match.rounds[0].delta, 3);
   assert.equal(match.levels.ns, "A");
+  assert.equal(match.aceFails.ns, 0);
+}
+
+function replayHand(match: Match, hands: Match["hands"], lead: number) {
+  match.hands = hands;
+  match.finishOrder = [];
+  match.trick = { currentSeat: lead, lastPlay: null, lastSeat: null, closed: false };
+  match.status = "playing";
+  match.pile = null;
+}
+
+function testAcePassFailAndDrop() {
+  assert.deepEqual(applyAceAttempt("K", 3, 0), { level: "A", won: false, fails: 0, dropped: false });
+  assert.deepEqual(applyAceAttempt("A", 2, 2), { level: "A", won: true, fails: 0, dropped: false });
+  assert.deepEqual(applyAceAttempt("A", 1, 0), { level: "A", won: false, fails: 1, dropped: false });
+  assert.deepEqual(applyAceAttempt("A", 1, 2), { level: "2", won: false, fails: 0, dropped: true });
+  assert.deepEqual(applyAceAttempt("A", 1, 9, 0), { level: "A", won: false, fails: 10, dropped: false });
+
+  const passed = fresh("A");
+  replayHand(passed, [[card(0, "S", "3")], [card(0, "S", "4")], [card(0, "S", "5")], [card(0, "S", "6"), card(0, "H", "6")]], 0);
+  commitMove(passed, findMove(currentLegal(passed), "single", "3"), meta);
+  commitMove(passed, findMove(currentLegal(passed), "single", "4"), meta);
+  commitMove(passed, findMove(currentLegal(passed), "single", "5"), meta);
+  assert.equal(passed.status, "finished");
+  assert.equal(passed.winner, "ns");
+  assert.equal(passed.rounds[0].delta, 2);
+  assert.equal(passed.rounds[0].outcome, "头游+三游");
+  assert.equal(passed.aceFails.ns, 0);
+
+  const failed = fresh("A");
+  replayHand(failed, [[card(0, "S", "3")], [card(0, "S", "4")], [card(0, "S", "2"), card(0, "H", "2")], [card(0, "S", "6")]], 0);
+  commitMove(failed, findMove(currentLegal(failed), "single", "3"), meta);
+  commitMove(failed, findMove(currentLegal(failed), "single", "4"), meta);
+  const pass = currentLegal(failed).find((move) => move.kind === "pass");
+  assert.ok(pass);
+  commitMove(failed, pass, meta);
+  commitMove(failed, findMove(currentLegal(failed), "single", "6"), meta);
+  assert.equal(failed.status, "between_rounds");
+  assert.equal(failed.winner, null);
+  assert.equal(failed.levels.ns, "A");
+  assert.equal(failed.aceFails.ns, 1);
+  assert.equal(failed.rounds[0].delta, 1);
+  assert.equal(failed.rounds[0].outcome, "头游+末游");
+
+  const dropped = fresh("A");
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    replayHand(dropped, [[card(0, "S", "3")], [card(0, "S", "4")], [card(0, "S", "2"), card(0, "H", "2")], [card(0, "S", "6")]], 0);
+    commitMove(dropped, findMove(currentLegal(dropped), "single", "3"), meta);
+    commitMove(dropped, findMove(currentLegal(dropped), "single", "4"), meta);
+    commitMove(dropped, currentLegal(dropped).find((move) => move.kind === "pass")!, meta);
+    commitMove(dropped, findMove(currentLegal(dropped), "single", "6"), meta);
+    assert.equal(dropped.levels.ns, "A");
+    assert.equal(dropped.aceFails.ns, attempt + 1);
+  }
+  replayHand(dropped, [[card(0, "S", "3")], [card(0, "S", "4")], [card(0, "S", "2"), card(0, "H", "2")], [card(0, "S", "6")]], 0);
+  commitMove(dropped, findMove(currentLegal(dropped), "single", "3"), meta);
+  commitMove(dropped, findMove(currentLegal(dropped), "single", "4"), meta);
+  commitMove(dropped, currentLegal(dropped).find((move) => move.kind === "pass")!, meta);
+  commitMove(dropped, findMove(currentLegal(dropped), "single", "6"), meta);
+  assert.equal(dropped.levels.ns, "2");
+  assert.equal(dropped.aceFails.ns, 0);
+  assert.equal(dropped.status, "between_rounds");
+  assert.equal(dropped.winner, null);
+
+  const reset = fresh("A");
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    replayHand(reset, [[card(0, "S", "3")], [card(0, "S", "4")], [card(0, "S", "2"), card(0, "H", "2")], [card(0, "S", "6")]], 0);
+    commitMove(reset, findMove(currentLegal(reset), "single", "3"), meta);
+    commitMove(reset, findMove(currentLegal(reset), "single", "4"), meta);
+    commitMove(reset, currentLegal(reset).find((move) => move.kind === "pass")!, meta);
+    commitMove(reset, findMove(currentLegal(reset), "single", "6"), meta);
+  }
+  assert.equal(reset.aceFails.ns, 2);
+  replayHand(reset, [[card(0, "S", "3")], [card(0, "S", "4")], [card(0, "S", "5")], [card(0, "S", "6"), card(0, "H", "6")]], 0);
+  commitMove(reset, findMove(currentLegal(reset), "single", "3"), meta);
+  commitMove(reset, findMove(currentLegal(reset), "single", "4"), meta);
+  commitMove(reset, findMove(currentLegal(reset), "single", "5"), meta);
+  assert.equal(reset.status, "finished");
+  assert.equal(reset.winner, "ns");
+  assert.equal(reset.aceFails.ns, 0);
+  assert.equal(reset.levels.ns, "A");
 }
 
 function testLeadPassAndJiefeng() {
@@ -688,11 +771,14 @@ function testAuditEdges() {
   commitMove(ace, findMove(currentLegal(ace), "single", "3"), meta);
   commitMove(ace, findMove(currentLegal(ace), "single", "4"), meta);
   commitMove(ace, findMove(currentLegal(ace), "single", "5"), meta);
-  assert.equal(ace.status, "finished");
-  assert.equal(ace.winner, "ns");
+  assert.equal(ace.status, "between_rounds");
+  assert.equal(ace.winner, null);
+  assert.equal(ace.rounds[0].matchWon, false);
   assert.equal(ace.rounds[0].delta, 3);
   assert.equal(ace.rounds[0].from, "K");
   assert.equal(ace.rounds[0].to, "A");
+  assert.equal(ace.levels.ns, "A");
+  assert.equal(ace.aceFails.ns, 0);
 }
 
 testAuditEdges();
@@ -707,6 +793,7 @@ testBombsAndFlush();
 testWildStraight();
 testScoring();
 testScriptedRound();
+testAcePassFailAndDrop();
 testLeadPassAndJiefeng();
 testMovesStayInHand();
 testMockMatchEnds();
