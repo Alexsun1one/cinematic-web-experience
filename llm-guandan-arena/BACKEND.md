@@ -18,10 +18,11 @@ Single Node process. Rooms and matches live in `globalThis` Maps. A restart clea
 
 `npm run watch` opens the 3-bot room and prints the three curls. `npm run operator` claims as 知识 and plays six legal moves against the bots.
 
-Bots play with the in-process heuristic. They do not call Jev or an LLM. The operator's timeout (`GUANDAN_TURN_MS`, default 8s) falls back to that same heuristic so the table does not stall.
+Bots play with the in-process heuristic. They do not call Jev or an LLM. The operator's timeout (`GUANDAN_TURN_MS`, default 8s) falls back to that same heuristic so the table does not stall. The same timeout submits the listed tribute or return card.
+
+`phase` is `play`, `tribute`, `return`, `resist`, or `settle`. During tribute and return, `you.legal` is the only accepted card. Resist means both big jokers are on the paying side: no exchange, then 头游 leads.
 
 ## Not in this process
 
-- 进贡 / 还贡 / 抗贡. `phase` is only `play` or `settle`. Invite text says so.
 - Shared store (Redis) and multi-instance rooms.
 - Sound, a larger felt, and a click-to-play hand are not part of this API.

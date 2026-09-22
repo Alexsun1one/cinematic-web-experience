@@ -22,7 +22,7 @@ Room + match state live in the current Node process `Map`. Restart clears them. 
 
 参考玩家：`node scripts/guest-agent.mjs`，环境变量 `ROOM_URL` `SEAT_TOKEN` `TYPESAFE_API_KEY` `LLM_API_KEY`。密钥只留在客人进程里。
 
-开局顺序以引擎为准，写在邀请和「规则速览」的「开局与出牌顺序」里：第一局南北坐庄、座位 0 先出；之后头游先出；不进贡、不还贡、不抗贡；赢墩者领出，出完则对家接风。`GET /api/room/:code/state` 带 `phase`、`leaderSeat`、`currentTurn`、`mustBeat`。
+开局顺序以引擎为准，写在邀请和「规则速览」的「开局与出牌顺序」里：第一局南北坐庄、座位 0 先出；之后发牌、进贡或抗贡，再由头游先出。赢墩者领出，出完则对家接风。`GET /api/room/:code/state` 带 `phase`（play / tribute / return / resist / settle）、`leaderSeat`、`currentTurn`、`mustBeat`。
 
 ## 座位 / Seats
 
@@ -130,7 +130,7 @@ Model ids are env-overridable. Keys are read only on the server.
 - 牌型：单张、对子、三张、三带二、五张顺子、三连对（木板）、钢板、四至八炸、同花顺、天王炸（四王）。没有更长顺子，没有 A-2-3-4-5 回头。同花顺只当炸弹：大于五炸，小于六炸。
 - 顺子、三连对、钢板按自然点数比大小。对子、三张、三带二、炸弹按「级牌大于 A、小于王」。
 - 同点同型只留一组代表牌，尽量少用逢人配。
-- 赢墩者领出；若已出完，对家接风。不进贡、不还贡，下一局头游先出。
+- 赢墩者领出；若已出完，对家接风。下一局发牌后先进贡或抗贡，再由头游领出。双下两家进贡最大的非逢人配，较大者给头游；单下只末游进贡给头游。还贡是 2–10 且不是级牌。进贡方有两张大王则抗贡。
 - 只升级不降级：双上 +3，头游+三游 +2，头游+末游 +1。升到 A、越过 A，或已经在 A 再赢，比赛结束。
 - 首局南北坐庄，从所选级牌开打。大厅默认从 K 开，方便看完升级；选 2 即从最低级打起。
 - 观赛台明牌能看见四家手牌。发给模型的提示只包含该座位自己的手牌、张数和明面出牌。
@@ -141,7 +141,7 @@ The engine deals, tracks levels, recognizes the common combos and bombs, support
 - Combos: single, pair, triple, full house, 5-card straight, three pair tube, plate, bombs of 4–8, straight flush, four jokers. No longer straights and no wheel. A straight flush is only a bomb, ranked between a 5-bomb and a 6-bomb.
 - Straights, tubes, and plates use natural rank. Pairs, triples, full houses, and bombs rank the level card above aces and below jokers.
 - One representative holding per pattern and rank.
-- Trick winner leads. If they are out, the partner takes the lead. No tribute. First-out leads the next round.
+- Trick winner leads. If they are out, the partner takes the lead. The next deal is followed by tribute or a two-big-joker resist, then first-out leads.
 - Upgrades only: +3 / +2 / +1. Reaching A, passing A, or winning on A ends the match.
 - North–South starts as dealer. The lobby defaults to level K so a round can finish on screen; choose 2 for a match from the bottom.
 - The spectator view can show every hand. A model prompt contains only that seat's hand, public counts, and the visible trick.

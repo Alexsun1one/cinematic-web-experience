@@ -1,4 +1,4 @@
-import { commitMove, currentLegal } from "@/lib/guandan/match";
+import { commitMove, currentLegal, performSeatAction } from "@/lib/guandan/match";
 import { getRoom, notifyAct, seatIndexByToken, stateForToken } from "@/lib/room";
 import { matchStore, withMatchLock } from "@/lib/store";
 
@@ -21,8 +21,18 @@ export async function POST(request: Request, context: { params: Promise<{ code: 
   const seat = seatIndexByToken(room, seatToken);
   if (seat < 0) return json({ error: "seatToken 无效" }, 404);
   const match = room.matchId ? matchStore().get(room.matchId) : undefined;
-  if (!match || match.status !== "playing") return json({ error: "还没开打" }, 409);
+  if (!match || match.status === "finished" || match.status === "between_rounds") return json({ error: "还没开打" }, 409);
   return withMatchLock(match.id, async () => {
+    if (match.status === "tribute" || match.status === "return") {
+      if (match.trick.currentSeat !== seat) return json({ error: "还没轮到你" }, 409);
+      try {
+        performSeatAction(match, seat, moveId);
+      } catch (error) {
+        return json({ error: error instanceof Error ? error.message : "贡牌被拒" }, 400);
+      }
+      notifyAct(room, seat);
+      return json(stateForToken(room, seatToken));
+    }
     if (match.status !== "playing" || match.trick.currentSeat !== seat) {
       return json({ error: "还没轮到你" }, 409);
     }

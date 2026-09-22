@@ -1,4 +1,4 @@
-import { beginRound, commitMove, currentLegal, logReason, pushReject } from "@/lib/guandan/match";
+import { commitMove, currentLegal, logReason, pushReject, stepLocal } from "@/lib/guandan/match";
 import { decide } from "@/lib/llm/decide";
 import { quickReason } from "@/lib/llm/quick-reason";
 import { matchStore, withMatchLock } from "@/lib/store";
@@ -16,8 +16,8 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
       return Response.json(toView(match), { headers: { "cache-control": "no-store" } });
     }
     try {
-      if (match.status === "between_rounds") {
-        beginRound(match);
+      if (match.status !== "playing") {
+        stepLocal(match);
         return Response.json(toView(match), { headers: { "cache-control": "no-store" } });
       }
       const seat = match.trick.currentSeat;

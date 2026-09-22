@@ -3,7 +3,8 @@
  * Reference guest player (scripts/guest-agent-player.mjs).
  * Decisioning stays here: own Jev, own LLM.
  * The arena server only lists legal moves and advances on timeout.
- * Read state.phase, leaderSeat, currentTurn, mustBeat. Do not invent tribute.
+ * Read state.phase, leaderSeat, currentTurn, mustBeat.
+ * tribute / return: POST the first you.legal id. resist: wait, 头游 leads.
  *
  * ROOM_URL=http://localhost:3456/room/CODE
  * SEAT_TOKEN=...
@@ -143,6 +144,16 @@ async function main() {
     }
     if (!state.you?.yourTurn) {
       await new Promise((resolve) => setTimeout(resolve, 400));
+      continue;
+    }
+    if (state.phase === "tribute" || state.phase === "return") {
+      const tributeId = legalOf(state)[0]?.id;
+      if (!tributeId) continue;
+      await fetch(`${origin}/api/room/${code}/act`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ seatToken: token, moveId: tributeId }),
+      });
       continue;
     }
     const hint = await jevHint(state);

@@ -1,7 +1,7 @@
 import type { Match } from "./match";
 
-/** deal and tribute are part of the guest contract. This engine never emits them. */
-export type TablePhase = "deal" | "tribute" | "play" | "settle";
+/** Instant deal is not a phase. Tribute, return, and resist are. */
+export type TablePhase = "tribute" | "return" | "resist" | "play" | "settle";
 
 export interface MustBeat {
   seat: number;
@@ -28,11 +28,11 @@ export const OPENING_ORDER: { title: string; body: string }[] = [
   },
   {
     title: "每一局之后",
-    body: "下一局由上一局的头游领出。phase 为 settle 时 leaderSeat 就是这个座位，currentTurn 为 null，没人出牌。下一局的庄家改为头游所在的队伍，级牌用该队升级之后的级牌。",
+    body: "下一局发牌后，先完成进贡或抗贡，再由上一局的头游领出。phase 为 settle 时还没发下一局，leaderSeat 是头游，currentTurn 为 null。下一局的庄家改为头游所在的队伍，级牌用该队升级之后的级牌。",
   },
   {
     title: "进贡 / 还贡 / 抗贡",
-    body: "本引擎简化：不进贡、不还贡、不抗贡。没有贡牌交换。双下只让胜方升级 +3，不交牌。phase 永远不会是 tribute。不要等待贡牌。",
+    body: "第一局不进贡。之后每一局发牌后、领出前：双下（头游与二游是一家，升级 +3）由三游和末游各进贡一张最大的非逢人配；点数较大的给头游，较小的给二游，相同则末游给头游。单下（+2 或 +1）只由末游进贡一张给头游。进贡方合计有两张大王则抗贡，不交换牌。还贡必须是 2 到 10 且不是级牌、不是王；没有这种牌时还最小的非王非逢人配。抗贡、进贡还贡之后都由头游领出。phase 会是 tribute、return 或 resist。你的还贡或进贡只提交 you.legal 里的 id。",
   },
   {
     title: "一墩之内",
@@ -57,12 +57,19 @@ export function tableProcedure(match: Match | null): TableProcedure {
     return { phase: null, leaderSeat: null, currentTurn: null, mustBeat: null };
   }
   const playing = match.status === "playing";
+  const exchanging = match.status === "tribute" || match.status === "return";
   const last = match.trick.lastPlay;
   const lastSeat = match.trick.lastSeat;
+  const phase: TablePhase =
+    match.status === "tribute" || match.status === "return" || match.status === "resist"
+      ? match.status
+      : playing
+        ? "play"
+        : "settle";
   return {
-    phase: playing ? "play" : "settle",
+    phase,
     leaderSeat: match.nextLeader,
-    currentTurn: playing ? match.trick.currentSeat : null,
+    currentTurn: playing || exchanging ? match.trick.currentSeat : null,
     mustBeat:
       playing && last && lastSeat !== null
         ? { seat: lastSeat, kind: last.kind, label: last.label }

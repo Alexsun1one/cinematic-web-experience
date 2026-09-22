@@ -79,10 +79,10 @@ function testGuestInvite() {
   assert.equal(waiting.phase, null);
   assert.equal(JSON.stringify(waiting).includes("apiKey"), false);
   assert.match(issued.block, /开局与出牌顺序/);
-  assert.match(issued.block, /本引擎简化：不进贡、不还贡、不抗贡/);
+  assert.match(issued.block, /两张大王则抗贡/);
   assert.match(issued.block, /第一手领出固定是座位 0/);
   assert.match(issued.block, /接风/);
-  assert.match(issued.block, /phase 永远不会是 tribute/);
+  assert.match(issued.block, /phase 会是 tribute、return 或 resist/);
   assert.match(issued.block, /guest-agent-player/);
   assert.match(issued.block, /legalMoves/);
 

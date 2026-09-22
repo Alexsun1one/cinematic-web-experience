@@ -2,6 +2,14 @@ import type { QuickBeat } from "../llm/quick-reason";
 import { createDeck, deal, shuffle, subtract } from "./cards";
 import { chooseHeuristic } from "./heuristic";
 import { opponentHasFinished, playHighlight } from "./highlight";
+import {
+  assignDoubleTargets,
+  initialTribute,
+  returnCards,
+  tributeCard,
+  tributeLabel,
+  type TributeState,
+} from "./tribute";
 import { leadAfterTrick, legalMoves, nextSeatWithCards, type Move } from "./legal";
 import { bumpLevel, completeOrder, outcomeLabel, roundIsOver, teamPlaces, upgradeDelta } from "./score";
 import {
@@ -11,6 +19,7 @@ import {
   isFaceRank,
   partnerOf,
   teamOf,
+  type Card,
   type FaceRank,
   type SeatConfig,
   type TeamId,
@@ -32,7 +41,7 @@ export interface AssistNote {
   error?: string;
 }
 
-export type LogKind = "deal" | "play" | "pass" | "reject" | "finish" | "lead" | "round" | "match" | "reason";
+export type LogKind = "deal" | "play" | "pass" | "reject" | "finish" | "lead" | "round" | "match" | "reason" | "tribute";
 
 export interface LogEvent {
   id: number;
@@ -82,9 +91,12 @@ export interface Match {
   dealer: TeamId;
   level: FaceRank;
   round: number;
-  status: "playing" | "between_rounds" | "finished";
+  status: "playing" | "between_rounds" | "tribute" | "return" | "resist" | "finished";
   winner: TeamId | null;
   nextLeader: number;
+  /** Finish order of the previous hand. Consumed when the next hand is dealt. */
+  previousOrder: number[] | null;
+  tribute: TributeState | null;
   hands: [Move["cards"], Move["cards"], Move["cards"], Move["cards"]];
   finishOrder: number[];
   trick: {
@@ -137,6 +149,8 @@ export function createMatch(input: CreateMatchInput): Match {
     status: "playing",
     winner: null,
     nextLeader: 0,
+    previousOrder: null,
+    tribute: null,
     hands: [[], [], [], []],
     finishOrder: [],
     trick: { currentSeat: 0, lastPlay: null, lastSeat: null, closed: false },
@@ -151,17 +165,30 @@ export function createMatch(input: CreateMatchInput): Match {
 }
 
 export function beginRound(match: Match) {
+  const previous = match.previousOrder;
+  match.previousOrder = null;
   match.round += 1;
   match.level = match.levels[match.dealer];
   match.hands = deal(shuffle(createDeck(), match.seed + match.round * 997));
   match.finishOrder = [];
   match.pile = null;
+  match.tribute = null;
   match.trickSerial = 1;
   match.trick = { currentSeat: match.nextLeader, lastPlay: null, lastSeat: null, closed: false };
-  match.status = "playing";
   const leader = SEAT_WIND[match.nextLeader];
   const leaderEn = SEAT_WIND_EN[match.nextLeader];
   const team = match.dealer === "ns" ? "南北" : "东西";
+  if (previous && previous.length === 4) {
+    pushLog(match, {
+      seat: match.nextLeader,
+      kind: "deal",
+      zh: `第 ${match.round} 局发牌 · 打${rankName(match.level)} · ${team}坐庄`,
+      en: `Round ${match.round} dealt · level ${rankName(match.level)} · ${match.dealer.toUpperCase()} deals`,
+    });
+    enterTribute(match, previous);
+    return;
+  }
+  match.status = "playing";
   pushLog(match, {
     seat: match.nextLeader,
     kind: "deal",
@@ -170,11 +197,76 @@ export function beginRound(match: Match) {
   });
 }
 
+export function enterTribute(match: Match, order: number[]) {
+  const tribute = initialTribute(order, match.hands, match.level);
+  match.tribute = tribute;
+  match.nextLeader = tribute.leader;
+  if (tribute.mode === "resist") {
+    match.status = "resist";
+    match.trick.currentSeat = tribute.leader;
+    pushLog(match, {
+      seat: null,
+      kind: "tribute",
+      zh: "抗贡 · 进贡方有两张大王 · 不交换 · 头游领出",
+      en: "Tribute resisted: the paying side holds both big jokers. No exchange. First-out leads.",
+      highlight: "抗贡",
+    });
+    return;
+  }
+  match.status = "tribute";
+  match.trick.currentSeat = tribute.queue[0];
+  const who = tribute.mode === "double" ? "双下进贡" : "单下进贡";
+  pushLog(match, {
+    seat: tribute.queue[0],
+    kind: "tribute",
+    zh: `${who} · 先由 ${seatName(match, tribute.queue[0])} 进贡`,
+    en: `${tribute.mode === "double" ? "Double" : "Single"} tribute · ${seatNameEn(match, tribute.queue[0])} pays first`,
+    highlight: "进贡",
+  });
+}
+
+export function finishResist(match: Match) {
+  if (match.status !== "resist") return;
+  startPlay(match, "抗贡后头游领出");
+}
+
+export function seatActions(match: Match): { id: string; kind: string; label: string }[] {
+  if (match.status === "playing") {
+    return currentLegal(match).map((move) => ({ id: move.id, kind: move.kind, label: move.label }));
+  }
+  const tribute = match.tribute;
+  if (!tribute) return [];
+  const seat = match.trick.currentSeat;
+  if (match.status === "tribute") {
+    const card = tributeCard(match.hands[seat], match.level);
+    return [{ id: `t:${card.id}`, kind: "tribute", label: `进贡 ${tributeLabel(card)}` }];
+  }
+  if (match.status === "return") {
+    return returnCards(match.hands[seat], match.level).map((card) => ({
+      id: `r:${card.id}`,
+      kind: "return",
+      label: `还贡 ${tributeLabel(card)}`,
+    }));
+  }
+  return [];
+}
+
+export function performSeatAction(match: Match, seat: number, actionId: string) {
+  const tribute = match.tribute;
+  if (!tribute || (match.status !== "tribute" && match.status !== "return")) throw new Error("现在不是贡牌");
+  if (match.trick.currentSeat !== seat) throw new Error("还没轮到你");
+  const action = seatActions(match).find((item) => item.id === actionId);
+  if (!action) throw new Error("这张牌不能这么交");
+  if (match.status === "tribute") payTribute(match, seat, actionId.slice(2));
+  else giveBack(match, seat, actionId.slice(2));
+}
+
 function rankName(level: FaceRank): string {
   return level === "T" ? "10" : level;
 }
 
 export function currentLegal(match: Match): Move[] {
+  if (match.status !== "playing") return [];
   const seat = match.trick.currentSeat;
   return legalMoves(match.hands[seat], match.level, match.trick.lastPlay);
 }
@@ -386,6 +478,7 @@ function endRound(match: Match, lastSeat: number) {
     });
     return;
   }
+  match.previousOrder = order;
   match.status = "between_rounds";
 }
 
@@ -393,6 +486,16 @@ export function stepLocal(match: Match) {
   if (match.status === "finished") return;
   if (match.status === "between_rounds") {
     beginRound(match);
+    return;
+  }
+  if (match.status === "resist") {
+    finishResist(match);
+    return;
+  }
+  if (match.status === "tribute" || match.status === "return") {
+    const action = seatActions(match)[0];
+    if (!action) throw new Error("没有可交的贡牌");
+    performSeatAction(match, match.trick.currentSeat, action.id);
     return;
   }
   const seat = match.trick.currentSeat;
@@ -404,6 +507,89 @@ export function stepLocal(match: Match) {
     retries: 0,
     note: "heuristic",
   });
+}
+
+function payTribute(match: Match, seat: number, cardId: string) {
+  const tribute = match.tribute;
+  if (!tribute) throw new Error("没有贡牌");
+  const payment = tribute.payments.find((item) => item.from === seat && !item.give);
+  if (!payment) throw new Error("这个座位不用进贡");
+  const expected = tributeCard(match.hands[seat], match.level);
+  if (expected.id !== cardId) throw new Error("进贡必须是最大的非逢人配");
+  payment.give = takeCard(match.hands[seat], cardId);
+  pushLog(match, {
+    seat,
+    kind: "tribute",
+    zh: `${seatName(match, seat)} 进贡 ${tributeLabel(payment.give)}`,
+    en: `${seatNameEn(match, seat)} tributes ${tributeLabel(payment.give)}`,
+    cards: [payment.give],
+    moveKind: "tribute",
+    highlight: "进贡",
+  });
+  if (tribute.payments.some((item) => !item.give)) {
+    tribute.queue = tribute.payments.filter((item) => !item.give).map((item) => item.from);
+    match.trick.currentSeat = tribute.queue[0];
+    return;
+  }
+  if (tribute.mode === "double") assignDoubleTargets(tribute, match.level);
+  for (const item of tribute.payments) {
+    if (!item.give || item.to === null) throw new Error("贡牌没有接收人");
+    match.hands[item.to].push(item.give);
+  }
+  const receivers = [tribute.leader, tribute.second].filter((to) => tribute.payments.some((item) => item.to === to));
+  tribute.queue = receivers;
+  match.status = "return";
+  match.trick.currentSeat = receivers[0];
+  pushLog(match, {
+    seat: receivers[0],
+    kind: "tribute",
+    zh: `还贡 · ${seatName(match, receivers[0])} 还牌`,
+    en: `Return tribute · ${seatNameEn(match, receivers[0])}`,
+    highlight: "还贡",
+  });
+}
+
+function giveBack(match: Match, seat: number, cardId: string) {
+  const tribute = match.tribute;
+  if (!tribute) throw new Error("没有贡牌");
+  const payment = tribute.payments.find((item) => item.to === seat && !item.back);
+  if (!payment || payment.from === undefined) throw new Error("这个座位不用还贡");
+  const legal = returnCards(match.hands[seat], match.level);
+  if (!legal.some((card) => card.id === cardId)) throw new Error("还贡须是 2–10 且不是级牌；没有则还最小的非王");
+  payment.back = takeCard(match.hands[seat], cardId);
+  match.hands[payment.from].push(payment.back);
+  pushLog(match, {
+    seat,
+    kind: "tribute",
+    zh: `${seatName(match, seat)} 还贡 ${tributeLabel(payment.back)} → ${seatName(match, payment.from)}`,
+    en: `${seatNameEn(match, seat)} returns ${tributeLabel(payment.back)}`,
+    cards: [payment.back],
+    moveKind: "return",
+    highlight: "还贡",
+  });
+  tribute.queue = tribute.payments.filter((item) => item.to !== null && !item.back).map((item) => item.to as number);
+  if (tribute.queue.length > 0) {
+    match.trick.currentSeat = tribute.queue[0];
+    return;
+  }
+  startPlay(match, "进贡结束 · 头游领出");
+}
+
+function startPlay(match: Match, zh: string) {
+  match.status = "playing";
+  match.trick = { currentSeat: match.nextLeader, lastPlay: null, lastSeat: null, closed: false };
+  pushLog(match, {
+    seat: match.nextLeader,
+    kind: "lead",
+    zh,
+    en: `${seatNameEn(match, match.nextLeader)} leads`,
+  });
+}
+
+function takeCard(hand: Card[], id: string): Card {
+  const index = hand.findIndex((card) => card.id === id);
+  if (index < 0) throw new Error("手里没有这张牌");
+  return hand.splice(index, 1)[0];
 }
 
 export function pushReject(match: Match, seat: number, detail: string) {

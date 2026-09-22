@@ -1,5 +1,5 @@
 import { chooseHeuristic } from "./guandan/heuristic";
-import { beginRound, commitMove, currentLegal, logReason, type Match } from "./guandan/match";
+import { beginRound, commitMove, currentLegal, finishResist, logReason, stepLocal, type Match } from "./guandan/match";
 import { mockQuickReason } from "./llm/quick-reason";
 import { TURN_BUDGET_MS } from "./invite";
 import { getRoom, markTimeout, type Room } from "./room";
@@ -29,6 +29,39 @@ async function loop(code: string) {
       await withMatchLock(match.id, async () => {
         if (match.status === "between_rounds") beginRound(match);
       });
+      continue;
+    }
+    if (match.status === "resist") {
+      await sleep(900);
+      await withMatchLock(match.id, async () => {
+        if (match.status === "resist") finishResist(match);
+      });
+      continue;
+    }
+    if (match.status === "tribute" || match.status === "return") {
+      const seat = match.trick.currentSeat;
+      const agent = room.seats[seat];
+      if (agent?.drive === "self") {
+        const acted = await waitForAct(room, seat, TURN_BUDGET_MS);
+        const live = matchStore().get(room.matchId);
+        if (!live || (live.status !== "tribute" && live.status !== "return")) continue;
+        if (acted || live.trick.currentSeat !== seat) {
+          await sleep(280);
+          continue;
+        }
+        await withMatchLock(live.id, async () => {
+          if ((live.status !== "tribute" && live.status !== "return") || live.trick.currentSeat !== seat) return;
+          stepLocal(live);
+          markTimeout(room, seat);
+        });
+      } else {
+        await withMatchLock(match.id, async () => {
+          if (match.status !== "tribute" && match.status !== "return") return;
+          if (match.trick.currentSeat !== seat) return;
+          stepLocal(match);
+        });
+      }
+      await sleep(1100);
       continue;
     }
 

@@ -301,7 +301,9 @@ export function Arena({
                 <b>{banner.title}</b>
               </div>
             ) : null}
-            {view.status !== "playing" && latestRound ? (
+            {view.status === "tribute" || view.status === "return" || view.status === "resist" ? (
+              <TributeBoard view={view} />
+            ) : view.status !== "playing" && latestRound ? (
               <Ceremony view={view} round={latestRound} speed={speed} />
             ) : null}
           </div>
@@ -391,6 +393,9 @@ function hlSlug(title: string): string {
     首炸: "first",
     打A: "ace",
     头游: "firstout",
+    抗贡: "resist",
+    进贡: "tribute",
+    还贡: "return",
     接风: "lead",
     双下: "double",
     升级: "up",
@@ -636,6 +641,36 @@ function StatsPanel({ view, onCsv, onJson }: { view: MatchView; onCsv: () => voi
         ))}
         {stats.hands.length === 0 ? <li>本局尚未结束</li> : null}
       </ol>
+    </div>
+  );
+}
+
+function TributeBoard({ view }: { view: MatchView }) {
+  const tribute = view.tribute;
+  const title = view.status === "resist" ? "抗贡" : view.status === "return" ? "还贡" : "进贡";
+  const winds = ["北", "东", "南", "西"];
+  return (
+    <div className={`tribute-board tribute-${view.status}`} data-testid="tribute">
+      <b>{title}</b>
+      <p>
+        {view.status === "resist"
+          ? "进贡方有两张大王，取消交换，头游领出"
+          : tribute?.mode === "double"
+            ? "双下 · 较大的贡牌给头游"
+            : "末游进贡给头游"}
+      </p>
+      {tribute && view.status !== "resist" ? (
+        <ol>
+          {tribute.payments.map((payment) => (
+            <li key={`${payment.from}-${payment.to ?? "x"}`}>
+              <span>{winds[payment.from]}</span>
+              {payment.give ? <CardView card={payment.give} level={view.level} size="mini" /> : <em>待进贡</em>}
+              <span>→ {payment.to === null ? "待定" : winds[payment.to]}</span>
+              {payment.back ? <CardView card={payment.back} level={view.level} size="mini" /> : null}
+            </li>
+          ))}
+        </ol>
+      ) : null}
     </div>
   );
 }

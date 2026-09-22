@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { createDeck, deal, shuffle } from "./cards";
 import { chooseHeuristic } from "./heuristic";
 import { beats, leadAfterTrick, legalMoves, type Move } from "./legal";
-import { beginRound, commitMove, createMatch, currentLegal, logReason, stepLocal, type MoveMeta } from "./match";
+import { beginRound, commitMove, createMatch, currentLegal, enterTribute, finishResist, logReason, performSeatAction, seatActions, stepLocal, type MoveMeta } from "./match";
+import { bothBigJokers, returnCards, tributeCard, tributePlan } from "./tribute";
 import { mockQuickReason } from "../llm/quick-reason";
 import { parseMoveId } from "../llm/parse";
 import { buildPrompt } from "../llm/prompt";
@@ -312,6 +313,99 @@ function testPresentation() {
   assert.equal(ordered[1].suit, "H");
 }
 
+function testTribute() {
+  const doubles = tributePlan([0, 2, 1, 3]);
+  assert.equal(doubles.mode, "double");
+  assert.deepEqual(doubles.payers, [3, 1]);
+  const single = tributePlan([0, 1, 2, 3]);
+  assert.equal(single.mode, "single");
+  assert.deepEqual(single.payers, [3]);
+  const partnerLast = tributePlan([0, 1, 3, 2]);
+  assert.deepEqual(partnerLast.payers, [2]);
+
+  const wildHand = [card(0, "H", "5"), card(0, "S", "BJ"), card(0, "S", "A")];
+  assert.equal(tributeCard(wildHand, "5").rank, "BJ");
+  const levelHand = [card(0, "S", "5"), card(0, "S", "A")];
+  assert.equal(tributeCard(levelHand, "5").rank, "5");
+  const back = returnCards(
+    [card(0, "S", "K"), card(0, "S", "9"), card(0, "S", "BJ"), card(0, "H", "5"), card(0, "S", "5")],
+    "5",
+  );
+  assert.deepEqual(back.map((item) => item.rank), ["9"]);
+  const fallback = returnCards([card(0, "S", "K"), card(0, "S", "A"), card(0, "S", "BJ")], "2");
+  assert.equal(fallback[0].rank, "K");
+
+  const resistHands: Card[][] = [[], [], [], []];
+  resistHands[3] = [card(0, "S", "BJ"), card(1, "S", "BJ")];
+  resistHands[1] = [card(0, "S", "4")];
+  assert.equal(bothBigJokers(resistHands, [3, 1]), true);
+  assert.equal(bothBigJokers(resistHands, [1]), false);
+
+  const resisted = fresh("2");
+  resisted.level = "2";
+  resisted.hands = [
+    [card(0, "S", "3")],
+    [card(0, "S", "4")],
+    [card(0, "S", "6")],
+    [card(0, "S", "BJ"), card(1, "S", "BJ"), card(0, "D", "9")],
+  ];
+  enterTribute(resisted, [0, 2, 1, 3]);
+  assert.equal(resisted.status, "resist");
+  assert.equal(resisted.tribute?.mode, "resist");
+  const before = resisted.hands.map((hand) => hand.map((item) => item.id).join(","));
+  finishResist(resisted);
+  assert.equal(resisted.status, "playing");
+  assert.equal(resisted.trick.currentSeat, 0);
+  assert.deepEqual(resisted.hands.map((hand) => hand.map((item) => item.id).join(",")), before);
+
+  const exchange = fresh("2");
+  exchange.level = "2";
+  exchange.hands = [
+    [card(0, "S", "4"), card(0, "S", "3")],
+    [card(0, "H", "K"), card(0, "S", "8")],
+    [card(0, "S", "6"), card(0, "D", "5")],
+    [card(0, "S", "BJ"), card(0, "D", "9")],
+  ];
+  enterTribute(exchange, [0, 2, 1, 3]);
+  assert.equal(exchange.status, "tribute");
+  assert.equal(exchange.trick.currentSeat, 3);
+  const first = seatActions(exchange)[0];
+  assert.equal(first.id, "t:0SBJ");
+  performSeatAction(exchange, 3, first.id);
+  assert.equal(exchange.trick.currentSeat, 1);
+  performSeatAction(exchange, 1, seatActions(exchange)[0].id);
+  assert.equal(exchange.status, "return");
+  assert.equal(exchange.hands[0].some((item) => item.id === "0SBJ"), true);
+  assert.equal(exchange.hands[2].some((item) => item.id === "0HK"), true);
+  assert.equal(exchange.trick.currentSeat, 0);
+  const returned = seatActions(exchange);
+  assert.deepEqual(returned.map((item) => item.label), ["还贡 3", "还贡 4"]);
+  performSeatAction(exchange, 0, returned[0].id);
+  assert.equal(exchange.hands[3].some((item) => item.id === "0S3"), true);
+  assert.equal(exchange.status, "return");
+  performSeatAction(exchange, 2, seatActions(exchange)[0].id);
+  assert.equal(exchange.status, "playing");
+  assert.equal(exchange.trick.currentSeat, 0);
+  assert.equal(exchange.hands[1].some((item) => item.rank === "5" || item.rank === "6"), true);
+
+  const singleHand = fresh("2");
+  singleHand.level = "2";
+  singleHand.hands = [
+    [card(0, "S", "7")],
+    [card(0, "S", "8")],
+    [card(0, "S", "9")],
+    [card(0, "S", "A"), card(0, "H", "2")],
+  ];
+  enterTribute(singleHand, [0, 1, 2, 3]);
+  assert.equal(singleHand.tribute?.mode, "single");
+  performSeatAction(singleHand, 3, seatActions(singleHand)[0].id);
+  assert.equal(singleHand.status, "return");
+  assert.equal(singleHand.hands[0].some((item) => item.rank === "A"), true);
+  performSeatAction(singleHand, 0, seatActions(singleHand)[0].id);
+  assert.equal(singleHand.status, "playing");
+  assert.equal(singleHand.hands[3].some((item) => item.rank === "7"), true);
+}
+
 function testQuickReason() {
   const lead = fresh("K");
   const opening = mockQuickReason(lead, currentLegal(lead));
@@ -458,6 +552,7 @@ function testHighlights() {
 }
 
 testHighlights();
+testTribute();
 testQuickReason();
 testPresentation();
 testDeck();

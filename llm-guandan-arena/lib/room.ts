@@ -1,4 +1,4 @@
-import { createMatch, currentLegal, parseStartLevel, type Match } from "./guandan/match";
+import { createMatch, parseStartLevel, seatActions, type Match } from "./guandan/match";
 import type { FaceRank, ProviderId, SeatConfig, VendorId } from "./guandan/types";
 import { SEAT_WIND, teamOf } from "./guandan/types";
 import { tableProcedure } from "./guandan/procedure";
@@ -510,11 +510,11 @@ export function stateForToken(room: Room, token: string | null) {
   const view = toRoomView(room, { isHost: false, match });
   const seat = token ? seatIndexByToken(room, token) : -1;
   if (seat < 0) return { ...view, you: null };
-  const yourTurn = Boolean(match && match.status === "playing" && match.trick.currentSeat === seat);
-  const legal =
-    yourTurn && match
-      ? currentLegal(match).map((move) => ({ id: move.id, label: move.label, kind: move.kind }))
-      : [];
+  const actionable = Boolean(
+    match && (match.status === "playing" || match.status === "tribute" || match.status === "return"),
+  );
+  const yourTurn = Boolean(actionable && match && match.trick.currentSeat === seat);
+  const legal = yourTurn && match ? seatActions(match) : [];
   return {
     ...view,
     you: {

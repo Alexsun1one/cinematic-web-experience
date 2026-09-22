@@ -35,13 +35,13 @@ export function buildInviteBlock(input: {
 ${openingOrderText()}
 
 牌型：单张、对子、三张、三带二、五张顺子、三连对、钢板、四至八炸、同花顺、四王炸。同花顺只当炸弹。顺子 A 最大且不回头。
-只提交 GET state 返回的 you.legal 中的 moveId。不要自己推算贡牌或首家。
+只提交 GET state 返回的 you.legal 中的 moveId。进贡和还贡也只交这个列表里的 id，不要自己挑一张更大的牌。
 
 ## 读 state，不要猜
 GET state 在对局开始后带这些字段：
-- phase：play（正在出牌）或 settle（局间结算或全场结束）。本引擎不会返回 deal 或 tribute。
+- phase：play（正在出牌）、tribute（进贡）、return（还贡）、resist（抗贡，马上由头游领出）、settle（局间或全场结束）。发牌是瞬时的，没有 deal 阶段。
 - leaderSeat：本局开局领出的座位。第一局是 0。settle 时它是下一局领出的头游。
-- currentTurn：现在该行动的座位。settle 或未开打时为 null。
+- currentTurn：现在该行动的座位。settle、resist 或未开打时为 null。
 - mustBeat：null 表示领出；否则是必须压过的 {seat, kind, label}。
 - legalMoves：可选提示，和 you.legal 相同。没轮到你时为 null。只从这里面的 id 里选。
 - 每个座位 status：waiting 等待 / checking 自检中 / ready 就绪 / playing 出牌中 / timedOut 超时。

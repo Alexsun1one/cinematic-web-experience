@@ -3,7 +3,7 @@ import { teamOf } from "./types";
 
 export type FxKind = "whoosh" | "burst" | "streak" | "plate" | "bomb" | "flush" | "royal" | "pass";
 
-const BANNER_RANK = ["天王炸", "钢板", "同花顺", "翻盘炸", "首炸", "打A", "头游", "接风", "双下", "升级"] as const;
+const BANNER_RANK = ["天王炸", "钢板", "同花顺", "翻盘炸", "首炸", "打A", "头游", "抗贡", "进贡", "还贡", "接风", "双下", "升级"] as const;
 
 export function fxForMove(kind: string): FxKind {
   if (kind === "pass") return "pass";

@@ -52,7 +52,9 @@ export function toView(match: Match) {
       model: seat.model,
       cards: match.hands[index].length,
       finished: match.finishOrder.indexOf(index),
-      active: match.status === "playing" && match.trick.currentSeat === index,
+      active:
+        (match.status === "playing" || match.status === "tribute" || match.status === "return") &&
+        match.trick.currentSeat === index,
     })),
     hands: match.hands.map((hand) => sortCards(hand, match.level)),
     finishOrder: match.finishOrder,
@@ -74,6 +76,18 @@ export function toView(match: Match) {
     legalCount,
     log: match.log,
     rounds: match.rounds,
+    tribute: match.tribute
+      ? {
+          mode: match.tribute.mode,
+          leader: match.tribute.leader,
+          payments: match.tribute.payments.map((payment) => ({
+            from: payment.from,
+            to: payment.to,
+            give: payment.give,
+            back: payment.back,
+          })),
+        }
+      : null,
     stats: matchStats(match),
   };
 }
