@@ -34,10 +34,10 @@ body {
   color: var(--text);
   font-family: var(--ui);
   background:
-    radial-gradient(900px 480px at 50% -12%, rgba(46, 230, 166, 0.14), transparent 55%),
-    radial-gradient(700px 420px at 85% 90%, rgba(77, 163, 255, 0.08), transparent 50%),
-    radial-gradient(640px 380px at 8% 70%, rgba(46, 230, 166, 0.05), transparent 45%),
-    linear-gradient(180deg, #0c1016 0%, #07090c 100%);
+    radial-gradient(1000px 560px at 50% -10%, rgba(46, 230, 166, 0.22), transparent 52%),
+    radial-gradient(720px 440px at 92% 88%, rgba(77, 163, 255, 0.12), transparent 48%),
+    radial-gradient(640px 400px at 6% 72%, rgba(46, 230, 166, 0.08), transparent 42%),
+    linear-gradient(180deg, #0e141c 0%, #07090c 55%, #050608 100%);
   letter-spacing: -0.01em;
 }
 button, a { font: inherit; color: inherit; }
@@ -69,10 +69,12 @@ button:disabled { opacity: 0.4; cursor: wait; }
   gap: 12px;
   padding: 8px 12px;
   border-radius: 16px;
-  background: rgba(14, 18, 24, 0.72);
-  border: 1px solid var(--stroke);
-  backdrop-filter: blur(18px) saturate(1.2);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(22px) saturate(1.35);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 10px 36px rgba(0, 0, 0, 0.4);
 }
 .hud-brand { min-width: 148px; }
 .hud-brand b {
@@ -236,13 +238,14 @@ button:disabled { opacity: 0.4; cursor: wait; }
   align-self: center;
   min-height: 0;
   min-width: 0;
-  padding: 3px;
+  padding: 2px;
   border-radius: 28px;
-  background: linear-gradient(145deg, rgba(46, 230, 166, 0.55), rgba(46, 230, 166, 0.12) 40%, rgba(255, 255, 255, 0.08));
+  background: linear-gradient(145deg, rgba(46, 230, 166, 0.85), rgba(46, 230, 166, 0.25) 35%, rgba(255, 255, 255, 0.14) 70%, rgba(46, 230, 166, 0.4));
   box-shadow:
-    0 24px 56px rgba(0, 0, 0, 0.55),
-    0 0 0 1px rgba(46, 230, 166, 0.2),
-    0 0 40px rgba(46, 230, 166, 0.08);
+    0 32px 64px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(46, 230, 166, 0.35),
+    0 0 48px rgba(46, 230, 166, 0.22),
+    0 0 80px rgba(46, 230, 166, 0.08);
   position: relative;
 }
 .table-rim::before { display: none; }
@@ -848,15 +851,17 @@ button:disabled { opacity: 0.4; cursor: wait; }
 
 /* ——— Record / stats ——— */
 .record {
-  background: rgba(12, 16, 22, 0.78);
-  border: 1px solid var(--stroke);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 18px;
   padding: 12px;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  backdrop-filter: blur(16px);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(20px) saturate(1.3);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 14px 36px rgba(0, 0, 0, 0.35);
 }
 .record h2 {
   margin: 0 0 10px;
@@ -1046,12 +1051,15 @@ button:disabled { opacity: 0.4; cursor: wait; }
   flex-direction: column;
   gap: 14px;
   align-items: center;
-  padding: 20px;
+  padding: 22px;
   border-radius: 24px;
-  background: rgba(12, 16, 22, 0.72);
-  border: 1px solid var(--stroke);
-  backdrop-filter: blur(18px);
-  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.4);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(22px) saturate(1.35);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 24px 56px rgba(0, 0, 0, 0.45),
+    0 0 40px rgba(46, 230, 166, 0.06);
 }
 .mini-rim {
   width: 200px;
