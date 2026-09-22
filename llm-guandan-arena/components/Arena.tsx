@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { BackRow, CardView, HandFan } from "@/components/CardView";
 import { RulesButton } from "@/components/RulesDrawer";
-import { bannerFromHighlight, fxForMove } from "@/lib/guandan/highlight";
+import { bannerFromHighlight, fxForMove, loudestCue } from "@/lib/guandan/highlight";
+import { armAudio, playTableCue, readMuted, writeMuted } from "@/lib/table-audio";
 import { statsToCsv } from "@/lib/guandan/stats";
 import { FACE } from "@/lib/guandan/types";
 import type { MatchView } from "@/lib/view";
@@ -52,6 +53,7 @@ export function Arena({
   const [holding, setHolding] = useState(false);
   const [preview, setPreview] = useState<LogEvent | null>(null);
   const [chatText, setChatText] = useState("");
+  const [muted, setMuted] = useState(false);
   const holdTimer = useRef<number | null>(null);
   const spectator = role === "spectator";
 
@@ -86,6 +88,13 @@ export function Arena({
   const trickKey = view?.zones.map((zone) => zone?.id ?? 0).join("-") ?? "";
 
   useEffect(() => {
+    setMuted(readMuted());
+    const arm = () => armAudio();
+    window.addEventListener("pointerdown", arm);
+    return () => window.removeEventListener("pointerdown", arm);
+  }, []);
+
+  useEffect(() => {
     if (!view) return;
     const lastId = view.log.at(-1)?.id ?? 0;
     const still = new URLSearchParams(window.location.search).get("still") === "1";
@@ -107,6 +116,8 @@ export function Arena({
     }
     const fresh = view.log.filter((event) => event.id > seenLog.current);
     seenLog.current = lastId;
+    const cue = loudestCue(fresh);
+    if (cue) playTableCue(cue);
     const hit = [...fresh].reverse().find((event) => bannerFromHighlight(event.highlight));
     const title = hit ? bannerFromHighlight(hit.highlight) : null;
     if (!hit || !title) return;
@@ -264,6 +275,19 @@ export function Arena({
           ) : null}
           <button className={`chip-btn ${reveal ? "on" : ""}`} type="button" onClick={() => setReveal((value) => !value)}>
             {reveal ? "暗牌" : "明牌"}
+          </button>
+          <button
+            className={`chip-btn ${muted ? "" : "on"}`}
+            type="button"
+            data-testid="sound-toggle"
+            onClick={() => {
+              armAudio();
+              const next = !muted;
+              writeMuted(next);
+              setMuted(next);
+            }}
+          >
+            {muted ? "静音" : "声音"}
           </button>
         </div>
       </header>

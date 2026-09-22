@@ -252,7 +252,7 @@ button:disabled { opacity: 0.4; cursor: wait; }
   gap: 10px 14px;
   align-items: stretch;
 }
-.room.vertical .board { grid-template-rows: auto minmax(0, 1fr) 390px; }
+.room.vertical .board { grid-template-rows: auto minmax(0, 1fr) 52px; }
 .seat-plate.north { grid-column: 1; grid-row: 1; justify-self: center; }
 .table-row {
   grid-column: 1;
@@ -266,16 +266,15 @@ button:disabled { opacity: 0.4; cursor: wait; }
   gap: 4px;
 }
 .table-rim {
-  width: min(320px, calc(100dvh - 680px));
-  min-width: 260px;
-  flex: 0 0 auto;
+  width: auto;
+  height: min(100%, 560px);
+  min-height: 0;
+  min-width: 0;
+  flex: 0 1 auto;
   aspect-ratio: 1;
-  height: auto;
   max-width: 100%;
   justify-self: center;
   align-self: center;
-  min-height: 0;
-  min-width: 0;
   padding: 2px;
   border-radius: 28px;
   background: linear-gradient(145deg, rgba(46, 230, 166, 0.85), rgba(46, 230, 166, 0.25) 35%, rgba(255, 255, 255, 0.14) 70%, rgba(46, 230, 166, 0.4));
@@ -288,7 +287,19 @@ button:disabled { opacity: 0.4; cursor: wait; }
 }
 .table-rim::before { display: none; }
 .south-hand { grid-column: 1; grid-row: 3; height: 156px; overflow: hidden; }
-.room.vertical .south-hand { height: 390px; }
+.room.vertical .south-hand {
+  height: 52px;
+  overflow: visible;
+  position: relative;
+  z-index: 5;
+}
+.room.vertical .rank-columns {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 52px;
+  height: 320px;
+}
 .record { grid-column: 2; grid-row: 1 / span 3; }
 
 .felt-square {
@@ -990,7 +1001,7 @@ button:disabled { opacity: 0.4; cursor: wait; }
   align-items: flex-end;
   gap: 10px;
   height: 340px;
-  padding: 52px 12px 8px;
+  padding: 28px 12px 8px;
   overflow: visible;
 }
 .rank-col {

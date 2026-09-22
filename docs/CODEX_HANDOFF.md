@@ -2,34 +2,34 @@
 
 ## Current Goal
 
-进贡 / 还贡 / 抗贡 are in the engine, the seat API, the invite, and the felt ceremony. Operator seat (3 bots + 知识) stays.
+Operator seat 知识 plays a full hand against three bots from one command. Sound and a larger felt shipped with it.
 
-## Rule
+## How to run
 
-First hand: no tribute. Seat 0 leads.
+From the repo root:
 
-Later hands: deal, then tribute, then 头游 leads.
+```bash
+npm --prefix llm-guandan-arena run operator
+```
 
-- 双下 (+3): 三游 and 末游 each pay the largest non-wild. Higher card goes to 头游, lower to 二游. Tie: 末游's card to 头游.
-- 单下 (+2 or +1): only 末游 pays one card to 头游.
-- 进贡 is forced (`t:cardId`). 还贡 is 2–10, not the level, not a joker, not a wild; otherwise the smallest non-joker non-wild (`r:cardId`).
-- 抗贡: the paying side holds both 大王. No exchange. Status `resist`, then 头游 leads.
-- After resist and after the exchange, 头游 leads (the larger tribute is assigned to 头游).
+`HANDS=3 SERIES=three` plays the three-hand series. `ROOM_CODE` and `SEAT_TOKEN` join a room opened by `npm run watch`.
 
 ## Changed Files
 
-- `llm-guandan-arena/lib/guandan/tribute.ts`
-- `llm-guandan-arena/lib/guandan/match.ts` — phases, `previousOrder`, exchange
-- `llm-guandan-arena/lib/guandan/procedure.ts`, `lib/invite.ts`, `lib/view.ts`, `lib/room.ts`
-- `llm-guandan-arena/lib/room-driver.ts`, act route, step route, guest script
-- `llm-guandan-arena/components/Arena.tsx`, `app/globals.css` — tribute board
-- `llm-guandan-arena/lib/guandan/engine.test.ts`, `lib/room.test.ts`
+- `llm-guandan-arena/scripts/operator-smoke-play.mjs` — full hand, not six tricks
+- `llm-guandan-arena/scripts/watch.mjs` — curls plus how to attach operator
+- `llm-guandan-arena/lib/table-audio.ts` — Web Audio cues, mute, first-gesture unlock
+- `llm-guandan-arena/lib/guandan/highlight.ts` — `cueForLog`
+- `llm-guandan-arena/components/Arena.tsx` — sound toggle
+- `llm-guandan-arena/app/globals.css` — felt uses the middle row, up to 560px
 - `llm-guandan-arena/README.md`, `BACKEND.md`
 
 ## Validation Evidence
 
-- `npm run test:engine` passed (双下进贡, 还贡, 抗贡, invite copy)
+- `npm run test:engine` passed
 - `npm run build` passed
+- `npm --prefix llm-guandan-arena run operator` — room `P4AYNF`, hand 1 头游+三游 +2, 22 operator plays, 37 bot plays
+- Felt measures 560×560; south cards stay about 84×117. Sound toggle reads 声音.
 
 ## Blockers
 
@@ -37,4 +37,4 @@ None. Rooms stay in memory.
 
 ## Next Step
 
-Sound, a larger felt, and a sticky-process deploy note are still queued.
+Sticky process or Redis if this is deployed on more than one instance.

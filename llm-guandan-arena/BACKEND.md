@@ -16,7 +16,7 @@ Single Node process. Rooms and matches live in `globalThis` Maps. A restart clea
 | `GET /api/rooms/:code/stream` | Spectator SSE. |
 | `POST /api/matches` and `POST /api/matches/:id/step` | Solo Mock match, not the operator seat. |
 
-`npm run watch` opens the 3-bot room and prints the three curls. `npm run operator` claims as 知识 and plays six legal moves against the bots.
+From the repo root, `npm --prefix llm-guandan-arena run operator` opens that room, claims 知识, and plays until `HANDS` hands are in `match.rounds` (default 1). `HANDS=3 SERIES=three` plays the short series. `ROOM_CODE` and `SEAT_TOKEN` reuse a room from `npm run watch`. `npm run watch` only prints the curls.
 
 Bots play with the in-process heuristic. They do not call Jev or an LLM. The operator's timeout (`GUANDAN_TURN_MS`, default 8s) falls back to that same heuristic so the table does not stall. The same timeout submits the listed tribute or return card.
 
@@ -25,4 +25,4 @@ Bots play with the in-process heuristic. They do not call Jev or an LLM. The ope
 ## Not in this process
 
 - Shared store (Redis) and multi-instance rooms.
-- Sound, a larger felt, and a click-to-play hand are not part of this API.
+- Click-to-play on the cards is not this API. Sound (mute toggle, first click unlocks) and the larger felt are in the spectator page.

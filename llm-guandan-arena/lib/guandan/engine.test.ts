@@ -8,7 +8,7 @@ import { mockQuickReason } from "../llm/quick-reason";
 import { parseMoveId } from "../llm/parse";
 import { buildPrompt } from "../llm/prompt";
 import { arrangeColumns } from "./arrange";
-import { bannerFromHighlight, fxForMove, playHighlight } from "./highlight";
+import { bannerFromHighlight, cueForLog, fxForMove, playHighlight } from "./highlight";
 import { handOrder, presentCards } from "./present";
 import { bumpLevel, outcomeLabel, upgradeDelta } from "./score";
 import { matchStats, statsToCsv } from "./stats";
@@ -549,6 +549,13 @@ function testHighlights() {
     playHighlight({ kind: "straightFlush", bombTier: 3, seat: 2, level: "2", priorBomb: false, opponentFinished: false }),
     "同花顺 · 首炸",
   );
+  assert.equal(cueForLog({ moveKind: "plate", highlight: "钢板" }), "plate");
+  assert.equal(cueForLog({ moveKind: "bomb4" }), "bomb");
+  assert.equal(cueForLog({ moveKind: "straightFlush", highlight: "同花顺 · 首炸" }), "flush");
+  assert.equal(cueForLog({ kind: "pass", moveKind: "pass" }), "pass");
+  assert.equal(cueForLog({ highlight: "头游" }), "first");
+  assert.equal(cueForLog({ highlight: "升级" }), "level");
+  assert.equal(cueForLog({ moveKind: "single" }), null);
 }
 
 testHighlights();

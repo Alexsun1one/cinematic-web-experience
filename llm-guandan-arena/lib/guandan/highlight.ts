@@ -16,6 +16,33 @@ export function fxForMove(kind: string): FxKind {
   return "whoosh";
 }
 
+export type TableCue = "plate" | "bomb" | "flush" | "pass" | "first" | "level";
+
+/** One sound per log line. Bombs without a banner still count. */
+const CUE_RANK: TableCue[] = ["level", "first", "plate", "flush", "bomb", "pass"];
+
+export function loudestCue(events: { kind?: string; moveKind?: string | null; highlight?: string | null }[]): TableCue | null {
+  let best: TableCue | null = null;
+  for (const event of events) {
+    const cue = cueForLog(event);
+    if (!cue) continue;
+    if (!best || CUE_RANK.indexOf(cue) < CUE_RANK.indexOf(best)) best = cue;
+  }
+  return best;
+}
+
+export function cueForLog(event: { kind?: string; moveKind?: string | null; highlight?: string | null }): TableCue | null {
+  const highlight = event.highlight || "";
+  const move = event.moveKind || "";
+  if (highlight.includes("钢板") || move === "plate") return "plate";
+  if (highlight.includes("同花顺") || move === "straightFlush") return "flush";
+  if (move === "jokerBomb" || move.startsWith("bomb") || /天王炸|首炸|翻盘炸/.test(highlight)) return "bomb";
+  if (highlight.includes("头游")) return "first";
+  if (/升级|双下|打A/.test(highlight)) return "level";
+  if (event.kind === "pass" || move === "pass") return "pass";
+  return null;
+}
+
 export function bannerFromHighlight(highlight: string | null | undefined): string | null {
   if (!highlight) return null;
   const tags = highlight.split("·").map((part) => part.trim());

@@ -2,7 +2,8 @@
 /**
  * Local one-shot: ensure dev server, open 3 bots + 1 operator seat, print the claim/act loop.
  * Usage: npm run watch
- * The seat stays empty until something claims it. npm run operator plays it.
+ * The seat stays empty until something claims it.
+ * npm run operator opens its own room and plays a full hand as 知识.
  */
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -83,6 +84,7 @@ async function main() {
   console.log(`state     curl -s '${ORIGIN}/api/room/${room.code}/state?seatToken=${token}'`);
   console.log(`act       curl -s -X POST ${ORIGIN}/api/room/${room.code}/act -H 'content-type: application/json' -d '{"seatToken":"${token}","moveId":"MOVE"}'`);
   console.log("play it   npm run operator");
+  console.log("or        ROOM_CODE=" + room.code + " SEAT_TOKEN=" + token + " npm run operator");
   openBrowser(spectatorUrl);
 }
 
