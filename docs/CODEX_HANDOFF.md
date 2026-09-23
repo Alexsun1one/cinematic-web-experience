@@ -2,11 +2,12 @@
 
 ## Current Goal
 
-Status board streams live seat states, with the thinking text collapsed until a spectator expands it. Telemetry, replay, and the four-seat marathon stay on the same branch. 打A and tenants stay. The note is `llm-guandan-arena/CYCLE.md`.
+Spectator table keeps 北东南西 on one screen at laptop widths, with one sharp lead in the center and the record drawer closed by default. Thoughts stay collapsed until expanded. The note is `llm-guandan-arena/CYCLE.md`.
 
 ## Changed Files
 
 - `llm-guandan-arena/lib/telemetry.ts`, `lib/room.ts`, act route, room driver — think time, Jev/decision rows, replay events. Secrets are redacted. The server does not take a key.
+- `llm-guandan-arena/components/Arena.tsx`, `app/globals.css` — compass table, one lead pile, record drawer, sharper cards, no persistent blur overlays
 - `llm-guandan-arena/components/StatusBoard.tsx`, `lib/seat-live.ts` — live chips and timeline; full thought only after 展开思考. 显示思考 starts off.
 - `llm-guandan-arena/components/TelemetryHud.tsx`, `Arena.tsx` — live HUD and the 统计 table with JSON/CSV
 - `llm-guandan-arena/app/replay/[code]/page.tsx`, `components/ReplayScrubber.tsx` — timestamped event scrubber

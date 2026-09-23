@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { AceStrip } from "@/components/AceStrip";
 import { StatusBoard } from "@/components/StatusBoard";
 import { TelemetryHud, TelemetryTable } from "@/components/TelemetryHud";
-import { BackRow, CardView, HandFan } from "@/components/CardView";
+import { CardView, HandFan } from "@/components/CardView";
 import { RulesButton } from "@/components/RulesDrawer";
 import { bannerFromHighlight, fxForMove, loudestCue } from "@/lib/guandan/highlight";
 import { armAudio, playTableCue, readMuted, writeMuted } from "@/lib/table-audio";
@@ -18,6 +18,7 @@ type LogEvent = MatchView["log"][number];
 
 const PLACES = ["头游", "二游", "三游", "末游"];
 const WIND = ["n", "e", "s", "w"] as const;
+const SEAT_PLACE = ["north", "east", "south", "west"] as const;
 
 export function Arena({
   id,
@@ -62,7 +63,8 @@ export function Arena({
   const primed = useRef(false);
   const [pending, setPending] = useState(false);
   const [reveal, setReveal] = useState(false);
-  const [columns, setColumns] = useState(true);
+  const [columns, setColumns] = useState(false);
+  const [logOpen, setLogOpen] = useState(false);
   const [popStructures, setPopStructures] = useState(true);
   const [panel, setPanel] = useState<"log" | "stats" | "chat">("log");
   const [swept, setSwept] = useState(false);
@@ -293,6 +295,9 @@ export function Arena({
           <button className={`chip-btn ${reveal ? "on" : ""}`} type="button" onClick={() => setReveal((value) => !value)}>
             {reveal ? "暗牌" : "明牌"}
           </button>
+          <button className={`chip-btn ${logOpen ? "on" : ""}`} type="button" data-testid="log-toggle" aria-expanded={logOpen} onClick={() => setLogOpen((value) => !value)}>
+            {logOpen ? "收起记录" : "记录"}
+          </button>
           <button
             className={`chip-btn ${muted ? "" : "on"}`}
             type="button"
@@ -315,66 +320,60 @@ export function Arena({
         aceFails={view.aceFails ?? { ns: 0, ew: 0 }}
         aceLimit={view.aceLimit ?? 3}
       />
-      <section className="board">
-        <SeatPlate view={view} index={0} reveal={reveal} place="north" statusLabel={seatStatuses[0]?.statusLabel} live={seatLive[0]} now={now} fire={fireSeat === 0} />
-        <div className="table-row">
-        <SeatPlate view={view} index={3} reveal={reveal} place="west" statusLabel={seatStatuses[3]?.statusLabel} live={seatLive[3]} now={now} fire={fireSeat === 3} />
-        <div className="table-rim">
-          <div className={`felt-square ${view.trick.closed && !hideZones ? "clearing" : ""}`} data-testid="felt">
-            <span className="bearing n">北</span>
-            <span className="bearing e">东</span>
-            <span className="bearing s">南</span>
-            <span className="bearing w">西</span>
-            <div className="heart-level">
-              <CardView
-                card={{ id: "level-heart", deck: 0, suit: "H", rank: view.level }}
-                level={view.level}
-                size="play"
-              />
-              <small>红心{levelLabel} · 逢人配</small>
-            </div>
-            {WIND.map((wind, index) => (
-              <PlayZone key={wind} view={view} index={index} wind={wind} hidden={hideZones} />
-            ))}
-            {preview?.reason && preview.seat !== null ? (
-              <div className={`reason-chip ${WIND[preview.seat]}`} data-testid="quick-reason">
-                <em>{preview.reason.source === "jev" ? "Jev" : "快推理"}</em>
-                <b>{preview.reason.timedOut ? "超时跳过" : preview.reason.lines[0] || "…"}</b>
-                <code>{preview.reason.latencyMs}ms</code>
-              </div>
-            ) : null}
-            {banner ? (
-              <div className={`hl-banner hl-${hl}`} data-testid="highlight" key={banner.id}>
-                <b>{banner.title}</b>
-              </div>
-            ) : null}
-            {view.status === "tribute" || view.status === "return" || view.status === "resist" ? (
-              <TributeBoard view={view} />
-            ) : view.status !== "playing" && latestRound ? (
-              <Ceremony view={view} round={latestRound} speed={speed} />
-            ) : null}
-          </div>
-        </div>
-        <SeatPlate view={view} index={1} reveal={reveal} place="east" statusLabel={seatStatuses[1]?.statusLabel} live={seatLive[1]} now={now} fire={fireSeat === 1} />
-        </div>
-        <section className="south-hand">
-          <div className="south-meta">
-            <NameBlock view={view} index={2} statusLabel={seatStatuses[2]?.statusLabel} live={seatLive[2]} now={now} fire={fireSeat === 2} />
-            <div className="sort-toggle">
-              <button className={`chip-btn tiny ${columns ? "on" : ""}`} type="button" data-testid="layout-vertical" onClick={() => setColumns(true)}>
-                垂直理牌
-              </button>
-              <button className={`chip-btn tiny ${popStructures ? "on" : ""}`} type="button" data-testid="pop-structures" onClick={() => setPopStructures((value) => !value)}>
-                炸弹/同花顺
-              </button>
-              <button className={`chip-btn tiny ${columns ? "" : "on"}`} type="button" data-testid="layout-fan" onClick={() => setColumns(false)}>
-                横排扇形
-              </button>
+      <section className="board" data-testid="table-board">
+        <div className="compass" data-testid="compass">
+          <SeatPlate view={view} index={0} reveal={reveal} place="north" statusLabel={seatStatuses[0]?.statusLabel} live={seatLive[0]} now={now} fire={fireSeat === 0} />
+          <SeatPlate view={view} index={3} reveal={reveal} place="west" statusLabel={seatStatuses[3]?.statusLabel} live={seatLive[3]} now={now} fire={fireSeat === 3} />
+          <div className="table-rim">
+            <div className={`felt-square ${view.trick.closed && !hideZones ? "clearing" : ""}`} data-testid="felt">
+              <span className="bearing n">北</span>
+              <span className="bearing e">东</span>
+              <span className="bearing s">南</span>
+              <span className="bearing w">西</span>
+              <LeadWell view={view} hidden={hideZones} levelLabel={levelLabel} />
+              {preview?.reason && preview.seat !== null ? (
+                <div className={`reason-chip ${WIND[preview.seat]}`} data-testid="quick-reason">
+                  <em>{preview.reason.source === "jev" ? "Jev" : "快推理"}</em>
+                  <b>{preview.reason.timedOut ? "超时跳过" : preview.reason.lines[0] || "…"}</b>
+                  <code>{preview.reason.latencyMs}ms</code>
+                </div>
+              ) : null}
+              {banner ? (
+                <div className={`hl-banner hl-${hl}`} data-testid="highlight" key={banner.id}>
+                  <b>{banner.title}</b>
+                </div>
+              ) : null}
+              {view.status === "tribute" || view.status === "return" || view.status === "resist" ? (
+                <TributeBoard view={view} />
+              ) : view.status !== "playing" && latestRound ? (
+                <Ceremony view={view} round={latestRound} speed={speed} />
+              ) : null}
             </div>
           </div>
-          <HandFan cards={view.hands[2]} level={view.level} mode={columns ? "columns" : "fan"} popStructures={columns && popStructures} />
-        </section>
-        <aside className="record" data-testid="play-log">
+          <SeatPlate view={view} index={1} reveal={reveal} place="east" statusLabel={seatStatuses[1]?.statusLabel} live={seatLive[1]} now={now} fire={fireSeat === 1} />
+          <section className="south-hand">
+            <div className="south-meta">
+              <div className="seat-bar">
+                <NameBlock view={view} index={2} statusLabel={seatStatuses[2]?.statusLabel} live={seatLive[2]} now={now} fire={fireSeat === 2} />
+                <SeatAct view={view} index={2} />
+              </div>
+              <div className="sort-toggle">
+                <button className={`chip-btn tiny ${columns ? "on" : ""}`} type="button" data-testid="layout-vertical" onClick={() => setColumns(true)}>
+                  垂直理牌
+                </button>
+                <button className={`chip-btn tiny ${popStructures ? "on" : ""}`} type="button" data-testid="pop-structures" onClick={() => setPopStructures((value) => !value)}>
+                  炸弹/同花顺
+                </button>
+                <button className={`chip-btn tiny ${columns ? "" : "on"}`} type="button" data-testid="layout-fan" onClick={() => setColumns(false)}>
+                  横排扇形
+                </button>
+              </div>
+            </div>
+            <HandFan cards={view.hands[2]} level={view.level} mode={columns ? "columns" : "fan"} popStructures={columns && popStructures} />
+          </section>
+        </div>
+        {logOpen ? <button className="log-backdrop" type="button" aria-label="关闭记录" onClick={() => setLogOpen(false)} /> : null}
+        <aside className={`record ${logOpen ? "open" : ""}`} data-testid="play-log" aria-hidden={logOpen ? undefined : true}>
           <StatusBoard seats={seatLive} events={statusLog} metrics={metrics} now={now} />
           <h2>
             <span className="record-tabs">
@@ -475,36 +474,33 @@ function beatDuration(speed: number): number {
   return 1100;
 }
 
-function PlayZone({
-  view,
-  index,
-  wind,
-  hidden,
-}: {
-  view: MatchView;
-  index: number;
-  wind: (typeof WIND)[number];
-  hidden: boolean;
-}) {
-  const zone = view.zones[index];
+function LeadWell({ view, hidden, levelLabel }: { view: MatchView; hidden: boolean; levelLabel: string }) {
+  const pile = hidden ? null : view.pile;
+  const zone = pile ? view.zones[pile.seat] : null;
   const fx = zone ? fxForMove(zone.moveKind || (zone.bombTier > 0 ? "bomb4" : zone.kind)) : "whoosh";
+  const flash = fx === "bomb" || fx === "royal" || fx === "plate" || fx === "flush" ? `flash-${fx}` : "";
   return (
-    <div className={`play-zone ${wind} ${zone && !hidden ? "live" : ""} fx-${fx}`}>
-      {zone && !hidden ? (
-        <div key={zone.id} className={`zone-cards well ${fx === "bomb" || fx === "royal" || fx === "plate" ? "slam" : `from-${wind}`}`}>
-          <span className={`fx fx-${fx}`} aria-hidden />
-          {fx === "flush" ? <em className="fx-title">同花顺</em> : null}
-          {fx === "royal" ? <em className="fx-title royal">天王炸</em> : null}
-          {zone.kind === "pass" ? (
-            <div className="pass-stamp">不要</div>
-          ) : (
-            zone.cards.map((card) => <CardView key={card.id} card={card} level={view.level} size="play" />)
-          )}
-          {zone.kind === "play" ? <span className="zone-label">{zone.label}</span> : null}
+    <div className="lead-well" data-testid="lead-well">
+      <span className="felt-level">级牌 {levelLabel}</span>
+      {pile && pile.cards.length > 0 ? (
+        <div className={`lead-cards ${flash}`} key={pile.cards.map((card) => card.id).join("-")}>
+          {pile.cards.map((card) => (
+            <CardView key={card.id} card={card} level={view.level} size="play" />
+          ))}
         </div>
-      ) : null}
+      ) : (
+        <p className="lead-empty">等待出牌</p>
+      )}
+      {pile ? <span className="zone-label">{view.seats[pile.seat]?.wind} · {pile.label}</span> : null}
     </div>
   );
+}
+
+function SeatAct({ view, index }: { view: MatchView; index: number }) {
+  const zone = view.zones[index];
+  if (!zone || view.trick.closed) return null;
+  if (zone.kind === "play" && view.pile?.seat === index) return null;
+  return <em className="seat-act">{zone.kind === "pass" ? "不要" : zone.label}</em>;
 }
 
 function SeatPlate({
@@ -529,18 +525,13 @@ function SeatPlate({
   const seat = view.seats[index];
   return (
     <section className={`seat-plate ${place} ${seat.team} ${seat.active ? "active" : ""}`}>
-      <NameBlock view={view} index={index} statusLabel={statusLabel} live={live} now={now} fire={fire} />
+      <div className="seat-bar">
+        <NameBlock view={view} index={index} statusLabel={statusLabel} live={live} now={now} fire={fire} />
+        <SeatAct view={view} index={index} />
+      </div>
       {reveal ? (
-        <HandFan
-          cards={view.hands[index]}
-          level={view.level}
-          mode="fan"
-          size="mini"
-          axis={place === "north" ? "row" : "col"}
-        />
-      ) : (
-        <BackRow count={seat.cards} axis={place === "north" ? "row" : "stack"} />
-      )}
+        <HandFan cards={view.hands[index]} level={view.level} mode="fan" size="mini" axis="row" />
+      ) : null}
     </section>
   );
 }
@@ -550,7 +541,7 @@ function NameBlock({ view, index, statusLabel, live, now, fire }: { view: MatchV
   const place = seat.finished >= 0 ? PLACES[seat.finished] : null;
   const face = (seat.short || seat.name || seat.wind).slice(0, 1);
   return (
-    <header className={`nameplate ${fire ? "fire" : ""}`}>
+    <header className={`nameplate ${fire ? "fire" : ""}`} data-testid={`seat-${SEAT_PLACE[index]}`}>
       {fire ? (
         <span className="seat-fire" aria-hidden>
           <i /><i /><i /><i /><i />
