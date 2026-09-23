@@ -58,7 +58,6 @@ export function Arena({
   const [auto, setAuto] = useState(role === "host" && !roomCode);
   const [speed, setSpeed] = useState(700);
   const [banner, setBanner] = useState<{ id: number; title: string; seat: number | null } | null>(null);
-  const [shake, setShake] = useState(false);
   const seenLog = useRef(0);
   const primed = useRef(false);
   const [pending, setPending] = useState(false);
@@ -122,13 +121,7 @@ export function Arena({
       if (still) {
         const prior = [...view.log].reverse().find((event) => bannerFromHighlight(event.highlight));
         const title = prior ? bannerFromHighlight(prior.highlight) : null;
-        if (prior && title) {
-          setBanner({ id: prior.id, title, seat: prior.seat });
-          if (title === "钢板") {
-            setShake(true);
-            window.setTimeout(() => setShake(false), fxMs(speed));
-          }
-        }
+        if (prior && title) setBanner({ id: prior.id, title, seat: prior.seat });
       }
       return;
     }
@@ -140,13 +133,9 @@ export function Arena({
     const title = hit ? bannerFromHighlight(hit.highlight) : null;
     if (!hit || !title) return;
     setBanner({ id: hit.id, title, seat: hit.seat });
-    if (title === "钢板") {
-      setShake(true);
-      window.setTimeout(() => setShake(false), fxMs(speed));
-    }
     const timer = window.setTimeout(() => {
       setBanner((current) => (current?.id === hit.id ? null : current));
-    }, bannerMs(speed));
+    }, 700);
     return () => window.clearTimeout(timer);
   }, [view, speed]);
 
@@ -240,7 +229,7 @@ export function Arena({
 
   return (
     <main
-      className={`room ${columns ? "vertical" : ""} ${shake ? "fx-shake" : ""} ${hl ? `hl-live hl-${hl}` : ""}`}
+      className={`room ${columns ? "vertical" : ""} ${hl ? `hl-live hl-${hl}` : ""}`}
       data-testid="table"
       style={{ ["--fx-ms" as string]: `${fxMs(speed)}ms`, ["--banner-ms" as string]: `${bannerMs(speed)}ms` }}
     >
@@ -353,10 +342,7 @@ export function Arena({
           <SeatPlate view={view} index={1} reveal={reveal} place="east" statusLabel={seatStatuses[1]?.statusLabel} live={seatLive[1]} now={now} fire={fireSeat === 1} />
           <section className="south-hand">
             <div className="south-meta">
-              <div className="seat-bar">
-                <NameBlock view={view} index={2} statusLabel={seatStatuses[2]?.statusLabel} live={seatLive[2]} now={now} fire={fireSeat === 2} />
-                <SeatAct view={view} index={2} />
-              </div>
+              <NameBlock view={view} index={2} statusLabel={seatStatuses[2]?.statusLabel} live={seatLive[2]} now={now} fire={fireSeat === 2} act={seatActText(view, 2)} />
               <div className="sort-toggle">
                 <button className={`chip-btn tiny ${columns ? "on" : ""}`} type="button" data-testid="layout-vertical" onClick={() => setColumns(true)}>
                   垂直理牌
@@ -483,7 +469,7 @@ function LeadWell({ view, hidden, levelLabel }: { view: MatchView; hidden: boole
     <div className="lead-well" data-testid="lead-well">
       <span className="felt-level">级牌 {levelLabel}</span>
       {pile && pile.cards.length > 0 ? (
-        <div className={`lead-cards ${flash}`} key={pile.cards.map((card) => card.id).join("-")}>
+        <div className={`lead-cards ${flash}`} data-testid="lead-cards">
           {pile.cards.map((card) => (
             <CardView key={card.id} card={card} level={view.level} size="play" />
           ))}
@@ -496,11 +482,11 @@ function LeadWell({ view, hidden, levelLabel }: { view: MatchView; hidden: boole
   );
 }
 
-function SeatAct({ view, index }: { view: MatchView; index: number }) {
+function seatActText(view: MatchView, index: number): string {
   const zone = view.zones[index];
-  if (!zone || view.trick.closed) return null;
-  if (zone.kind === "play" && view.pile?.seat === index) return null;
-  return <em className="seat-act">{zone.kind === "pass" ? "不要" : zone.label}</em>;
+  if (!zone || view.trick.closed) return "";
+  if (zone.kind === "play" && view.pile?.seat === index) return "";
+  return zone.kind === "pass" ? "不要" : zone.label;
 }
 
 function SeatPlate({
@@ -525,10 +511,7 @@ function SeatPlate({
   const seat = view.seats[index];
   return (
     <section className={`seat-plate ${place} ${seat.team} ${seat.active ? "active" : ""}`}>
-      <div className="seat-bar">
-        <NameBlock view={view} index={index} statusLabel={statusLabel} live={live} now={now} fire={fire} />
-        <SeatAct view={view} index={index} />
-      </div>
+      <NameBlock view={view} index={index} statusLabel={statusLabel} live={live} now={now} fire={fire} act={seatActText(view, index)} />
       {reveal ? (
         <HandFan cards={view.hands[index]} level={view.level} mode="fan" size="mini" axis="row" />
       ) : null}
@@ -536,30 +519,23 @@ function SeatPlate({
   );
 }
 
-function NameBlock({ view, index, statusLabel, live, now, fire }: { view: MatchView; index: number; statusLabel?: string; live?: SeatLive; now: number; fire?: boolean }) {
+function NameBlock({ view, index, statusLabel, live, now, fire, act = "" }: { view: MatchView; index: number; statusLabel?: string; live?: SeatLive; now: number; fire?: boolean; act?: string }) {
   const seat = view.seats[index];
   const place = seat.finished >= 0 ? PLACES[seat.finished] : null;
   const face = (seat.short || seat.name || seat.wind).slice(0, 1);
   return (
     <header className={`nameplate ${fire ? "fire" : ""}`} data-testid={`seat-${SEAT_PLACE[index]}`}>
-      {fire ? (
-        <span className="seat-fire" aria-hidden>
-          <i /><i /><i /><i /><i />
-        </span>
-      ) : null}
       <span className={`seat-avatar ${seat.team}`} aria-hidden>{face}</span>
       <span className={`wind-chip ${seat.team}`}>{seat.wind}</span>
       <div>
         <strong>{seat.name}</strong>
         <small>
-          {statusLabel || (seat.provider === "mock" ? "Mock" : seat.provider)}
-          {seat.active ? " · 出牌" : ""}
-        </small>
-        {live ? (
-          <em className={`phase-chip phase-${live.phase}`} data-testid={`seat-chip-${index}`}>
-            {chipText(live, now)}
+          <span>{statusLabel || (seat.provider === "mock" ? "Mock" : seat.provider)}{seat.active ? " · 出牌" : ""}</span>
+          <em className={`phase-chip phase-${live?.phase || "idle"}`} data-testid={`seat-chip-${index}`}>
+            {live ? chipText(live, now) : ""}
           </em>
-        ) : null}
+          <span className="seat-act">{act}</span>
+        </small>
       </div>
       <b className="count-chip">{seat.cards}</b>
       {place ? <em className="place-ribbon">{place}</em> : null}
