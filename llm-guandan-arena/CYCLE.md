@@ -61,6 +61,7 @@ Peer QA checklist, then `test:engine`, `build`, and `HANDS=2`.
 | Marathon | **Pass, key unset.** Four seats are claimed in this process. `HANDS=1 START_LEVEL=A` room `2X3Y2Z` settled 头游+末游 +1 with 打A counters 南北 1 / 东西 0. Load the key with `set -a; source /path/to/guandan.env; set +a` and do not commit that file. |
 | Status board | **Pass.** Thoughts stay collapsed until 展开思考. Room `2MBFPH` opened with `data-thoughts=collapsed`, 显示思考 off, and no thought text. The north chip moved from `Jev 快判中 22607ms` to `23807ms` while the timeline stayed on `北 Jev 快判中`. Expanding that row showed the full thought. Scrubbing `/replay/2MBFPH` closed it again. |
 | Spectator table | **Pass.** Room `4DM8XD` at 1280×800, 1440×900, and 1512×982 shows 北 / 东 / 南 / 西 inside the viewport with `scrollWidth` equal to the window. The center shows one lead (`北 · 三连对 J-Q-K`). The record drawer starts off-screen. Persistent blur overlays are gone. |
+| Motion | **Pass.** Room `5MYYNR` at 1440: four seat boxes stayed at the same x/y/width/height across a lead change (`西 · 三带二 K带2` then the next play). No `fx-shake`, no blur filter, no leftover fx layer. Seat bars are a fixed 48px. |
 
 `npm run test:engine` passed. `npm run build` passed. Live Redis was not run.
 

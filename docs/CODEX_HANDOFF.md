@@ -2,7 +2,7 @@
 
 ## Current Goal
 
-Spectator table keeps 北东南西 on one screen at laptop widths, with one sharp lead in the center and the record drawer closed by default. Thoughts stay collapsed until expanded. The note is `llm-guandan-arena/CYCLE.md`.
+Spectator table keeps 北东南西 on one screen. Play motion is a 160ms ring on bombs and plates, with seat bars locked so the clock does not move the table. The note is `llm-guandan-arena/CYCLE.md`.
 
 ## Changed Files
 
