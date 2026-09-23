@@ -19,6 +19,7 @@ Spectator table keeps 北东南西 on one screen at laptop widths, with one shar
 - `npm run test:engine` passed, including telemetry redaction
 - `npm run build` passed
 - `HANDS=1 START_LEVEL=A` four-seat marathon, exit 0, key unset. Room `2X3Y2Z` settled 头游+末游 +1, 打A 南北 1 / 东西 0.
+- Room `4DM8XD` at 1280, 1440, and 1512: four seat nameplates stay inside the viewport, no horizontal scroll, one center lead, record drawer closed.
 - Room `2MBFPH`: status board `data-thoughts=collapsed`, 显示思考 off, thought text absent. North chip `Jev 快判中` moved from 22607ms to 23807ms. 展开思考 revealed the full thought. `/replay/2MBFPH` on `北 Jev 快判中` stayed collapsed, and moving the scrubber closed the thought again.
 - HUD on `/room/HJLWR4` showed `座1 · play · success · 321ms` and the strip `0/3`. The 统计 tab listed think, Jev, reaction, tokens, and cost. `/replay/HJLWR4` scrubbed from the settle line back to `开房`.
 
